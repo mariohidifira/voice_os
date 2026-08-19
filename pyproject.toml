@@ -11,17 +11,17 @@ dependencies = [
   "sentry-sdk[fastapi]>=2.0,<3"
 ]
 [project.optional-dependencies]
-dev = ["pytest>=8.3,<9", "pytest-asyncio>=0.25,<1", "pytest-cov>=6,<7", "mypy>=1.14,<2", "ruff>=0.9,<1"]
+dev = ["pytest>=8.3,<9", "pytest-asyncio>=0.25,<1", "pytest-cov>=6,<7", "mypy>=1.14,<2", "ruff>=0.9,<1", "types-jsonschema>=4.23,<5"]
 [build-system]
 requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 [tool.setuptools]
-package-dir = {voiceos_api = "apps/api/voiceos_api", voiceos_shared = "packages/shared-py/voiceos_shared"}
-packages = ["voiceos_api", "voiceos_shared"]
+package-dir = {voiceos_api = "apps/api/voiceos_api", voiceos_shared = "packages/shared-py/voiceos_shared", voiceos_voice = "apps/agent-worker/voiceos_voice"}
+packages = ["voiceos_api", "voiceos_shared", "voiceos_voice"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-pythonpath = ["apps/api", "packages/shared-py"]
+pythonpath = ["apps/api", "apps/agent-worker", "packages/shared-py"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -31,4 +31,4 @@ ignore = ["E501"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["apps/api/voiceos_api", "packages/shared-py/voiceos_shared"]
+files = ["apps/api/voiceos_api", "apps/agent-worker/voiceos_voice", "packages/shared-py/voiceos_shared"]
