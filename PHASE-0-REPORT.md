@@ -35,8 +35,10 @@ Status: **local acceptance complete; real AWS staging deployment pending credent
 - Ruff and strict mypy pass.
 - Backend suite has 12 passing tests and 82.53% coverage.
 - ESLint, TypeScript and Next.js production build pass.
+- GitHub repository `mariohidifira/voice_os` is connected; CI run `32203264679` passed every gate, including real PostgreSQL migrations/seed/RLS and all Docker image builds.
+- GitHub environment `staging` exists and is ready for environment-scoped secrets.
 
 ## Outside / external acceptance remaining
 
-- A real staging deployment and remote smoke test cannot be executed in the current environment: no AWS credentials or `AWS_STAGING_ROLE_ARN` are available and this repository has no Git remote. Terraform and workflow syntax validate locally, but this is not evidence of a deployed environment.
+- A real staging deployment and remote smoke test cannot be executed yet: the GitHub `staging` environment has no AWS/provider secrets, including `AWS_STAGING_ROLE_ARN`. Terraform and workflow syntax validate locally, but this is not evidence of a deployed environment.
 - Production Resend delivery and Google OAuth require their staging credentials. The complete magic-link protocol is verified locally through the HTTP email mock.
