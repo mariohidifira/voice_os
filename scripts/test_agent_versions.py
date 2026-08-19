@@ -50,6 +50,22 @@ def request(method: str, path: str, body: dict[str, Any] | None = None) -> tuple
     raise RuntimeError("unreachable")
 
 
+def internal_request(method: str, path: str, body: dict[str, Any]) -> tuple[int, Any]:
+    payload = json.dumps(body).encode()
+    req = urllib.request.Request(
+        f"{API}{path}",
+        data=payload,
+        method=method,
+        headers={
+            "X-Internal-Token": get_settings().internal_api_token,
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=15) as response:
+        raw = response.read()
+        return response.status, json.loads(raw) if raw else None
+
+
 status, agent = request("POST", "/v1/agents", {"name": "Version acceptance"})
 assert status == 201
 agent_id = agent["id"]
@@ -82,7 +98,31 @@ try:
     with urllib.request.urlopen(internal, timeout=15) as response:
         runtime = json.load(response)
     assert runtime["system_prompt"] == "Primeira versão publicada."
+
+    _, session = request("POST", "/v1/sessions", {"agent_id": agent_id})
+    call_id = session["call_id"]
+    internal_request("PATCH", f"/internal/calls/{call_id}", {"status": "in_progress"})
+    internal_request(
+        "POST",
+        f"/internal/calls/{call_id}/events",
+        {"events": [{"type": "call.answered", "payload": {}, "at": "2026-08-19T12:00:00Z"}]},
+    )
+    internal_request(
+        "POST",
+        f"/internal/calls/{call_id}/turns",
+        {"turns": [{"ordinal": 0, "role": "user", "text": "Olá"}, {"ordinal": 1, "role": "agent", "text": "Olá!", "ttfb_ms": 700}]},
+    )
+    internal_request(
+        "POST",
+        f"/internal/calls/{call_id}/tool-calls",
+        {"name": "consultar_pedido", "arguments": {"id": "42"}, "result": {"ok": True}, "status": "ok", "duration_ms": 20},
+    )
+    _, detail = request("GET", f"/v1/calls/{call_id}")
+    assert len(detail["turns"]) == 2 and len(detail["events"]) == 1
+    assert detail["tool_calls"][0]["name"] == "consultar_pedido"
+    status, _ = request("DELETE", f"/v1/sessions/{call_id}")
+    assert status == 204
 finally:
     request("DELETE", f"/v1/agents/{agent_id}")
 
-print("PostgreSQL agent draft/publish/history/rollback/runtime acceptance passed")
+print("PostgreSQL agent version and call lifecycle acceptance passed")

@@ -62,3 +62,62 @@ class CallEvent(BaseModel):
     type: str
     payload: dict[str, Any] = Field(default_factory=dict)
     at: datetime
+
+
+class CallPatch(BaseModel):
+    status: str | None = None
+    end_reason: str | None = None
+    livekit_room: str | None = None
+    answered_at: datetime | None = None
+    ended_at: datetime | None = None
+    duration_s: int | None = Field(default=None, ge=0)
+    billable_seconds: int | None = Field(default=None, ge=0)
+    cost: dict[str, Any] | None = None
+    latency: dict[str, Any] | None = None
+    summary: str | None = None
+    outcome: dict[str, Any] | None = None
+    variables: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class InternalCallCreate(BaseModel):
+    tenant_id: UUID
+    agent_id: UUID
+    agent_version_id: UUID | None = None
+    channel: str = "web"
+    livekit_room: str | None = None
+    variables: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class CallEventBatch(BaseModel):
+    events: list[CallEvent] = Field(min_length=1, max_length=100)
+
+
+class CallTurnCreate(BaseModel):
+    id: UUID | None = None
+    ordinal: int = Field(ge=0)
+    role: str
+    text: str
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    interrupted: bool = False
+    ttfb_ms: int | None = Field(default=None, ge=0)
+    stt_confidence: float | None = Field(default=None, ge=0, le=1)
+    audio_offset_ms: int = Field(default=0, ge=0)
+
+
+class CallTurnBatch(BaseModel):
+    turns: list[CallTurnCreate] = Field(min_length=1, max_length=100)
+
+
+class CallToolCallCreate(BaseModel):
+    id: UUID | None = None
+    turn_id: UUID | None = None
+    tool_id: UUID | None = None
+    name: str
+    arguments: dict[str, Any]
+    result: dict[str, Any] | None = None
+    status: str
+    duration_ms: int | None = Field(default=None, ge=0)
+    started_at: datetime | None = None

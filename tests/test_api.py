@@ -133,6 +133,59 @@ def test_tool_and_internal_runtime() -> None:
     assert runtime.json()["language"] == "pt-BR"
 
 
+def test_call_lifecycle_internal_batches_and_detail() -> None:
+    store.agents.clear()
+    store.agent_versions.clear()
+    store.calls.clear()
+    store.call_events.clear()
+    store.call_turns.clear()
+    store.call_tool_calls.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    internal = {"X-Internal-Token": get_settings().internal_api_token}
+    agent = client.post("/v1/agents", json={"name": "Call lifecycle"}, headers=auth).json()
+    client.post(f"/v1/agents/{agent['id']}/publish", headers=auth)
+    session = client.post("/v1/sessions", json={"agent_id": agent["id"]}, headers=auth).json()
+    call_id = session["call_id"]
+    assert session["session_id"] == call_id
+
+    patched = client.patch(
+        f"/internal/calls/{call_id}",
+        json={"status": "in_progress", "latency": {"ttfb_p50_ms": 720}},
+        headers=internal,
+    )
+    assert patched.status_code == 200
+    assert patched.json()["status"] == "in_progress"
+
+    events = client.post(
+        f"/internal/calls/{call_id}/events",
+        json={"events": [{"type": "call.answered", "payload": {}, "at": "2026-08-19T12:00:00Z"}]},
+        headers=internal,
+    )
+    assert events.json() == {"accepted": 1}
+    turns = client.post(
+        f"/internal/calls/{call_id}/turns",
+        json={"turns": [{"ordinal": 0, "role": "user", "text": "Olá"}, {"ordinal": 1, "role": "agent", "text": "Como posso ajudar?", "ttfb_ms": 720}]},
+        headers=internal,
+    )
+    assert turns.json() == {"accepted": 2}
+    tool_call = client.post(
+        f"/internal/calls/{call_id}/tool-calls",
+        json={"name": "consultar_pedido", "arguments": {"id": "42"}, "result": {"status": "enviado"}, "status": "ok", "duration_ms": 25},
+        headers=internal,
+    )
+    assert tool_call.status_code == 201
+
+    detail = client.get(f"/v1/calls/{call_id}", headers=auth).json()
+    assert [turn["role"] for turn in detail["turns"]] == ["user", "agent"]
+    assert detail["events"][0]["type"] == "call.answered"
+    assert detail["tool_calls"][0]["name"] == "consultar_pedido"
+
+    ended = client.post(f"/v1/calls/{call_id}/hangup", headers=auth)
+    assert ended.json()["end_reason"] == "agent_hangup"
+    assert client.delete(f"/v1/sessions/{call_id}", headers=auth).status_code == 204
+
+
 def test_invalid_token_and_wrong_tenant() -> None:
     tenant = str(uuid4())
     assert client.get("/v1/me", headers={"Authorization": "Bearer invalid", "X-Tenant-Id": tenant}).status_code == 401

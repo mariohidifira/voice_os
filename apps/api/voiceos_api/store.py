@@ -10,6 +10,9 @@ class MemoryStore:
         self.agents: dict[UUID, dict[str, Any]] = {}
         self.agent_versions: dict[UUID, dict[str, Any]] = {}
         self.calls: dict[UUID, dict[str, Any]] = {}
+        self.call_events: dict[UUID, list[dict[str, Any]]] = {}
+        self.call_turns: dict[UUID, list[dict[str, Any]]] = {}
+        self.call_tool_calls: dict[UUID, list[dict[str, Any]]] = {}
         self.tools: dict[UUID, dict[str, Any]] = {}
 
     def create_agent(self, tenant_id: UUID, name: str) -> dict[str, Any]:

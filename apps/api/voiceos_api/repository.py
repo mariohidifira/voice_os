@@ -25,6 +25,14 @@ class Repository(Protocol):
     async def rollback_agent(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None: ...
     async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]: ...
     async def list_calls(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def get_call(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None: ...
+    async def get_call_detail(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None: ...
+    async def update_call(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def create_internal_call(self, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def update_internal_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def append_call_events(self, call_id: UUID, events: list[dict[str, Any]]) -> int: ...
+    async def append_call_turns(self, call_id: UUID, turns: list[dict[str, Any]]) -> int: ...
+    async def append_call_tool_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
     async def get_runtime(self, agent_id: UUID) -> dict[str, Any] | None: ...
 
@@ -172,6 +180,103 @@ class PostgresRepository:
             rows = await db.execute(text("SELECT * FROM calls ORDER BY created_at DESC"))
             return [dict(row) for row in rows.mappings()]
 
+    async def get_call(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("SELECT * FROM calls WHERE id=:id"), {"id": call_id})
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def get_call_detail(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None:
+        call = await self.get_call(tenant_id, call_id)
+        if not call:
+            return None
+        async with self.tenant_session(tenant_id) as db:
+            turns = await db.execute(text("SELECT * FROM call_turns WHERE call_id=:id ORDER BY ordinal"), {"id": call_id})
+            tools = await db.execute(text("SELECT * FROM call_tool_calls WHERE call_id=:id ORDER BY started_at,id"), {"id": call_id})
+            events = await db.execute(text("SELECT * FROM call_events WHERE call_id=:id ORDER BY at,id"), {"id": call_id})
+            recording = await db.execute(text("SELECT * FROM call_recordings WHERE call_id=:id"), {"id": call_id})
+            qa = await db.execute(text("SELECT * FROM call_qa WHERE call_id=:id"), {"id": call_id})
+            return {
+                **call,
+                "turns": [dict(row) for row in turns.mappings()],
+                "tool_calls": [dict(row) for row in tools.mappings()],
+                "events": [dict(row) for row in events.mappings()],
+                "recording": dict(item) if (item := recording.mappings().first()) else None,
+                "qa": dict(item) if (item := qa.mappings().first()) else None,
+            }
+
+    async def update_call(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        return await self._update_call(tenant_id, call_id, data, internal=False)
+
+    async def _update_call(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any], *, internal: bool) -> dict[str, Any] | None:
+        allowed = {"status", "end_reason", "livekit_room", "answered_at", "ended_at", "duration_s", "billable_seconds", "cost", "latency", "summary", "outcome", "variables", "metadata"}
+        json_fields = {"cost", "latency", "outcome", "variables", "metadata"}
+        assignments: list[str] = []
+        params: dict[str, Any] = {"id": call_id}
+        for field, value in data.items():
+            if field not in allowed:
+                continue
+            params[field] = __import__("json").dumps(value) if field in json_fields else value
+            assignments.append(f"{field}=CAST(:{field} AS jsonb)" if field in json_fields else f"{field}=:{field}")
+        if not assignments:
+            return await self.get_call(tenant_id, call_id)
+        context = self._internal_session() if internal else self.tenant_session(tenant_id)
+        async with context as db:
+            row = await db.execute(text(f"UPDATE calls SET {', '.join(assignments)},updated_at=now() WHERE id=:id RETURNING *"), params)
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    @asynccontextmanager
+    async def _internal_session(self) -> AsyncIterator[AsyncSession]:
+        async with SessionFactory() as db, db.begin():
+            await db.execute(text("SET LOCAL row_security = off"))
+            yield db
+
+    async def create_internal_call(self, data: dict[str, Any]) -> dict[str, Any]:
+        call_id = uuid4()
+        async with self._internal_session() as db:
+            row = await db.execute(
+                text("INSERT INTO calls(id,tenant_id,agent_id,agent_version_id,channel,status,livekit_room,variables,metadata,started_at) VALUES(:id,:tenant_id,:agent_id,:agent_version_id,:channel,'queued',:livekit_room,CAST(:variables AS jsonb),CAST(:metadata AS jsonb),now()) RETURNING *"),
+                {**data, "id": call_id, "variables": __import__("json").dumps(data.get("variables", {})), "metadata": __import__("json").dumps(data.get("metadata", {}))},
+            )
+            return dict(row.mappings().one())
+
+    async def update_internal_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        async with self._internal_session() as db:
+            tenant_id = (await db.execute(text("SELECT tenant_id FROM calls WHERE id=:id"), {"id": call_id})).scalar_one_or_none()
+        return await self._update_call(tenant_id, call_id, data, internal=True) if tenant_id else None
+
+    async def _call_tenant(self, db: AsyncSession, call_id: UUID) -> UUID | None:
+        return (await db.execute(text("SELECT tenant_id FROM calls WHERE id=:id"), {"id": call_id})).scalar_one_or_none()
+
+    async def append_call_events(self, call_id: UUID, events: list[dict[str, Any]]) -> int:
+        async with self._internal_session() as db:
+            tenant_id = await self._call_tenant(db, call_id)
+            if not tenant_id:
+                return 0
+            for event in events:
+                await db.execute(text("INSERT INTO call_events(tenant_id,call_id,type,payload,at) VALUES(:tenant,:call,:type,CAST(:payload AS jsonb),:at)"), {"tenant": tenant_id, "call": call_id, "type": event["type"], "payload": __import__("json").dumps(event.get("payload", {})), "at": event["at"]})
+            return len(events)
+
+    async def append_call_turns(self, call_id: UUID, turns: list[dict[str, Any]]) -> int:
+        async with self._internal_session() as db:
+            tenant_id = await self._call_tenant(db, call_id)
+            if not tenant_id:
+                return 0
+            for turn in turns:
+                values = {**turn, "id": turn.get("id") or uuid4(), "tenant": tenant_id, "call": call_id}
+                await db.execute(text("INSERT INTO call_turns(id,tenant_id,call_id,ordinal,role,text,started_at,ended_at,interrupted,ttfb_ms,stt_confidence,audio_offset_ms) VALUES(:id,:tenant,:call,:ordinal,:role,:text,:started_at,:ended_at,:interrupted,:ttfb_ms,:stt_confidence,:audio_offset_ms)"), values)
+            return len(turns)
+
+    async def append_call_tool_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        async with self._internal_session() as db:
+            tenant_id = await self._call_tenant(db, call_id)
+            if not tenant_id:
+                return None
+            values = {**data, "id": data.get("id") or uuid4(), "tenant": tenant_id, "call": call_id, "arguments": __import__("json").dumps(data["arguments"]), "result": __import__("json").dumps(data.get("result"))}
+            row = await db.execute(text("INSERT INTO call_tool_calls(id,tenant_id,call_id,turn_id,tool_id,name,arguments,result,status,duration_ms,started_at) VALUES(:id,:tenant,:call,:turn_id,:tool_id,:name,CAST(:arguments AS jsonb),CAST(:result AS jsonb),:status,:duration_ms,:started_at) RETURNING *"), values)
+            return dict(row.mappings().one())
+
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
         import json
 
@@ -291,6 +396,51 @@ class MemoryRepository:
 
     async def list_calls(self, tenant_id: UUID) -> list[dict[str, Any]]:
         return [c for c in self.memory.calls.values() if c["tenant_id"] == tenant_id]
+
+    async def get_call(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None:
+        call = self.memory.calls.get(call_id)
+        return call if call and call["tenant_id"] == tenant_id else None
+
+    async def get_call_detail(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None:
+        call = await self.get_call(tenant_id, call_id)
+        if not call:
+            return None
+        return {**call, "turns": self.memory.call_turns.get(call_id, []), "tool_calls": self.memory.call_tool_calls.get(call_id, []), "events": self.memory.call_events.get(call_id, []), "recording": None, "qa": None}
+
+    async def update_call(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        call = await self.get_call(tenant_id, call_id)
+        if not call:
+            return None
+        call.update(data)
+        call["updated_at"] = datetime.now(UTC)
+        return call
+
+    async def create_internal_call(self, data: dict[str, Any]) -> dict[str, Any]:
+        return await self.create_call(data["tenant_id"], data["agent_id"], data.get("variables", {}), data.get("metadata", {}))
+
+    async def update_internal_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        call = self.memory.calls.get(call_id)
+        return await self.update_call(call["tenant_id"], call_id, data) if call else None
+
+    async def append_call_events(self, call_id: UUID, events: list[dict[str, Any]]) -> int:
+        if call_id not in self.memory.calls:
+            return 0
+        self.memory.call_events.setdefault(call_id, []).extend(events)
+        return len(events)
+
+    async def append_call_turns(self, call_id: UUID, turns: list[dict[str, Any]]) -> int:
+        if call_id not in self.memory.calls:
+            return 0
+        normalized = [{**turn, "id": turn.get("id") or uuid4()} for turn in turns]
+        self.memory.call_turns.setdefault(call_id, []).extend(normalized)
+        return len(normalized)
+
+    async def append_call_tool_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        if call_id not in self.memory.calls:
+            return None
+        item = {**data, "id": data.get("id") or uuid4()}
+        self.memory.call_tool_calls.setdefault(call_id, []).append(item)
+        return item
 
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
         tool_id = uuid4()

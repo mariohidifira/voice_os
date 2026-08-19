@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -12,6 +12,11 @@ from .schemas import (
     AgentDraftPatch,
     AgentPatch,
     AgentRollback,
+    CallEventBatch,
+    CallPatch,
+    CallToolCallCreate,
+    CallTurnBatch,
+    InternalCallCreate,
     SessionCreate,
     ToolCreate,
 )
@@ -115,15 +120,37 @@ async def create_session(body: SessionCreate, auth: Auth, repo: Repo) -> dict[st
     agent = await repo.get_agent(auth.tenant_id, body.agent_id)
     if not agent or agent["status"] != "active":
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Active agent not found"})
-    session_id = uuid4()
     call = await repo.create_call(auth.tenant_id, body.agent_id, body.variables, body.metadata)
     call_id = call["id"]
-    return {"session_id": session_id, "call_id": call_id, "livekit_url": get_settings().livekit_url, "token": f"dev_{session_id}", "expires_at": datetime.now(UTC) + timedelta(hours=1)}
+    return {"session_id": call_id, "call_id": call_id, "livekit_url": get_settings().livekit_url, "token": f"dev_{call_id}", "expires_at": datetime.now(UTC) + timedelta(hours=1)}
+
+
+@v1.delete("/sessions/{session_id}", status_code=204)
+async def delete_session(session_id: UUID, auth: Auth, repo: Repo) -> None:
+    call = await repo.update_call(auth.tenant_id, session_id, {"status": "cancelled", "end_reason": "user_hangup", "ended_at": datetime.now(UTC)})
+    if not call:
+        raise HTTPException(404, detail={"code": "session_not_found", "message": "Session not found"})
 
 
 @v1.get("/calls")
 async def calls(auth: Auth, repo: Repo) -> dict[str, Any]:
     return {"data": await repo.list_calls(auth.tenant_id), "next_cursor": None}
+
+
+@v1.get("/calls/{call_id}")
+async def get_call(call_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    call = await repo.get_call_detail(auth.tenant_id, call_id)
+    if not call:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    return call
+
+
+@v1.post("/calls/{call_id}/hangup")
+async def hangup_call(call_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    call = await repo.update_call(auth.tenant_id, call_id, {"status": "completed", "end_reason": "agent_hangup", "ended_at": datetime.now(UTC)})
+    if not call:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    return call
 
 
 @v1.post("/tools", status_code=201)
@@ -137,3 +164,40 @@ async def runtime(agent_id: UUID, repo: Repo) -> dict[str, Any]:
     if not agent:
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
     return {"tenant_id": agent["tenant_id"], "agent_id": agent_id, "version_id": agent["version_id"], "system_prompt": agent["system_prompt"], "greeting": agent["greeting"], "language": agent["language"], "llm": agent["llm"], "stt": agent["stt"], "tts": agent["tts"], "turn": agent["turn_config"], "behavior": agent["behavior"], "rag": agent["rag"], "tools": []}
+
+
+@internal.post("/calls", status_code=201)
+async def create_internal_call(body: InternalCallCreate, repo: Repo) -> dict[str, Any]:
+    return await repo.create_internal_call(body.model_dump())
+
+
+@internal.patch("/calls/{call_id}")
+async def update_internal_call(call_id: UUID, body: CallPatch, repo: Repo) -> dict[str, Any]:
+    call = await repo.update_internal_call(call_id, body.model_dump(exclude_unset=True))
+    if not call:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    return call
+
+
+@internal.post("/calls/{call_id}/events")
+async def append_call_events(call_id: UUID, body: CallEventBatch, repo: Repo) -> dict[str, int]:
+    count = await repo.append_call_events(call_id, [event.model_dump() for event in body.events])
+    if not count:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    return {"accepted": count}
+
+
+@internal.post("/calls/{call_id}/turns")
+async def append_call_turns(call_id: UUID, body: CallTurnBatch, repo: Repo) -> dict[str, int]:
+    count = await repo.append_call_turns(call_id, [turn.model_dump() for turn in body.turns])
+    if not count:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    return {"accepted": count}
+
+
+@internal.post("/calls/{call_id}/tool-calls", status_code=201)
+async def append_call_tool_call(call_id: UUID, body: CallToolCallCreate, repo: Repo) -> dict[str, Any]:
+    item = await repo.append_call_tool_call(call_id, body.model_dump())
+    if not item:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    return item
