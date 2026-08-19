@@ -17,6 +17,8 @@ jobs:
       - run: make generate-types
       - run: alembic -c apps/api/alembic.ini upgrade head
         env: {DATABASE_URL: "postgresql+asyncpg://voiceos:voiceos@localhost:5432/voiceos"}
+      - run: python apps/api/scripts/seed.py
+        env: {DATABASE_URL: "postgresql+asyncpg://voiceos:voiceos@localhost:5432/voiceos"}
       - run: python scripts/test_rls.py
         env: {DATABASE_URL: "postgresql+asyncpg://voiceos:voiceos@localhost:5432/voiceos"}
       - run: make lint typecheck test build
