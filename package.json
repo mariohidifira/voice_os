@@ -1,0 +1,5 @@
+{
+  "name": "voiceos-monorepo", "private": true, "workspaces": ["apps/web", "packages/shared-ts", "packages/widget"],
+  "scripts": {"build": "npm run build --workspaces --if-present", "test": "npm test --workspaces --if-present", "typecheck": "npm run typecheck --workspaces --if-present"},
+  "overrides": {"next": {"postcss": "8.5.23", "sharp": "0.35.0"}}
+}

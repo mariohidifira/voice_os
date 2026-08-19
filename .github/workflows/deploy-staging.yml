@@ -1,0 +1,88 @@
+name: deploy-staging
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      TF_VAR_account_suffix: ${{ secrets.AWS_ACCOUNT_SUFFIX }}
+      LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
+      LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
+      LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+      DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      INTERNAL_API_TOKEN: ${{ secrets.INTERNAL_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+          aws-region: sa-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform -chdir=infra/terraform init
+      - run: terraform -chdir=infra/terraform validate
+      - name: Provision base infrastructure
+        run: terraform -chdir=infra/terraform apply -auto-approve -var="deploy_services=false"
+      - name: Configure runtime secrets
+        shell: bash
+        run: |
+          DB_ENDPOINT=$(terraform -chdir=infra/terraform output -raw database_endpoint)
+          DB_MASTER_SECRET=$(aws rds describe-db-instances --db-instance-identifier stg-voiceos --query 'DBInstances[0].MasterUserSecret.SecretArn' --output text)
+          DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "$DB_MASTER_SECRET" --query SecretString --output text | jq -r .password)
+          DB_PASSWORD_ESCAPED=$(jq -rn --arg value "$DB_PASSWORD" '$value|@uri')
+          SECRET_ARNS=$(terraform -chdir=infra/terraform output -json secret_arns)
+          aws secretsmanager put-secret-value --secret-id "$(jq -r '.database' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg value "postgresql+asyncpg://voiceos_admin:${DB_PASSWORD_ESCAPED}@${DB_ENDPOINT}/voiceos" '{DATABASE_URL:$value}')"
+          aws secretsmanager put-secret-value --secret-id "$(jq -r '.auth' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg value "$AUTH_SECRET" '{AUTH_SECRET:$value}')"
+          aws secretsmanager put-secret-value --secret-id "$(jq -r '.internal-api' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg value "$INTERNAL_API_TOKEN" '{INTERNAL_API_TOKEN:$value}')"
+          aws secretsmanager put-secret-value --secret-id "$(jq -r '.providers' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg livekit_url "$LIVEKIT_URL" --arg livekit_key "$LIVEKIT_API_KEY" --arg livekit_secret "$LIVEKIT_API_SECRET" --arg deepgram "$DEEPGRAM_API_KEY" --arg anthropic "$ANTHROPIC_API_KEY" --arg openai "$OPENAI_API_KEY" --arg elevenlabs "$ELEVENLABS_API_KEY" --arg resend "$RESEND_API_KEY" '{LIVEKIT_URL:$livekit_url,LIVEKIT_API_KEY:$livekit_key,LIVEKIT_API_SECRET:$livekit_secret,DEEPGRAM_API_KEY:$deepgram,ANTHROPIC_API_KEY:$anthropic,OPENAI_API_KEY:$openai,ELEVENLABS_API_KEY:$elevenlabs,RESEND_API_KEY:$resend}')"
+      - name: Build and push service images
+        shell: bash
+        run: |
+          REPOSITORIES=$(terraform -chdir=infra/terraform output -json ecr_repository_urls)
+          REGISTRY=$(jq -r '.api' <<<"$REPOSITORIES" | cut -d/ -f1)
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+          ALB_URL="http://$(terraform -chdir=infra/terraform output -raw alb_dns_name)"
+          for service in api web agent-worker worker; do
+            case "$service" in
+              api) dockerfile=infra/docker/api.Dockerfile; extra=() ;;
+              web) dockerfile=infra/docker/web.Dockerfile; extra=(--build-arg "NEXT_PUBLIC_API_URL=$ALB_URL") ;;
+              *) dockerfile=infra/docker/python-worker.Dockerfile; extra=() ;;
+            esac
+            repository=$(jq -r ".\"$service\"" <<<"$REPOSITORIES")
+            docker build -f "$dockerfile" "${extra[@]}" -t "$repository:${GITHUB_SHA}" -t "$repository:latest" .
+            docker push "$repository:${GITHUB_SHA}"
+            docker push "$repository:latest"
+          done
+      - name: Deploy ECS services
+        run: terraform -chdir=infra/terraform apply -auto-approve -var="deploy_services=true"
+      - name: Run database migrations
+        shell: bash
+        run: |
+          CLUSTER=$(terraform -chdir=infra/terraform output -raw ecs_cluster_arn)
+          SUBNETS=$(terraform -chdir=infra/terraform output -json private_subnet_ids | jq -r 'join(",")')
+          SECURITY_GROUP=$(terraform -chdir=infra/terraform output -raw services_security_group_id)
+          TASK=$(aws ecs run-task --cluster "$CLUSTER" --task-definition stg-voiceos-api --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUP],assignPublicIp=DISABLED}" --overrides '{"containerOverrides":[{"name":"api","command":["alembic","-c","apps/api/alembic.ini","upgrade","head"]}]}' --query 'tasks[0].taskArn' --output text)
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK" --query 'tasks[0].containers[0].exitCode' --output text)
+          test "$EXIT_CODE" = "0"
+      - name: Force deployment and smoke test
+        shell: bash
+        run: |
+          CLUSTER=$(terraform -chdir=infra/terraform output -raw ecs_cluster_arn)
+          for service in api web agent-worker worker; do
+            aws ecs update-service --cluster "$CLUSTER" --service "stg-voiceos-$service" --force-new-deployment >/dev/null
+          done
+          aws ecs wait services-stable --cluster "$CLUSTER" --services stg-voiceos-api stg-voiceos-web stg-voiceos-agent-worker stg-voiceos-worker
+          ALB_URL="http://$(terraform -chdir=infra/terraform output -raw alb_dns_name)"
+          curl --fail --retry 12 --retry-delay 10 "$ALB_URL/health"
+          curl --fail "$ALB_URL/"

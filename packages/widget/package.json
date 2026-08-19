@@ -1,0 +1,2 @@
+{"name":"@voiceos/web","version":"0.1.0","type":"module","scripts":{"build":"tsc","typecheck":"tsc --noEmit"},"devDependencies":{"typescript":"^5.7"},"files":["dist"]}
+

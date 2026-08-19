@@ -1,0 +1,48 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment: {POSTGRES_USER: voiceos, POSTGRES_PASSWORD: voiceos, POSTGRES_DB: voiceos}
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U voiceos"], interval: 3s, timeout: 3s, retries: 20}
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7-alpine
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 3s, timeout: 3s, retries: 20}
+    ports: ["6379:6379"]
+  api:
+    build: {context: ., dockerfile: infra/docker/api.Dockerfile}
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://voiceos:voiceos@db:5432/voiceos
+      REDIS_URL: redis://redis:6379/0
+    depends_on: {db: {condition: service_healthy}, redis: {condition: service_healthy}}
+    ports: ["8005:8000"]
+  web:
+    build: {context: ., dockerfile: infra/docker/web.Dockerfile}
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8005
+      DATABASE_URL: postgresql://voiceos:voiceos@db:5432/voiceos
+      EMAIL_MOCK_URL: http://mock:9000/email
+    depends_on: [api, mock]
+    ports: ["3000:3000"]
+  agent-worker:
+    build: {context: ., dockerfile: infra/docker/python-worker.Dockerfile}
+    command: ["python", "apps/agent-worker/main.py"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://voiceos:voiceos@db:5432/voiceos
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [api]
+    ports: ["8081:8081"]
+  worker:
+    build: {context: ., dockerfile: infra/docker/python-worker.Dockerfile}
+    command: ["python", "apps/worker/main.py"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://voiceos:voiceos@db:5432/voiceos
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [api, redis]
+  mock:
+    build: {context: ., dockerfile: infra/docker/python-worker.Dockerfile}
+    command: ["uvicorn", "apps.mock.main:app", "--host", "0.0.0.0", "--port", "9000"]
+    ports: ["9000:9000"]

@@ -1,0 +1,4949 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {
+    "hyperedges": [
+      {
+        "id": "tenant_security_flow",
+        "label": "defense-in-depth tenant isolation",
+        "nodes": [
+          "principal_auth",
+          "principal",
+          "tenant_session",
+          "tenant_rls"
+        ],
+        "relation": "jointly_enforces_tenant_boundary",
+        "confidence": "INFERRED",
+        "confidence_score": 0.95,
+        "evidence": "Authentication verifies JWT tenant membership and persistence sets app.tenant_id for PostgreSQL RLS."
+      },
+      {
+        "id": "session_runtime_flow",
+        "label": "voice session provisioning flow",
+        "nodes": [
+          "session_creation",
+          "repository_contract",
+          "settings",
+          "runtime_endpoint",
+          "worker_main"
+        ],
+        "relation": "participates_in_voice_session_lifecycle",
+        "confidence": "INFERRED",
+        "confidence_score": 0.85,
+        "evidence": "The API validates and records sessions, exposes runtime configuration, and the worker manages active room lifecycle."
+      },
+      {
+        "id": "dual_repository_pattern",
+        "label": "shared repository adapter contract",
+        "nodes": [
+          "repository_contract",
+          "postgres_repository",
+          "memory_repository",
+          "memory_store"
+        ],
+        "relation": "implements_swappable_persistence",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "evidence": "Both repository classes expose the protocol operations; MemoryRepository delegates state to MemoryStore."
+      },
+      {
+        "id": "web-auth-flow",
+        "label": "Web authentication to tenant dashboard flow",
+        "members": [
+          "auth-route-handlers",
+          "login",
+          "email-login",
+          "google-login",
+          "dashboard"
+        ],
+        "relation": "participates_in_authentication_flow",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "apps/web/app/login/page.tsx",
+        "source_location": "Login and server actions",
+        "evidence": "Login submits to provider-specific server actions and both redirect into the dashboard."
+      },
+      {
+        "id": "tenant-safety-verification",
+        "label": "Tenant safety verification",
+        "members": [
+          "tenant-rls",
+          "api-isolation-tests",
+          "migration-contract-tests",
+          "api-auth-tests"
+        ],
+        "relation": "jointly_enforces_and_validates_tenant_safety",
+        "confidence": "INFERRED",
+        "confidence_score": 0.95,
+        "source_file": "PHASE-0-REPORT.md",
+        "source_location": "Implemented and How to test",
+        "evidence": "RLS, authorization, migration contracts and isolation tests jointly cover tenant safety."
+      },
+      {
+        "id": "voice_realtime_flow",
+        "label": "Real-time Voice Conversation Flow",
+        "nodes": [
+          "09_canais_omnichannel",
+          "02_arquitetura_agent_worker",
+          "05_voice_pipeline_streaming_pipeline",
+          "06_tools_integracoes_tool_system"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+        "source_location": "lines 59-73"
+      },
+      {
+        "id": "tenant_isolation_controls",
+        "label": "Tenant Isolation Controls",
+        "nodes": [
+          "01_visao_produto_multitenancy",
+          "01_visao_produto_rbac",
+          "01_visao_produto_rnf_isolamento",
+          "03_modelo_dados_rls",
+          "13_testes_aceite_quality_gates"
+        ],
+        "relation": "form",
+        "confidence": "INFERRED",
+        "confidence_score": 0.95,
+        "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/01-visao-produto.md",
+        "source_location": "RNF-06"
+      },
+      {
+        "id": "lgpd_governance_set",
+        "label": "LGPD Governance Artifacts",
+        "nodes": [
+          "11_seguranca_lgpd_compliance",
+          "dpa_controller_processor_roles",
+          "incident_lgpd_runbook",
+          "privacy_policy_data_subject_rights",
+          "subprocessors_provider_registry"
+        ],
+        "relation": "form",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/14-fases.md",
+        "source_location": "lines 52-62"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "label": "main.py",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "L1",
+      "id": "apps_agent_worker_main_py",
+      "community": 13,
+      "norm_label": "main.py"
+    },
+    {
+      "label": "WorkerState",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "L11",
+      "id": "agent_worker_main_workerstate",
+      "community": 13,
+      "norm_label": "workerstate"
+    },
+    {
+      "label": "healthcheck()",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "L21",
+      "id": "agent_worker_main_healthcheck",
+      "community": 13,
+      "norm_label": "healthcheck()"
+    },
+    {
+      "label": "main()",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "L25",
+      "id": "agent_worker_main_main",
+      "community": 13,
+      "norm_label": "main()"
+    },
+    {
+      "label": "env.py",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L1",
+      "id": "apps_api_alembic_env_py",
+      "community": 9,
+      "norm_label": "env.py"
+    },
+    {
+      "label": "run_migrations_offline()",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L10",
+      "id": "alembic_env_run_migrations_offline",
+      "community": 9,
+      "norm_label": "run_migrations_offline()"
+    },
+    {
+      "label": "run_sync_migrations()",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L16",
+      "id": "alembic_env_run_sync_migrations",
+      "community": 9,
+      "norm_label": "run_sync_migrations()"
+    },
+    {
+      "label": "run_async_migrations()",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L21",
+      "id": "alembic_env_run_async_migrations",
+      "community": 9,
+      "norm_label": "run_async_migrations()"
+    },
+    {
+      "label": "run_migrations_online()",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L32",
+      "id": "alembic_env_run_migrations_online",
+      "community": 9,
+      "norm_label": "run_migrations_online()"
+    },
+    {
+      "label": "0001_initial.py",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "L1",
+      "id": "apps_api_alembic_versions_0001_initial_py",
+      "community": 14,
+      "norm_label": "0001_initial.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "L47",
+      "id": "versions_0001_initial_upgrade",
+      "community": 14,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "L61",
+      "id": "versions_0001_initial_downgrade",
+      "community": 14,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "Complete VoiceOS v1 schema and tenant isolation.",
+      "file_type": "rationale",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "L1",
+      "id": "versions_0001_initial_rationale_1",
+      "community": 14,
+      "norm_label": "complete voiceos v1 schema and tenant isolation."
+    },
+    {
+      "label": "0002_authjs.py",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "L1",
+      "id": "apps_api_alembic_versions_0002_authjs_py",
+      "community": 15,
+      "norm_label": "0002_authjs.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "L10",
+      "id": "versions_0002_authjs_upgrade",
+      "community": 15,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "L18",
+      "id": "versions_0002_authjs_downgrade",
+      "community": 15,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "Auth.js PostgreSQL adapter tables.",
+      "file_type": "rationale",
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "L1",
+      "id": "versions_0002_authjs_rationale_1",
+      "community": 15,
+      "norm_label": "auth.js postgresql adapter tables."
+    },
+    {
+      "label": "seed.py",
+      "file_type": "code",
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "L1",
+      "id": "apps_api_scripts_seed_py",
+      "community": 16,
+      "norm_label": "seed.py"
+    },
+    {
+      "label": "seed()",
+      "file_type": "code",
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "L15",
+      "id": "scripts_seed_seed",
+      "community": 16,
+      "norm_label": "seed()"
+    },
+    {
+      "label": "Idempotent PostgreSQL development seed.",
+      "file_type": "rationale",
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "L1",
+      "id": "scripts_seed_rationale_1",
+      "community": 16,
+      "norm_label": "idempotent postgresql development seed."
+    },
+    {
+      "label": "auth.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_auth_py",
+      "community": 0,
+      "norm_label": "auth.py"
+    },
+    {
+      "label": "Principal",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "L12",
+      "id": "voiceos_api_auth_principal",
+      "community": 0,
+      "norm_label": "principal"
+    },
+    {
+      "label": "internal_token()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "L37",
+      "id": "voiceos_api_auth_internal_token",
+      "community": 0,
+      "norm_label": "internal_token()"
+    },
+    {
+      "label": "config.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/config.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_config_py",
+      "community": 0,
+      "norm_label": "config.py"
+    },
+    {
+      "label": "Settings",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/config.py",
+      "source_location": "L6",
+      "id": "voiceos_api_config_settings",
+      "community": 0,
+      "norm_label": "settings"
+    },
+    {
+      "label": "BaseSettings",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "id": "basesettings",
+      "community": 0,
+      "norm_label": "basesettings"
+    },
+    {
+      "label": "get_settings()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/config.py",
+      "source_location": "L26",
+      "id": "voiceos_api_config_get_settings",
+      "community": 0,
+      "norm_label": "get_settings()"
+    },
+    {
+      "label": "db.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/db.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_db_py",
+      "community": 0,
+      "norm_label": "db.py"
+    },
+    {
+      "label": "session()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/db.py",
+      "source_location": "L11",
+      "id": "voiceos_api_db_session",
+      "community": 0,
+      "norm_label": "session()"
+    },
+    {
+      "label": "main.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_main_py",
+      "community": 0,
+      "norm_label": "main.py"
+    },
+    {
+      "label": "request_id()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L20",
+      "id": "voiceos_api_main_request_id",
+      "community": 0,
+      "norm_label": "request_id()"
+    },
+    {
+      "label": "http_error()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L29",
+      "id": "voiceos_api_main_http_error",
+      "community": 0,
+      "norm_label": "http_error()"
+    },
+    {
+      "label": "health()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L35",
+      "id": "voiceos_api_main_health",
+      "community": 0,
+      "norm_label": "health()"
+    },
+    {
+      "label": "ready()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L40",
+      "id": "voiceos_api_main_ready",
+      "community": 0,
+      "norm_label": "ready()"
+    },
+    {
+      "label": "observability.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/observability.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_observability_py",
+      "community": 0,
+      "norm_label": "observability.py"
+    },
+    {
+      "label": "configure_observability()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/observability.py",
+      "source_location": "L18",
+      "id": "voiceos_api_observability_configure_observability",
+      "community": 0,
+      "norm_label": "configure_observability()"
+    },
+    {
+      "label": "logger()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/observability.py",
+      "source_location": "L40",
+      "id": "voiceos_api_observability_logger",
+      "community": 0,
+      "norm_label": "logger()"
+    },
+    {
+      "label": "repository.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_repository_py",
+      "community": 1,
+      "norm_label": "repository.py"
+    },
+    {
+      "label": "Repository",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L14",
+      "id": "voiceos_api_repository_repository",
+      "community": 5,
+      "norm_label": "repository"
+    },
+    {
+      "label": "Protocol",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "id": "protocol",
+      "community": 5,
+      "norm_label": "protocol"
+    },
+    {
+      "label": ".list_agents()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L15",
+      "id": "voiceos_api_repository_repository_list_agents",
+      "community": 5,
+      "norm_label": ".list_agents()"
+    },
+    {
+      "label": ".create_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L16",
+      "id": "voiceos_api_repository_repository_create_agent",
+      "community": 5,
+      "norm_label": ".create_agent()"
+    },
+    {
+      "label": ".publish_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L17",
+      "id": "voiceos_api_repository_repository_publish_agent",
+      "community": 5,
+      "norm_label": ".publish_agent()"
+    },
+    {
+      "label": ".get_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L18",
+      "id": "voiceos_api_repository_repository_get_agent",
+      "community": 5,
+      "norm_label": ".get_agent()"
+    },
+    {
+      "label": ".create_call()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L19",
+      "id": "voiceos_api_repository_repository_create_call",
+      "community": 5,
+      "norm_label": ".create_call()"
+    },
+    {
+      "label": ".list_calls()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L20",
+      "id": "voiceos_api_repository_repository_list_calls",
+      "community": 5,
+      "norm_label": ".list_calls()"
+    },
+    {
+      "label": ".create_tool()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L21",
+      "id": "voiceos_api_repository_repository_create_tool",
+      "community": 5,
+      "norm_label": ".create_tool()"
+    },
+    {
+      "label": ".get_runtime()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L22",
+      "id": "voiceos_api_repository_repository_get_runtime",
+      "community": 5,
+      "norm_label": ".get_runtime()"
+    },
+    {
+      "label": "PostgresRepository",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L25",
+      "id": "voiceos_api_repository_postgresrepository",
+      "community": 1,
+      "norm_label": "postgresrepository"
+    },
+    {
+      "label": "tenant_session()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L27",
+      "id": "voiceos_api_repository_tenant_session",
+      "community": 1,
+      "norm_label": "tenant_session()"
+    },
+    {
+      "label": ".list_agents()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L32",
+      "id": "voiceos_api_repository_postgresrepository_list_agents",
+      "community": 1,
+      "norm_label": ".list_agents()"
+    },
+    {
+      "label": ".create_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L37",
+      "id": "voiceos_api_repository_postgresrepository_create_agent",
+      "community": 1,
+      "norm_label": ".create_agent()"
+    },
+    {
+      "label": ".get_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L44",
+      "id": "voiceos_api_repository_postgresrepository_get_agent",
+      "community": 1,
+      "norm_label": ".get_agent()"
+    },
+    {
+      "label": ".publish_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L50",
+      "id": "voiceos_api_repository_postgresrepository_publish_agent",
+      "community": 1,
+      "norm_label": ".publish_agent()"
+    },
+    {
+      "label": ".create_call()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L61",
+      "id": "voiceos_api_repository_postgresrepository_create_call",
+      "community": 1,
+      "norm_label": ".create_call()"
+    },
+    {
+      "label": ".list_calls()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L67",
+      "id": "voiceos_api_repository_postgresrepository_list_calls",
+      "community": 1,
+      "norm_label": ".list_calls()"
+    },
+    {
+      "label": ".create_tool()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L72",
+      "id": "voiceos_api_repository_postgresrepository_create_tool",
+      "community": 1,
+      "norm_label": ".create_tool()"
+    },
+    {
+      "label": ".get_runtime()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L80",
+      "id": "voiceos_api_repository_postgresrepository_get_runtime",
+      "community": 1,
+      "norm_label": ".get_runtime()"
+    },
+    {
+      "label": "MemoryRepository",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L88",
+      "id": "voiceos_api_repository_memoryrepository",
+      "community": 1,
+      "norm_label": "memoryrepository"
+    },
+    {
+      "label": ".__init__()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L89",
+      "id": "voiceos_api_repository_memoryrepository_init",
+      "community": 1,
+      "norm_label": ".__init__()"
+    },
+    {
+      "label": ".list_agents()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L92",
+      "id": "voiceos_api_repository_memoryrepository_list_agents",
+      "community": 1,
+      "norm_label": ".list_agents()"
+    },
+    {
+      "label": ".create_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L95",
+      "id": "voiceos_api_repository_memoryrepository_create_agent",
+      "community": 1,
+      "norm_label": ".create_agent()"
+    },
+    {
+      "label": ".get_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L98",
+      "id": "voiceos_api_repository_memoryrepository_get_agent",
+      "community": 1,
+      "norm_label": ".get_agent()"
+    },
+    {
+      "label": ".publish_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L102",
+      "id": "voiceos_api_repository_memoryrepository_publish_agent",
+      "community": 1,
+      "norm_label": ".publish_agent()"
+    },
+    {
+      "label": ".create_call()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L108",
+      "id": "voiceos_api_repository_memoryrepository_create_call",
+      "community": 1,
+      "norm_label": ".create_call()"
+    },
+    {
+      "label": ".list_calls()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L114",
+      "id": "voiceos_api_repository_memoryrepository_list_calls",
+      "community": 1,
+      "norm_label": ".list_calls()"
+    },
+    {
+      "label": ".create_tool()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L117",
+      "id": "voiceos_api_repository_memoryrepository_create_tool",
+      "community": 1,
+      "norm_label": ".create_tool()"
+    },
+    {
+      "label": ".get_runtime()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L123",
+      "id": "voiceos_api_repository_memoryrepository_get_runtime",
+      "community": 1,
+      "norm_label": ".get_runtime()"
+    },
+    {
+      "label": "get_repository()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L130",
+      "id": "voiceos_api_repository_get_repository",
+      "community": 1,
+      "norm_label": "get_repository()"
+    },
+    {
+      "label": "routes.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_routes_py",
+      "community": 0,
+      "norm_label": "routes.py"
+    },
+    {
+      "label": "me()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L19",
+      "id": "voiceos_api_routes_me",
+      "community": 0,
+      "norm_label": "me()"
+    },
+    {
+      "label": "list_agents()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L24",
+      "id": "voiceos_api_routes_list_agents",
+      "community": 0,
+      "norm_label": "list_agents()"
+    },
+    {
+      "label": "create_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L29",
+      "id": "voiceos_api_routes_create_agent",
+      "community": 0,
+      "norm_label": "create_agent()"
+    },
+    {
+      "label": "publish_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L36",
+      "id": "voiceos_api_routes_publish_agent",
+      "community": 0,
+      "norm_label": "publish_agent()"
+    },
+    {
+      "label": "create_session()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L44",
+      "id": "voiceos_api_routes_create_session",
+      "community": 0,
+      "norm_label": "create_session()"
+    },
+    {
+      "label": "calls()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L55",
+      "id": "voiceos_api_routes_calls",
+      "community": 0,
+      "norm_label": "calls()"
+    },
+    {
+      "label": "create_tool()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L60",
+      "id": "voiceos_api_routes_create_tool",
+      "community": 0,
+      "norm_label": "create_tool()"
+    },
+    {
+      "label": "runtime()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L65",
+      "id": "voiceos_api_routes_runtime",
+      "community": 0,
+      "norm_label": "runtime()"
+    },
+    {
+      "label": "schemas.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_schemas_py",
+      "community": 4,
+      "norm_label": "schemas.py"
+    },
+    {
+      "label": "AgentCreate",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L8",
+      "id": "voiceos_api_schemas_agentcreate",
+      "community": 4,
+      "norm_label": "agentcreate"
+    },
+    {
+      "label": "BaseModel",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "id": "basemodel",
+      "community": 4,
+      "norm_label": "basemodel"
+    },
+    {
+      "label": "AgentPatch",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L12",
+      "id": "voiceos_api_schemas_agentpatch",
+      "community": 4,
+      "norm_label": "agentpatch"
+    },
+    {
+      "label": "SessionCreate",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L17",
+      "id": "voiceos_api_schemas_sessioncreate",
+      "community": 4,
+      "norm_label": "sessioncreate"
+    },
+    {
+      "label": "ToolCreate",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L24",
+      "id": "voiceos_api_schemas_toolcreate",
+      "community": 4,
+      "norm_label": "toolcreate"
+    },
+    {
+      "label": "snake_case()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L36",
+      "id": "voiceos_api_schemas_snake_case",
+      "community": 4,
+      "norm_label": "snake_case()"
+    },
+    {
+      "label": "CallEvent",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L42",
+      "id": "voiceos_api_schemas_callevent",
+      "community": 4,
+      "norm_label": "callevent"
+    },
+    {
+      "label": "store.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_store_py",
+      "community": 1,
+      "norm_label": "store.py"
+    },
+    {
+      "label": "MemoryStore",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L6",
+      "id": "voiceos_api_store_memorystore",
+      "community": 1,
+      "norm_label": "memorystore"
+    },
+    {
+      "label": ".__init__()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L9",
+      "id": "voiceos_api_store_memorystore_init",
+      "community": 1,
+      "norm_label": ".__init__()"
+    },
+    {
+      "label": ".create_agent()",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L14",
+      "id": "voiceos_api_store_memorystore_create_agent",
+      "community": 1,
+      "norm_label": ".create_agent()"
+    },
+    {
+      "label": "Deterministic dev adapter. Production endpoints use the same contract with Postg",
+      "file_type": "rationale",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L7",
+      "id": "voiceos_api_store_rationale_7",
+      "community": 1,
+      "norm_label": "deterministic dev adapter. production endpoints use the same contract with postg"
+    },
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/__init__.py",
+      "source_location": "L1",
+      "id": "apps_api_voiceos_api_init_py",
+      "community": 20,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "VoiceOS public and internal API.",
+      "file_type": "rationale",
+      "source_file": "apps/api/voiceos_api/__init__.py",
+      "source_location": "L1",
+      "id": "voiceos_api_init_rationale_1",
+      "community": 20,
+      "norm_label": "voiceos public and internal api."
+    },
+    {
+      "label": "main.py",
+      "file_type": "code",
+      "source_file": "apps/mock/main.py",
+      "source_location": "L1",
+      "id": "apps_mock_main_py",
+      "community": 17,
+      "norm_label": "main.py"
+    },
+    {
+      "label": "health()",
+      "file_type": "code",
+      "source_file": "apps/mock/main.py",
+      "source_location": "L7",
+      "id": "mock_main_health",
+      "community": 17,
+      "norm_label": "health()"
+    },
+    {
+      "label": "tool()",
+      "file_type": "code",
+      "source_file": "apps/mock/main.py",
+      "source_location": "L12",
+      "id": "mock_main_tool",
+      "community": 17,
+      "norm_label": "tool()"
+    },
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "apps/mock/__init__.py",
+      "source_location": "L1",
+      "id": "apps_mock_init_py",
+      "community": 30,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "auth.ts",
+      "file_type": "code",
+      "source_file": "apps/web/auth.ts",
+      "source_location": "L1",
+      "id": "apps_web_auth_ts",
+      "community": 31,
+      "norm_label": "auth.ts"
+    },
+    {
+      "label": "eslint.config.mjs",
+      "file_type": "code",
+      "source_file": "apps/web/eslint.config.mjs",
+      "source_location": "L1",
+      "id": "apps_web_eslint_config_mjs",
+      "community": 32,
+      "norm_label": "eslint.config.mjs"
+    },
+    {
+      "label": "middleware.ts",
+      "file_type": "code",
+      "source_file": "apps/web/middleware.ts",
+      "source_location": "L1",
+      "id": "apps_web_middleware_ts",
+      "community": 21,
+      "norm_label": "middleware.ts"
+    },
+    {
+      "label": "middleware()",
+      "file_type": "code",
+      "source_file": "apps/web/middleware.ts",
+      "source_location": "L3",
+      "id": "web_middleware_middleware",
+      "community": 21,
+      "norm_label": "middleware()"
+    },
+    {
+      "label": "next-env.d.ts",
+      "file_type": "code",
+      "source_file": "apps/web/next-env.d.ts",
+      "source_location": "L1",
+      "id": "apps_web_next_env_d_ts",
+      "community": 33,
+      "norm_label": "next-env.d.ts"
+    },
+    {
+      "label": "next.config.ts",
+      "file_type": "code",
+      "source_file": "apps/web/next.config.ts",
+      "source_location": "L1",
+      "id": "apps_web_next_config_ts",
+      "community": 34,
+      "norm_label": "next.config.ts"
+    },
+    {
+      "label": "layout.tsx",
+      "file_type": "code",
+      "source_file": "apps/web/app/layout.tsx",
+      "source_location": "L1",
+      "id": "apps_web_app_layout_tsx",
+      "community": 22,
+      "norm_label": "layout.tsx"
+    },
+    {
+      "label": "Layout()",
+      "file_type": "code",
+      "source_file": "apps/web/app/layout.tsx",
+      "source_location": "L2",
+      "id": "app_layout_layout",
+      "community": 22,
+      "norm_label": "layout()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "apps/web/app/page.tsx",
+      "source_location": "L1",
+      "id": "apps_web_app_page_tsx",
+      "community": 23,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "Home()",
+      "file_type": "code",
+      "source_file": "apps/web/app/page.tsx",
+      "source_location": "L2",
+      "id": "app_page_home",
+      "community": 23,
+      "norm_label": "home()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "apps/web/app/api/auth/[...nextauth]/route.ts",
+      "source_location": "L1",
+      "id": "apps_web_app_api_auth_nextauth_route_ts",
+      "community": 35,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "apps/web/app/app/[tenantSlug]/page.tsx",
+      "source_location": "L1",
+      "id": "apps_web_app_app_tenantslug_page_tsx",
+      "community": 24,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "Dashboard()",
+      "file_type": "code",
+      "source_file": "apps/web/app/app/[tenantSlug]/page.tsx",
+      "source_location": "L2",
+      "id": "tenantslug_page_dashboard",
+      "community": 24,
+      "norm_label": "dashboard()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "L1",
+      "id": "apps_web_app_login_page_tsx",
+      "community": 18,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "emailLogin()",
+      "file_type": "code",
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "L4",
+      "id": "login_page_emaillogin",
+      "community": 18,
+      "norm_label": "emaillogin()"
+    },
+    {
+      "label": "googleLogin()",
+      "file_type": "code",
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "L8",
+      "id": "login_page_googlelogin",
+      "community": 18,
+      "norm_label": "googlelogin()"
+    },
+    {
+      "label": "main.py",
+      "file_type": "code",
+      "source_file": "apps/worker/main.py",
+      "source_location": "L1",
+      "id": "apps_worker_main_py",
+      "community": 25,
+      "norm_label": "main.py"
+    },
+    {
+      "label": "run()",
+      "file_type": "code",
+      "source_file": "apps/worker/main.py",
+      "source_location": "L5",
+      "id": "worker_main_run",
+      "community": 25,
+      "norm_label": "run()"
+    },
+    {
+      "label": "contracts.py",
+      "file_type": "code",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L1",
+      "id": "packages_shared_py_voiceos_shared_contracts_py",
+      "community": 4,
+      "norm_label": "contracts.py"
+    },
+    {
+      "label": "ErrorBody",
+      "file_type": "code",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L7",
+      "id": "voiceos_shared_contracts_errorbody",
+      "community": 4,
+      "norm_label": "errorbody"
+    },
+    {
+      "label": "ErrorEnvelope",
+      "file_type": "code",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L14",
+      "id": "voiceos_shared_contracts_errorenvelope",
+      "community": 4,
+      "norm_label": "errorenvelope"
+    },
+    {
+      "label": "RuntimeConfig",
+      "file_type": "code",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L18",
+      "id": "voiceos_shared_contracts_runtimeconfig",
+      "community": 4,
+      "norm_label": "runtimeconfig"
+    },
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "packages/shared-py/voiceos_shared/__init__.py",
+      "source_location": "L1",
+      "id": "packages_shared_py_voiceos_shared_init_py",
+      "community": 4,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "Shared contracts for VoiceOS services.",
+      "file_type": "rationale",
+      "source_file": "packages/shared-py/voiceos_shared/__init__.py",
+      "source_location": "L1",
+      "id": "voiceos_shared_init_rationale_1",
+      "community": 4,
+      "norm_label": "shared contracts for voiceos services."
+    },
+    {
+      "label": "index.ts",
+      "file_type": "code",
+      "source_file": "packages/shared-ts/src/index.ts",
+      "source_location": "L1",
+      "id": "packages_shared_ts_src_index_ts",
+      "community": 36,
+      "norm_label": "index.ts"
+    },
+    {
+      "label": "openapi.ts",
+      "file_type": "code",
+      "source_file": "packages/shared-ts/src/openapi.ts",
+      "source_location": "L1",
+      "id": "packages_shared_ts_src_openapi_ts",
+      "community": 37,
+      "norm_label": "openapi.ts"
+    },
+    {
+      "label": "index.ts",
+      "file_type": "code",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L1",
+      "id": "packages_widget_src_index_ts",
+      "community": 8,
+      "norm_label": "index.ts"
+    },
+    {
+      "label": "VoiceOSWidget",
+      "file_type": "code",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "id": "src_index_voiceoswidget",
+      "community": 8,
+      "norm_label": "voiceoswidget"
+    },
+    {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "id": "src_index_voiceoswidget_constructor",
+      "community": 8,
+      "norm_label": ".constructor()"
+    },
+    {
+      "label": ".mount()",
+      "file_type": "code",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "id": "src_index_voiceoswidget_mount",
+      "community": 8,
+      "norm_label": ".mount()"
+    },
+    {
+      "label": ".start()",
+      "file_type": "code",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "id": "src_index_voiceoswidget_start",
+      "community": 8,
+      "norm_label": ".start()"
+    },
+    {
+      "label": ".end()",
+      "file_type": "code",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "id": "src_index_voiceoswidget_end",
+      "community": 8,
+      "norm_label": ".end()"
+    },
+    {
+      "label": "generate_openapi.py",
+      "file_type": "code",
+      "source_file": "scripts/generate_openapi.py",
+      "source_location": "L1",
+      "id": "scripts_generate_openapi_py",
+      "community": 38,
+      "norm_label": "generate_openapi.py"
+    },
+    {
+      "label": "smoke.py",
+      "file_type": "code",
+      "source_file": "scripts/smoke.py",
+      "source_location": "L1",
+      "id": "scripts_smoke_py",
+      "community": 39,
+      "norm_label": "smoke.py"
+    },
+    {
+      "label": "test_api.py",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "L1",
+      "id": "tests_test_api_py",
+      "community": 0,
+      "norm_label": "test_api.py"
+    },
+    {
+      "label": "headers()",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "L14",
+      "id": "tests_test_api_headers",
+      "community": 0,
+      "norm_label": "headers()"
+    },
+    {
+      "label": "test_health_and_error_contract()",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "L20",
+      "id": "tests_test_api_test_health_and_error_contract",
+      "community": 0,
+      "norm_label": "test_health_and_error_contract()"
+    },
+    {
+      "label": "test_agent_publish_session_and_isolation()",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "L27",
+      "id": "tests_test_api_test_agent_publish_session_and_isolation",
+      "community": 0,
+      "norm_label": "test_agent_publish_session_and_isolation()"
+    },
+    {
+      "label": "test_operator_cannot_create_agent()",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "L41",
+      "id": "tests_test_api_test_operator_cannot_create_agent",
+      "community": 0,
+      "norm_label": "test_operator_cannot_create_agent()"
+    },
+    {
+      "label": "test_internal_auth()",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "L46",
+      "id": "tests_test_api_test_internal_auth",
+      "community": 0,
+      "norm_label": "test_internal_auth()"
+    },
+    {
+      "label": "test_tool_and_internal_runtime()",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "L50",
+      "id": "tests_test_api_test_tool_and_internal_runtime",
+      "community": 0,
+      "norm_label": "test_tool_and_internal_runtime()"
+    },
+    {
+      "label": "test_invalid_token_and_wrong_tenant()",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "L74",
+      "id": "tests_test_api_test_invalid_token_and_wrong_tenant",
+      "community": 0,
+      "norm_label": "test_invalid_token_and_wrong_tenant()"
+    },
+    {
+      "label": "test_migrations.py",
+      "file_type": "code",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L1",
+      "id": "tests_test_migrations_py",
+      "community": 10,
+      "norm_label": "test_migrations.py"
+    },
+    {
+      "label": "load_initial_migration()",
+      "file_type": "code",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L5",
+      "id": "tests_test_migrations_load_initial_migration",
+      "community": 10,
+      "norm_label": "load_initial_migration()"
+    },
+    {
+      "label": "test_every_tenant_table_has_rls_contract()",
+      "file_type": "code",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L14",
+      "id": "tests_test_migrations_test_every_tenant_table_has_rls_contract",
+      "community": 10,
+      "norm_label": "test_every_tenant_table_has_rls_contract()"
+    },
+    {
+      "label": "test_join_tables_have_one_primary_key_and_unique_scope()",
+      "file_type": "code",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L23",
+      "id": "tests_test_migrations_test_join_tables_have_one_primary_key_and_unique_scope",
+      "community": 10,
+      "norm_label": "test_join_tables_have_one_primary_key_and_unique_scope()"
+    },
+    {
+      "label": "test_required_phase_zero_tables_exist()",
+      "file_type": "code",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L31",
+      "id": "tests_test_migrations_test_required_phase_zero_tables_exist",
+      "community": 10,
+      "norm_label": "test_required_phase_zero_tables_exist()"
+    },
+    {
+      "label": "test_schemas.py",
+      "file_type": "code",
+      "source_file": "tests/test_schemas.py",
+      "source_location": "L1",
+      "id": "tests_test_schemas_py",
+      "community": 4,
+      "norm_label": "test_schemas.py"
+    },
+    {
+      "label": "test_tool_name_contract()",
+      "file_type": "code",
+      "source_file": "tests/test_schemas.py",
+      "source_location": "L6",
+      "id": "tests_test_schemas_test_tool_name_contract",
+      "community": 4,
+      "norm_label": "test_tool_name_contract()"
+    },
+    {
+      "label": "WorkerState",
+      "type": "class",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "lines 10-16",
+      "description": "Tracks active voice rooms and whether the worker is draining.",
+      "id": "worker_state",
+      "community": 26,
+      "norm_label": "workerstate"
+    },
+    {
+      "label": "agent worker graceful shutdown",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "lines 25-38",
+      "description": "Runs the health server, handles termination signals, drains active rooms, and shuts down cleanly.",
+      "id": "worker_main",
+      "community": 26,
+      "norm_label": "agent worker graceful shutdown"
+    },
+    {
+      "label": "Alembic async migration dispatch",
+      "type": "flow",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "lines 10-36",
+      "description": "Chooses offline migrations or runs online migrations through an asynchronous SQLAlchemy engine.",
+      "id": "alembic_migration_dispatch",
+      "community": 40,
+      "norm_label": "alembic async migration dispatch"
+    },
+    {
+      "label": "VoiceOS v1 relational schema",
+      "type": "schema",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "lines 9-41",
+      "description": "Defines the tenant, agent, knowledge, call, campaign, billing, integration, and audit data model.",
+      "id": "voiceos_schema",
+      "community": 3,
+      "norm_label": "voiceos v1 relational schema"
+    },
+    {
+      "label": "PostgreSQL tenant row-level security",
+      "type": "mechanism",
+      "file_type": "rationale",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "lines 44-58",
+      "description": "Enables RLS on tenant-scoped tables and filters rows using the app.tenant_id session setting.",
+      "id": "tenant_rls",
+      "community": 3,
+      "norm_label": "postgresql tenant row-level security"
+    },
+    {
+      "label": "HNSW chunk embedding index",
+      "type": "index",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "line 57",
+      "description": "Accelerates cosine similarity search over 1536-dimensional document chunk embeddings.",
+      "id": "vector_search_index",
+      "community": 3,
+      "norm_label": "hnsw chunk embedding index"
+    },
+    {
+      "label": "Auth.js PostgreSQL schema",
+      "type": "schema",
+      "file_type": "code",
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "lines 10-15",
+      "description": "Adds Auth.js user fields plus account, session, and verification-token tables.",
+      "id": "authjs_schema",
+      "community": 3,
+      "norm_label": "auth.js postgresql schema"
+    },
+    {
+      "label": "idempotent development seed",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "lines 15-32",
+      "description": "Creates fixed demo plans, tenant, owner, agent, knowledge base, tools, documents, and calls using conflict-safe inserts.",
+      "id": "development_seed",
+      "community": 3,
+      "norm_label": "idempotent development seed"
+    },
+    {
+      "label": "tenant-scoped Principal",
+      "type": "class",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "lines 11-15",
+      "description": "Authenticated identity carrying user, selected tenant, and membership role.",
+      "id": "principal",
+      "community": 3,
+      "norm_label": "tenant-scoped principal"
+    },
+    {
+      "label": "principal bearer-token authentication",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "lines 18-34",
+      "description": "Validates an HS256 JWT and confirms membership in the tenant selected by the request header.",
+      "id": "principal_auth",
+      "community": 3,
+      "norm_label": "principal bearer-token authentication"
+    },
+    {
+      "label": "internal API token authentication",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "lines 37-39",
+      "description": "Protects internal endpoints with a shared internal token header.",
+      "id": "internal_auth",
+      "community": 3,
+      "norm_label": "internal api token authentication"
+    },
+    {
+      "label": "VoiceOS runtime settings",
+      "type": "class",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/config.py",
+      "source_location": "lines 6-24",
+      "description": "Centralizes environment-derived URLs, database, cache, authentication, LiveKit, and observability configuration.",
+      "id": "settings",
+      "community": 3,
+      "norm_label": "voiceos runtime settings"
+    },
+    {
+      "label": "asynchronous database session factory",
+      "type": "component",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/db.py",
+      "source_location": "lines 1-12",
+      "description": "Provides the async SQLAlchemy engine and session factory used by repositories and seed operations.",
+      "id": "database_session",
+      "community": 3,
+      "norm_label": "asynchronous database session factory"
+    },
+    {
+      "label": "VoiceOS FastAPI application",
+      "type": "component",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "lines 1-35",
+      "description": "Creates the public API service, configures middleware and observability, and mounts public and internal routers.",
+      "id": "api_application",
+      "community": 27,
+      "norm_label": "voiceos fastapi application"
+    },
+    {
+      "label": "API observability setup",
+      "type": "mechanism",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/observability.py",
+      "source_location": "lines 1-40",
+      "description": "Configures structured logging and exposes instrumentation for the API service.",
+      "id": "observability",
+      "community": 27,
+      "norm_label": "api observability setup"
+    },
+    {
+      "label": "Repository protocol",
+      "type": "interface",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 14-22",
+      "description": "Defines tenant-aware agent, call, tool, and runtime persistence operations used by routes.",
+      "id": "repository_contract",
+      "community": 3,
+      "norm_label": "repository protocol"
+    },
+    {
+      "label": "PostgresRepository",
+      "type": "class",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 25-85",
+      "description": "Production repository implementing the application contract with PostgreSQL transactions and tenant context.",
+      "id": "postgres_repository",
+      "community": 3,
+      "norm_label": "postgresrepository"
+    },
+    {
+      "label": "tenant-scoped database transaction",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 26-30",
+      "description": "Sets app.tenant_id locally before yielding a transactional database session.",
+      "id": "tenant_session",
+      "community": 3,
+      "norm_label": "tenant-scoped database transaction"
+    },
+    {
+      "label": "immutable agent publish flow",
+      "type": "flow",
+      "file_type": "rationale",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 50-59",
+      "description": "Publishes the current draft, clones it into the next draft version, and activates the agent.",
+      "id": "agent_publish_flow",
+      "community": 3,
+      "norm_label": "immutable agent publish flow"
+    },
+    {
+      "label": "MemoryRepository",
+      "type": "class",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 88-124",
+      "description": "Development repository implementing the same contract with in-memory dictionaries.",
+      "id": "memory_repository",
+      "community": 3,
+      "norm_label": "memoryrepository"
+    },
+    {
+      "label": "voice session creation endpoint",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "lines 43-51",
+      "description": "Checks for an active tenant agent, creates a queued call, and returns temporary LiveKit connection data.",
+      "id": "session_creation",
+      "community": 3,
+      "norm_label": "voice session creation endpoint"
+    },
+    {
+      "label": "internal agent runtime endpoint",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "lines 64-69",
+      "description": "Returns the active agent runtime configuration to trusted internal consumers.",
+      "id": "runtime_endpoint",
+      "community": 3,
+      "norm_label": "internal agent runtime endpoint"
+    },
+    {
+      "label": "ToolCreate validation contract",
+      "type": "class",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "lines 24-39",
+      "description": "Defines tool creation fields and enforces a lowercase snake_case name of at most 40 characters.",
+      "id": "tool_contract",
+      "community": 41,
+      "norm_label": "toolcreate validation contract"
+    },
+    {
+      "label": "MemoryStore",
+      "type": "class",
+      "file_type": "code",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "lines 6-22",
+      "description": "Deterministic development state adapter for agents, calls, and tools.",
+      "id": "memory_store",
+      "community": 3,
+      "norm_label": "memorystore"
+    },
+    {
+      "label": "provider and tool mock service",
+      "type": "component",
+      "file_type": "code",
+      "source_file": "apps/mock/main.py",
+      "source_location": "lines 3-17",
+      "description": "Simulates successful tool calls, failures, timeouts, and health responses.",
+      "id": "provider_mock",
+      "community": 3,
+      "norm_label": "provider and tool mock service"
+    },
+    {
+      "label": "VoiceOS NextAuth configuration",
+      "type": "component",
+      "file_type": "code",
+      "source_file": "apps/web/auth.ts",
+      "source_location": "lines 8-31",
+      "description": "Configures email and optional Google login, PostgreSQL persistence, JWT sessions, callbacks, and secure cookies.",
+      "id": "nextauth_config",
+      "community": 3,
+      "norm_label": "voiceos nextauth configuration"
+    },
+    {
+      "label": "authenticated web-route middleware",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/web/middleware.ts",
+      "source_location": "lines 3-8",
+      "description": "Redirects unauthenticated app and admin requests to login based on the VoiceOS session cookie.",
+      "id": "web_auth_middleware",
+      "community": 3,
+      "norm_label": "authenticated web-route middleware"
+    },
+    {
+      "label": "Portuguese web root layout",
+      "type": "component",
+      "file_type": "code",
+      "source_file": "apps/web/app/layout.tsx",
+      "source_location": "lines 1-2",
+      "description": "Defines the pt-BR HTML shell and global stylesheet for the web application.",
+      "id": "web_layout",
+      "community": 42,
+      "norm_label": "portuguese web root layout"
+    },
+    {
+      "label": "Typed provider adapters",
+      "type": "architecture_decision",
+      "file_type": "rationale",
+      "source_file": "DECISIONS.md",
+      "source_location": "line 3",
+      "description": "External providers are accessed through typed adapters.",
+      "rationale": "Allows deterministic credential-free fakes in local development and CI.",
+      "id": "typed-provider-adapters",
+      "community": 7,
+      "norm_label": "typed provider adapters"
+    },
+    {
+      "label": "SQL-first exhaustive migration",
+      "type": "architecture_decision",
+      "file_type": "rationale",
+      "source_file": "DECISIONS.md",
+      "source_location": "line 4",
+      "description": "The initial migration uses SQL for exhaustive schema and RLS coverage.",
+      "rationale": "Application models are introduced per endpoint to keep runtime code small.",
+      "id": "sql-first-migration",
+      "community": 11,
+      "norm_label": "sql-first exhaustive migration"
+    },
+    {
+      "label": "Framework-free widget",
+      "type": "architecture_decision",
+      "file_type": "rationale",
+      "source_file": "DECISIONS.md",
+      "source_location": "line 5",
+      "description": "The embeddable widget uses framework-free TypeScript.",
+      "rationale": "Keeps the compressed bundle below the 60 KB target.",
+      "id": "framework-free-widget",
+      "community": 28,
+      "norm_label": "framework-free widget"
+    },
+    {
+      "label": "Tenant-scoped row-level security",
+      "type": "security_mechanism",
+      "file_type": "rationale",
+      "source_file": "PHASE-0-REPORT.md",
+      "source_location": "Implemented bullet 3-4",
+      "description": "Tenant tables enable RLS and repository transactions set app.tenant_id before queries.",
+      "id": "tenant-rls",
+      "community": 11,
+      "norm_label": "tenant-scoped row-level security"
+    },
+    {
+      "label": "Phase 0 platform foundation",
+      "type": "delivery_phase",
+      "file_type": "document",
+      "source_file": "PHASE-0-REPORT.md",
+      "source_location": "Implemented",
+      "description": "Monorepo, database, API, dashboard, CI, Terraform and staging workflow foundation.",
+      "id": "phase0-platform",
+      "community": 11,
+      "norm_label": "phase 0 platform foundation"
+    },
+    {
+      "label": "Phase 1 voice runtime",
+      "type": "delivery_phase",
+      "file_type": "document",
+      "source_file": "PHASE-1-REPORT.md",
+      "source_location": "line 3",
+      "description": "WebRTC runtime contracts, publish flow, call records, worker lifecycle, provider mock and widget foundation.",
+      "id": "phase1-runtime",
+      "community": 7,
+      "norm_label": "phase 1 voice runtime"
+    },
+    {
+      "label": "Phase 2 telephony",
+      "type": "delivery_phase",
+      "file_type": "document",
+      "source_file": "PHASE-2-REPORT.md",
+      "source_location": "line 3",
+      "description": "Phone, calls, campaigns, contacts, DTMF, transfers and do-not-call contracts.",
+      "id": "phase2-telephony",
+      "community": 43,
+      "norm_label": "phase 2 telephony"
+    },
+    {
+      "label": "Phase 3 billing and governance",
+      "type": "delivery_phase",
+      "file_type": "document",
+      "source_file": "PHASE-3-REPORT.md",
+      "source_location": "line 3",
+      "description": "Billing, webhooks, QA, exports, audit and LGPD structures.",
+      "id": "phase3-governance",
+      "community": 44,
+      "norm_label": "phase 3 billing and governance"
+    },
+    {
+      "label": "Phase 4 WhatsApp processing",
+      "type": "delivery_phase",
+      "file_type": "document",
+      "source_file": "PHASE-4-REPORT.md",
+      "source_location": "line 3",
+      "description": "WhatsApp storage contracts and asynchronous text/audio worker boundary.",
+      "id": "phase4-whatsapp",
+      "community": 19,
+      "norm_label": "phase 4 whatsapp processing"
+    },
+    {
+      "label": "Phase 5 embeddable widget",
+      "type": "delivery_phase",
+      "file_type": "document",
+      "source_file": "PHASE-5-REPORT.md",
+      "source_location": "line 3",
+      "description": "Strict TypeScript widget/SDK and branding-ready design tokens.",
+      "id": "phase5-widget",
+      "community": 28,
+      "norm_label": "phase 5 embeddable widget"
+    },
+    {
+      "label": "Local Docker Compose stack",
+      "type": "deployment_topology",
+      "file_type": "code",
+      "source_file": "docker-compose.yml",
+      "source_location": "services",
+      "description": "PostgreSQL/pgvector, Redis, API, web, agent-worker, worker and mock services.",
+      "id": "compose-stack",
+      "community": 19,
+      "norm_label": "local docker compose stack"
+    },
+    {
+      "label": "run worker loop",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/worker/main.py",
+      "source_location": "run",
+      "description": "Starts logging and keeps the asynchronous job worker alive.",
+      "id": "async-worker-loop",
+      "community": 19,
+      "norm_label": "run worker loop"
+    },
+    {
+      "label": "Home",
+      "type": "function",
+      "file_type": "code",
+      "source_file": "apps/web/app/page.tsx",
+      "source_location": "Home",
+      "description": "Redirects the root route to the demo tenant dashboard.",
+      "id": "home-redirect",
+      "community": 12,
+      "norm_label": "home"
+    },
+    {
+      "label": "Auth.js GET and POST handlers",
+      "type": "route_handler",
+      "file_type": "code",
+      "source_file": "apps/web/app/api/auth/[...nextauth]/route.ts",
+      "source_location": "module exports",
+      "description": "Exposes Auth.js request handlers through the Next.js route.",
+      "id": "auth-route-handlers",
+      "community": 45,
+      "norm_label": "auth.js get and post handlers"
+    },
+    {
+      "label": "Tenant dashboard",
+      "type": "ui_component",
+      "file_type": "code",
+      "source_file": "apps/web/app/app/[tenantSlug]/page.tsx",
+      "source_location": "Dashboard",
+      "description": "Displays tenant identity, operational metrics, call volume and active-call status.",
+      "id": "dashboard",
+      "community": 12,
+      "norm_label": "tenant dashboard"
+    },
+    {
+      "label": "Login",
+      "type": "ui_component",
+      "file_type": "code",
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "Login",
+      "description": "Offers Resend magic-link and Google authentication.",
+      "id": "login",
+      "community": 12,
+      "norm_label": "login"
+    },
+    {
+      "label": "emailLogin",
+      "type": "server_action",
+      "file_type": "code",
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "emailLogin",
+      "description": "Signs in with Resend and redirects to the demo dashboard.",
+      "id": "email-login",
+      "community": 12,
+      "norm_label": "emaillogin"
+    },
+    {
+      "label": "googleLogin",
+      "type": "server_action",
+      "file_type": "code",
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "googleLogin",
+      "description": "Signs in with Google and redirects to the demo dashboard.",
+      "id": "google-login",
+      "community": 12,
+      "norm_label": "googlelogin"
+    },
+    {
+      "label": "RuntimeConfig",
+      "type": "data_contract",
+      "file_type": "code",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "RuntimeConfig",
+      "description": "Typed tenant, agent, prompt, provider, RAG and tool runtime configuration.",
+      "id": "runtime-config",
+      "community": 7,
+      "norm_label": "runtimeconfig"
+    },
+    {
+      "label": "ErrorEnvelope",
+      "type": "data_contract",
+      "file_type": "code",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "ErrorEnvelope",
+      "description": "Standard API error envelope containing code, message, details and request ID.",
+      "id": "error-envelope",
+      "community": 29,
+      "norm_label": "errorenvelope"
+    },
+    {
+      "label": "Generated OpenAPI TypeScript contract",
+      "type": "api_contract",
+      "file_type": "code",
+      "source_file": "packages/shared-ts/src/openapi.ts",
+      "source_location": "paths, components, operations",
+      "description": "Generated types for identity, agents, publishing, sessions, calls, tools, runtime and health endpoints.",
+      "id": "openapi-contract",
+      "community": 7,
+      "norm_label": "generated openapi typescript contract"
+    },
+    {
+      "label": "API smoke health check",
+      "type": "validation_flow",
+      "file_type": "code",
+      "source_file": "scripts/smoke.py",
+      "source_location": "module body",
+      "description": "Calls /health and fails unless status equals ok.",
+      "id": "smoke-health-check",
+      "community": 7,
+      "norm_label": "api smoke health check"
+    },
+    {
+      "label": "Agent publish, session and isolation test",
+      "type": "test",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "test_agent_publish_session_and_isolation",
+      "description": "Checks creation, cross-tenant isolation, publish and session behavior.",
+      "id": "api-isolation-tests",
+      "community": 11,
+      "norm_label": "agent publish, session and isolation test"
+    },
+    {
+      "label": "API authorization tests",
+      "type": "test",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "test_operator_cannot_create_agent; test_internal_auth; test_invalid_token_and_wrong_tenant",
+      "description": "Checks operator restrictions and invalid, internal and wrong-tenant authentication failures.",
+      "id": "api-auth-tests",
+      "community": 29,
+      "norm_label": "api authorization tests"
+    },
+    {
+      "label": "Tool and internal runtime test",
+      "type": "test",
+      "file_type": "code",
+      "source_file": "tests/test_api.py",
+      "source_location": "test_tool_and_internal_runtime",
+      "description": "Creates a tool and verifies internal runtime configuration defaults to pt-BR.",
+      "id": "runtime-test",
+      "community": 7,
+      "norm_label": "tool and internal runtime test"
+    },
+    {
+      "label": "Migration and RLS contract tests",
+      "type": "test",
+      "file_type": "code",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "test_every_tenant_table_has_rls_contract; test_required_phase_zero_tables_exist",
+      "description": "Checks global tables, safe tenant table identifiers and required Phase 0 tables.",
+      "id": "migration-contract-tests",
+      "community": 11,
+      "norm_label": "migration and rls contract tests"
+    },
+    {
+      "label": "Tool name validation test",
+      "type": "test",
+      "file_type": "code",
+      "source_file": "tests/test_schemas.py",
+      "source_location": "test_tool_name_contract",
+      "description": "Accepts snake_case tool names and rejects invalid names.",
+      "id": "tool-name-test",
+      "community": 7,
+      "norm_label": "tool name validation test"
+    },
+    {
+      "label": "VoiceOS Multi-tenant Voice Agent Platform",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/00-README.md",
+      "source_location": "lines 1-33",
+      "description": "Plataforma de agentes de voz multi-tenant baseada em LiveKit, FastAPI e servi\u00c3\u00a7os gerenciados.",
+      "id": "00_readme_voiceos_platform",
+      "community": 6,
+      "norm_label": "voiceos multi-tenant voice agent platform"
+    },
+    {
+      "label": "LiveKit-based Voice Stack",
+      "type": "decision",
+      "file_type": "rationale",
+      "source_file": "docs/00-README.md",
+      "source_location": "line 17",
+      "description": "Stack pr\u00c3\u00b3pria sobre LiveKit Agents SDK e LiveKit Cloud.",
+      "rationale": "Escolhida para controle do pipeline, margem e portabilidade entre fornecedores de STT, LLM e TTS.",
+      "id": "00_readme_livekit_stack",
+      "community": 6,
+      "norm_label": "livekit-based voice stack"
+    },
+    {
+      "label": "Python 3.12 Backend",
+      "type": "decision",
+      "file_type": "rationale",
+      "source_file": "docs/00-README.md",
+      "source_location": "line 18",
+      "description": "FastAPI e LiveKit Agents compartilham o runtime Python 3.12.",
+      "rationale": "Um \u00c3\u00banico runtime e maior maturidade do SDK de voz em Python.",
+      "id": "00_readme_python_backend",
+      "community": 6,
+      "norm_label": "python 3.12 backend"
+    },
+    {
+      "label": "AWS sa-east-1 Data Plane",
+      "type": "decision",
+      "file_type": "rationale",
+      "source_file": "docs/00-README.md",
+      "source_location": "line 23",
+      "description": "Regi\u00c3\u00a3o prim\u00c3\u00a1ria em S\u00c3\u00a3o Paulo.",
+      "rationale": "Reduz lat\u00c3\u00aancia no Brasil e apoia conformidade LGPD.",
+      "id": "00_readme_aws_sa_east_1",
+      "community": 6,
+      "norm_label": "aws sa-east-1 data plane"
+    },
+    {
+      "label": "Multi-tenancy",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/01-visao-produto.md",
+      "source_location": "lines 6-16",
+      "description": "Ag\u00c3\u00aancias, administradores, operadores e viewers trabalham em tenants isolados.",
+      "id": "01_visao_produto_multitenancy",
+      "community": 2,
+      "norm_label": "multi-tenancy"
+    },
+    {
+      "label": "Tenant RBAC",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/01-visao-produto.md",
+      "source_location": "RF-08, line 38",
+      "description": "Painel deve aplicar pap\u00c3\u00a9is e permiss\u00c3\u00b5es por tenant.",
+      "id": "01_visao_produto_rbac",
+      "community": 2,
+      "norm_label": "tenant rbac"
+    },
+    {
+      "label": "RNF-06 Tenant Data Isolation",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/01-visao-produto.md",
+      "source_location": "RNF-06, line 61",
+      "description": "Toda query deve usar tenant_id e o banco deve aplicar RLS.",
+      "id": "01_visao_produto_rnf_isolamento",
+      "community": 2,
+      "norm_label": "rnf-06 tenant data isolation"
+    },
+    {
+      "label": "VoiceOS Service Architecture",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+      "source_location": "lines 3-53",
+      "description": "Arquitetura composta por web, API, agent-worker, worker, Redis, Postgres, storage e provedores externos.",
+      "id": "02_arquitetura_service_architecture",
+      "community": 2,
+      "norm_label": "voiceos service architecture"
+    },
+    {
+      "label": "Agent Worker",
+      "type": "component",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+      "source_location": "line 51",
+      "description": "Executa pipelines de voz LiveKit e atende m\u00c3\u00baltiplas salas.",
+      "id": "02_arquitetura_agent_worker",
+      "community": 2,
+      "norm_label": "agent worker"
+    },
+    {
+      "label": "Async Worker",
+      "type": "component",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+      "source_location": "lines 52-53",
+      "description": "Executa ingest\u00c3\u00a3o, embeddings, p\u00c3\u00b3s-processamento, QA, billing, exports e WhatsApp ass\u00c3\u00adncrono.",
+      "id": "02_arquitetura_async_worker",
+      "community": 2,
+      "norm_label": "async worker"
+    },
+    {
+      "label": "PostgreSQL Tenant Data Model",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/03-modelo-dados.md",
+      "source_location": "lines 1-170",
+      "description": "Modelo relacional para tenants, agentes, chamadas, tools, campanhas, billing e auditoria.",
+      "id": "03_modelo_dados_postgres_model",
+      "community": 2,
+      "norm_label": "postgresql tenant data model"
+    },
+    {
+      "label": "PostgreSQL Row Level Security",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/03-modelo-dados.md",
+      "source_location": "lines 173-179",
+      "description": "RLS deve estar habilitado em toda tabela com tenant_id usando SET LOCAL app.tenant_id.",
+      "id": "03_modelo_dados_rls",
+      "community": 2,
+      "norm_label": "postgresql row level security"
+    },
+    {
+      "label": "Immutable Published Agent Versions",
+      "type": "decision",
+      "file_type": "rationale",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/03-modelo-dados.md",
+      "source_location": "line 56",
+      "description": "Vers\u00c3\u00b5es publicadas de agentes s\u00c3\u00a3o imut\u00c3\u00a1veis.",
+      "rationale": "Preserva reprodutibilidade de chamadas e permite rollback confi\u00c3\u00a1vel.",
+      "id": "03_modelo_dados_immutable_versions",
+      "community": 2,
+      "norm_label": "immutable published agent versions"
+    },
+    {
+      "label": "VoiceOS API Authentication",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/04-api-contracts.md",
+      "source_location": "lines 5-11",
+      "description": "Painel usa JWT RS256, servidores usam secret API keys e widgets usam public API keys com allowlist.",
+      "id": "04_api_contracts_authentication",
+      "community": 2,
+      "norm_label": "voiceos api authentication"
+    },
+    {
+      "label": "Versioned REST API",
+      "type": "interface",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/04-api-contracts.md",
+      "source_location": "lines 1-27",
+      "description": "API JSON /v1 com OpenAPI 3.1, erros padronizados e rate limits.",
+      "id": "04_api_contracts_public_api",
+      "community": 2,
+      "norm_label": "versioned rest api"
+    },
+    {
+      "label": "Streaming Voice Pipeline",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/05-voice-pipeline.md",
+      "source_location": "lines 5-99",
+      "description": "Pipeline por sess\u00c3\u00a3o combina VAD, STT, turn detection, RAG, LLM, tools e TTS com fallbacks.",
+      "id": "05_voice_pipeline_streaming_pipeline",
+      "community": 2,
+      "norm_label": "streaming voice pipeline"
+    },
+    {
+      "label": "Barge-in",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/05-voice-pipeline.md",
+      "source_location": "lines 53-64",
+      "description": "Usu\u00c3\u00a1rio pode interromper naturalmente a fala sintetizada do agente.",
+      "id": "05_voice_pipeline_barge_in",
+      "community": 2,
+      "norm_label": "barge-in"
+    },
+    {
+      "label": "Voice Latency Budget",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/05-voice-pipeline.md",
+      "source_location": "lines 78-89",
+      "description": "Or\u00c3\u00a7amento de lat\u00c3\u00aancia por est\u00c3\u00a1gio orienta metas de resposta no canal web.",
+      "id": "05_voice_pipeline_latency_budget",
+      "community": 2,
+      "norm_label": "voice latency budget"
+    },
+    {
+      "label": "Tool Execution System",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/06-tools-integracoes.md",
+      "source_location": "lines 3-86",
+      "description": "Function calling unifica tools nativas e webhooks de clientes com JSON Schema, teste e auditoria.",
+      "id": "06_tools_integracoes_tool_system",
+      "community": 2,
+      "norm_label": "tool execution system"
+    },
+    {
+      "label": "Server-side Tool Secret Isolation",
+      "type": "decision",
+      "file_type": "rationale",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/06-tools-integracoes.md",
+      "source_location": "line 8",
+      "description": "Webhooks s\u00c3\u00a3o executados pela API e n\u00c3\u00a3o pelo agent-worker.",
+      "rationale": "Mant\u00c3\u00a9m segredos do tenant fora do processo que executa conversas.",
+      "id": "06_tools_integracoes_server_side_secrets",
+      "community": 2,
+      "norm_label": "server-side tool secret isolation"
+    },
+    {
+      "label": "Webhook Tool Test Gate",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/06-tools-integracoes.md",
+      "source_location": "lines 85-86",
+      "description": "Tool webhook deve passar ao menos um teste antes de ser habilitada em agente publicado.",
+      "id": "06_tools_integracoes_webhook_test_gate",
+      "community": 2,
+      "norm_label": "webhook tool test gate"
+    },
+    {
+      "label": "Layered System Prompt",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/07-prompts.md",
+      "source_location": "lines 3-62",
+      "description": "Prompt combina base fixa, instru\u00c3\u00a7\u00c3\u00b5es do tenant, contexto de chamada, regras de tools e regras de voz.",
+      "id": "07_prompts_layered_prompt",
+      "community": 2,
+      "norm_label": "layered system prompt"
+    },
+    {
+      "label": "Agent Publish Validation",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/08-painel-multitenant.md",
+      "source_location": "lines 47-59",
+      "description": "Publica\u00c3\u00a7\u00c3\u00a3o exige prompt, voz, configura\u00c3\u00a7\u00c3\u00a3o de transfer\u00c3\u00aancia, tools testadas e KB pronta.",
+      "id": "08_painel_multitenant_agent_publish_validation",
+      "community": 2,
+      "norm_label": "agent publish validation"
+    },
+    {
+      "label": "WebRTC PSTN and WhatsApp Channels",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/09-canais.md",
+      "source_location": "lines 3-47",
+      "description": "Canais web e telefone usam voz em tempo real; WhatsApp usa pipeline ass\u00c3\u00adncrono de texto e \u00c3\u00a1udio.",
+      "id": "09_canais_omnichannel",
+      "community": 2,
+      "norm_label": "webrtc pstn and whatsapp channels"
+    },
+    {
+      "label": "Usage-based Stripe Billing",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/10-billing.md",
+      "source_location": "lines 3-31",
+      "description": "Planos mensais, minutos inclu\u00c3\u00addos, excedentes, limites e suspens\u00c3\u00a3o s\u00c3\u00a3o integrados ao Stripe.",
+      "id": "10_billing_usage_billing",
+      "community": 2,
+      "norm_label": "usage-based stripe billing"
+    },
+    {
+      "label": "LGPD Compliance Program",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/11-seguranca-lgpd.md",
+      "source_location": "lines 18-27",
+      "description": "Define pap\u00c3\u00a9is, bases legais, minimiza\u00c3\u00a7\u00c3\u00a3o, reten\u00c3\u00a7\u00c3\u00a3o, direitos, suboperadores e resposta a incidentes.",
+      "id": "11_seguranca_lgpd_compliance",
+      "community": 6,
+      "norm_label": "lgpd compliance program"
+    },
+    {
+      "label": "Tenant Secret Encryption",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/11-seguranca-lgpd.md",
+      "source_location": "line 5",
+      "description": "Segredos de tenant usam KMS envelope encryption e segredos de ambiente usam Secrets Manager.",
+      "id": "11_seguranca_lgpd_encryption",
+      "community": 6,
+      "norm_label": "tenant secret encryption"
+    },
+    {
+      "label": "OpenTelemetry Observability",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/12-observabilidade.md",
+      "source_location": "lines 3-52",
+      "description": "Logs, m\u00c3\u00a9tricas e traces fluem para Grafana Cloud; Sentry captura exce\u00c3\u00a7\u00c3\u00b5es.",
+      "id": "12_observabilidade_otel",
+      "community": 2,
+      "norm_label": "opentelemetry observability"
+    },
+    {
+      "label": "Automated Quality Gates",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/13-testes-aceite.md",
+      "source_location": "lines 3-53",
+      "description": "Pir\u00c3\u00a2mide cobre unit\u00c3\u00a1rios, integra\u00c3\u00a7\u00c3\u00a3o, E2E, conversas simuladas, carga, seguran\u00c3\u00a7a e isolamento.",
+      "id": "13_testes_aceite_quality_gates",
+      "community": 2,
+      "norm_label": "automated quality gates"
+    },
+    {
+      "label": "Six-phase Delivery Roadmap",
+      "type": "concept",
+      "file_type": "document",
+      "source_file": "docs/14-fases.md",
+      "source_location": "lines 7-90",
+      "description": "Entrega progride de funda\u00c3\u00a7\u00c3\u00a3o para WebRTC, telefone, billing/LGPD, WhatsApp e white-label.",
+      "id": "14_fases_delivery_roadmap",
+      "community": 2,
+      "norm_label": "six-phase delivery roadmap"
+    },
+    {
+      "label": "Controller and Processor Roles",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/dpa.md",
+      "source_location": "line 3",
+      "description": "Cada tenant \u00c3\u00a9 controlador e VoiceOS atua como operador/processador.",
+      "id": "dpa_controller_processor_roles",
+      "community": 6,
+      "norm_label": "controller and processor roles"
+    },
+    {
+      "label": "LGPD Incident Runbook",
+      "type": "process",
+      "file_type": "document",
+      "source_file": "docs/incident-lgpd.md",
+      "source_location": "line 1",
+      "description": "Runbook para detec\u00c3\u00a7\u00c3\u00a3o, conten\u00c3\u00a7\u00c3\u00a3o e notifica\u00c3\u00a7\u00c3\u00a3o de incidentes de dados.",
+      "id": "incident_lgpd_runbook",
+      "community": 6,
+      "norm_label": "lgpd incident runbook"
+    },
+    {
+      "label": "Data Subject Rights",
+      "type": "requirement",
+      "file_type": "document",
+      "source_file": "docs/privacy-policy-template.md",
+      "source_location": "line 3",
+      "description": "Titulares podem solicitar acesso, exporta\u00c3\u00a7\u00c3\u00a3o, corre\u00c3\u00a7\u00c3\u00a3o ou exclus\u00c3\u00a3o por meio do tenant.",
+      "id": "privacy_policy_data_subject_rights",
+      "community": 6,
+      "norm_label": "data subject rights"
+    },
+    {
+      "label": "VoiceOS Subprocessor Registry",
+      "type": "entity",
+      "file_type": "document",
+      "source_file": "docs/subprocessors.md",
+      "source_location": "line 3",
+      "description": "Registro de provedores de m\u00c3\u00addia, IA, telefonia, mensageria, billing e observabilidade que podem receber dados.",
+      "id": "subprocessors_provider_registry",
+      "community": 6,
+      "norm_label": "voiceos subprocessor registry"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "apps_agent_worker_main_py",
+      "target": "agent_worker_main_workerstate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "apps_agent_worker_main_py",
+      "target": "agent_worker_main_healthcheck",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "apps_agent_worker_main_py",
+      "target": "agent_worker_main_main",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "apps_api_alembic_env_py",
+      "target": "alembic_env_run_migrations_offline",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "apps_api_alembic_env_py",
+      "target": "alembic_env_run_sync_migrations",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "apps_api_alembic_env_py",
+      "target": "alembic_env_run_async_migrations",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "apps_api_alembic_env_py",
+      "target": "alembic_env_run_migrations_online",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/env.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "alembic_env_run_migrations_online",
+      "target": "alembic_env_run_async_migrations",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "apps_api_alembic_versions_0001_initial_py",
+      "target": "versions_0001_initial_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "apps_api_alembic_versions_0001_initial_py",
+      "target": "versions_0001_initial_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "versions_0001_initial_rationale_1",
+      "target": "apps_api_alembic_versions_0001_initial_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "apps_api_alembic_versions_0002_authjs_py",
+      "target": "versions_0002_authjs_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "apps_api_alembic_versions_0002_authjs_py",
+      "target": "versions_0002_authjs_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "versions_0002_authjs_rationale_1",
+      "target": "apps_api_alembic_versions_0002_authjs_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "apps_api_scripts_seed_py",
+      "target": "scripts_seed_seed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "scripts_seed_rationale_1",
+      "target": "apps_api_scripts_seed_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_auth_py",
+      "target": "apps_api_voiceos_api_config_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_auth_py",
+      "target": "voiceos_api_auth_principal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_auth_py",
+      "target": "voiceos_api_auth_internal_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "apps_api_voiceos_api_auth_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "voiceos_api_auth_principal",
+      "target": "voiceos_api_config_get_settings"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "voiceos_api_auth_internal_token",
+      "target": "voiceos_api_config_get_settings"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/config.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_config_py",
+      "target": "voiceos_api_config_settings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/config.py",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_config_py",
+      "target": "voiceos_api_config_get_settings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/db.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_db_py",
+      "target": "apps_api_voiceos_api_config_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_main_py",
+      "target": "apps_api_voiceos_api_config_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/observability.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_observability_py",
+      "target": "apps_api_voiceos_api_config_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "apps_api_voiceos_api_config_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/config.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "voiceos_api_config_settings",
+      "target": "basesettings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/config.py",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "voiceos_api_config_get_settings",
+      "target": "voiceos_api_config_settings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "voiceos_api_routes_create_session",
+      "target": "voiceos_api_config_get_settings"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_api.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "tests_test_api_headers",
+      "target": "voiceos_api_config_get_settings"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_api.py",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "tests_test_api_test_tool_and_internal_runtime",
+      "target": "voiceos_api_config_get_settings"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_api.py",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "tests_test_api_test_invalid_token_and_wrong_tenant",
+      "target": "voiceos_api_config_get_settings"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/db.py",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_db_py",
+      "target": "voiceos_api_db_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_repository_py",
+      "target": "apps_api_voiceos_api_db_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_main_py",
+      "target": "apps_api_voiceos_api_observability_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_main_py",
+      "target": "apps_api_voiceos_api_routes_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_main_py",
+      "target": "voiceos_api_main_request_id",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_main_py",
+      "target": "voiceos_api_main_http_error",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_main_py",
+      "target": "voiceos_api_main_health",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_main_py",
+      "target": "voiceos_api_main_ready",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/observability.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_observability_py",
+      "target": "voiceos_api_observability_configure_observability",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/observability.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_observability_py",
+      "target": "voiceos_api_observability_logger",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_repository_py",
+      "target": "apps_api_voiceos_api_store_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_repository_py",
+      "target": "voiceos_api_repository_repository",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_repository_py",
+      "target": "voiceos_api_repository_postgresrepository",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_repository_py",
+      "target": "voiceos_api_repository_tenant_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_repository_py",
+      "target": "voiceos_api_repository_memoryrepository",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L130",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_repository_py",
+      "target": "voiceos_api_repository_get_repository",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "apps_api_voiceos_api_repository_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "protocol",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_repository_repository_list_agents",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_repository_repository_create_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_repository_repository_publish_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_repository_repository_get_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_repository_repository_create_call",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_repository_repository_list_calls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_repository_repository_create_tool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_repository_repository_get_runtime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "source": "voiceos_api_repository_repository",
+      "target": "voiceos_api_store_memorystore",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_repository_postgresrepository_list_agents",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_repository_postgresrepository_create_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_repository_postgresrepository_get_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L50",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_repository_postgresrepository_publish_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_repository_postgresrepository_create_call",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L67",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_repository_postgresrepository_list_calls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_repository_postgresrepository_create_tool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_repository_postgresrepository_get_runtime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "source": "voiceos_api_repository_postgresrepository",
+      "target": "voiceos_api_store_memorystore",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_list_agents",
+      "target": "voiceos_api_repository_tenant_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_create_agent",
+      "target": "voiceos_api_repository_tenant_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_get_agent",
+      "target": "voiceos_api_repository_tenant_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_publish_agent",
+      "target": "voiceos_api_repository_tenant_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_create_call",
+      "target": "voiceos_api_repository_tenant_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_list_calls",
+      "target": "voiceos_api_repository_tenant_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_create_tool",
+      "target": "voiceos_api_repository_tenant_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_create_agent",
+      "target": "voiceos_api_repository_memoryrepository_get_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L59",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_postgresrepository_publish_agent",
+      "target": "voiceos_api_repository_memoryrepository_get_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L89",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_init",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L92",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_list_agents",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L95",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_create_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_get_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_publish_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L108",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_create_call",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_list_calls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L117",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_create_tool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L123",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_repository_memoryrepository_get_runtime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "source": "voiceos_api_repository_memoryrepository",
+      "target": "voiceos_api_store_memorystore",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "voiceos_api_repository_memoryrepository_publish_agent",
+      "target": "voiceos_api_repository_memoryrepository_get_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "apps_api_voiceos_api_schemas_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "voiceos_api_routes_me",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "voiceos_api_routes_list_agents",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "voiceos_api_routes_create_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "voiceos_api_routes_publish_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "voiceos_api_routes_create_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L55",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "voiceos_api_routes_calls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "voiceos_api_routes_create_tool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_routes_py",
+      "target": "voiceos_api_routes_runtime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_schemas_py",
+      "target": "voiceos_api_schemas_agentcreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_schemas_py",
+      "target": "voiceos_api_schemas_agentpatch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_schemas_py",
+      "target": "voiceos_api_schemas_sessioncreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_schemas_py",
+      "target": "voiceos_api_schemas_toolcreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_schemas_py",
+      "target": "voiceos_api_schemas_snake_case",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_schemas_py",
+      "target": "voiceos_api_schemas_callevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "voiceos_api_schemas_agentcreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "voiceos_api_schemas_agentpatch",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "voiceos_api_schemas_sessioncreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "voiceos_api_schemas_toolcreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/schemas.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "voiceos_api_schemas_callevent",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "voiceos_shared_contracts_errorbody",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "voiceos_shared_contracts_errorenvelope",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "voiceos_shared_contracts_runtimeconfig",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_schemas.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "tests_test_schemas_test_tool_name_contract",
+      "target": "voiceos_api_schemas_toolcreate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "apps_api_voiceos_api_store_py",
+      "target": "voiceos_api_store_memorystore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "voiceos_api_store_memorystore",
+      "target": "voiceos_api_store_memorystore_init",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "voiceos_api_store_memorystore",
+      "target": "voiceos_api_store_memorystore_create_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/store.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "voiceos_api_store_rationale_7",
+      "target": "voiceos_api_store_memorystore",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/api/voiceos_api/__init__.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "voiceos_api_init_rationale_1",
+      "target": "apps_api_voiceos_api_init_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/mock/main.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "apps_mock_main_py",
+      "target": "mock_main_health",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/mock/main.py",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "apps_mock_main_py",
+      "target": "mock_main_tool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/middleware.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "apps_web_middleware_ts",
+      "target": "web_middleware_middleware",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/app/layout.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "apps_web_app_layout_tsx",
+      "target": "app_layout_layout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/app/page.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "apps_web_app_page_tsx",
+      "target": "app_page_home",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/app/app/[tenantSlug]/page.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "apps_web_app_app_tenantslug_page_tsx",
+      "target": "tenantslug_page_dashboard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "apps_web_app_login_page_tsx",
+      "target": "login_page_emaillogin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "apps_web_app_login_page_tsx",
+      "target": "login_page_googlelogin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/worker/main.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "apps_worker_main_py",
+      "target": "worker_main_run",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "packages_shared_py_voiceos_shared_contracts_py",
+      "target": "voiceos_shared_contracts_errorbody",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "packages_shared_py_voiceos_shared_contracts_py",
+      "target": "voiceos_shared_contracts_errorenvelope",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/shared-py/voiceos_shared/contracts.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "packages_shared_py_voiceos_shared_contracts_py",
+      "target": "voiceos_shared_contracts_runtimeconfig",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/shared-py/voiceos_shared/__init__.py",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "packages_shared_py_voiceos_shared_init_py",
+      "target": "packages_shared_py_voiceos_shared_contracts_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/shared-py/voiceos_shared/__init__.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "voiceos_shared_init_rationale_1",
+      "target": "packages_shared_py_voiceos_shared_init_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "packages_widget_src_index_ts",
+      "target": "src_index_voiceoswidget",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_index_voiceoswidget",
+      "target": "src_index_voiceoswidget_constructor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_index_voiceoswidget",
+      "target": "src_index_voiceoswidget_mount",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_index_voiceoswidget",
+      "target": "src_index_voiceoswidget_start",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "packages/widget/src/index.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_index_voiceoswidget",
+      "target": "src_index_voiceoswidget_end",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "tests_test_api_py",
+      "target": "tests_test_api_headers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "tests_test_api_py",
+      "target": "tests_test_api_test_health_and_error_contract",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "tests_test_api_py",
+      "target": "tests_test_api_test_agent_publish_session_and_isolation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "tests_test_api_py",
+      "target": "tests_test_api_test_operator_cannot_create_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "tests_test_api_py",
+      "target": "tests_test_api_test_internal_auth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L50",
+      "weight": 1.0,
+      "source": "tests_test_api_py",
+      "target": "tests_test_api_test_tool_and_internal_runtime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "tests_test_api_py",
+      "target": "tests_test_api_test_invalid_token_and_wrong_tenant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "tests_test_api_test_agent_publish_session_and_isolation",
+      "target": "tests_test_api_headers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "tests_test_api_test_operator_cannot_create_agent",
+      "target": "tests_test_api_headers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_api.py",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "tests_test_api_test_tool_and_internal_runtime",
+      "target": "tests_test_api_headers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "tests_test_migrations_py",
+      "target": "tests_test_migrations_load_initial_migration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "tests_test_migrations_py",
+      "target": "tests_test_migrations_test_every_tenant_table_has_rls_contract",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "tests_test_migrations_py",
+      "target": "tests_test_migrations_test_join_tables_have_one_primary_key_and_unique_scope",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "tests_test_migrations_py",
+      "target": "tests_test_migrations_test_required_phase_zero_tables_exist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "tests_test_migrations_test_every_tenant_table_has_rls_contract",
+      "target": "tests_test_migrations_load_initial_migration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "tests_test_migrations_test_join_tables_have_one_primary_key_and_unique_scope",
+      "target": "tests_test_migrations_load_initial_migration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_migrations.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "tests_test_migrations_test_required_phase_zero_tables_exist",
+      "target": "tests_test_migrations_load_initial_migration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_schemas.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "tests_test_schemas_py",
+      "target": "tests_test_schemas_test_tool_name_contract",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "reads_and_updates",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/agent-worker/main.py",
+      "source_location": "lines 25-38",
+      "evidence": "main waits for active_rooms and sets draining before shutdown.",
+      "source": "worker_main",
+      "target": "worker_state"
+    },
+    {
+      "relation": "populates",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "lines 18-31",
+      "evidence": "SQL inserts populate plans, tenants, users, memberships, agents, versions, knowledge bases, documents, tools, and calls.",
+      "source": "development_seed",
+      "target": "voiceos_schema"
+    },
+    {
+      "relation": "protects_tenant_scoped_tables",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "lines 51-56",
+      "evidence": "Every non-global table is created with tenant_id, RLS, and tenant_isolation policy.",
+      "source": "tenant_rls",
+      "target": "voiceos_schema"
+    },
+    {
+      "relation": "indexes_chunks",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/alembic/versions/0001_initial.py",
+      "source_location": "line 57",
+      "evidence": "Creates chunks_embedding_hnsw on chunks.embedding.",
+      "source": "vector_search_index",
+      "target": "voiceos_schema"
+    },
+    {
+      "relation": "extends_users_and_auth_storage",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/alembic/versions/0002_authjs.py",
+      "source_location": "lines 5-15",
+      "evidence": "Migration follows 0001 and adds fields and tables referencing users.",
+      "source": "authjs_schema",
+      "target": "voiceos_schema"
+    },
+    {
+      "relation": "activates",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "line 29",
+      "evidence": "Sets LOCAL app.tenant_id, the value consumed by the tenant_isolation RLS policy.",
+      "source": "tenant_session",
+      "target": "tenant_rls"
+    },
+    {
+      "relation": "complements_tenant_isolation",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "lines 30-34",
+      "evidence": "JWT membership validates requested tenant at the API boundary while repository sessions enforce the same tenant at the database boundary.",
+      "source": "principal_auth",
+      "target": "tenant_rls"
+    },
+    {
+      "relation": "persists_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/auth.ts",
+      "source_location": "lines 8-18",
+      "evidence": "NextAuth selects PostgresAdapter when DATABASE_URL is available; migration 0002 provides its tables.",
+      "source": "nextauth_config",
+      "target": "authjs_schema"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "line 16",
+      "evidence": "seed opens SessionFactory as its transactional database session.",
+      "source": "development_seed",
+      "target": "database_session"
+    },
+    {
+      "relation": "supports_seeded_webhook",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/scripts/seed.py",
+      "source_location": "lines 27-29",
+      "evidence": "The seeded webhook URL targets mock:9000/tools/consultar_pedido, implemented by the mock service.",
+      "source": "provider_mock",
+      "target": "development_seed"
+    },
+    {
+      "relation": "constructs",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "lines 30-34",
+      "evidence": "Successful membership lookup returns Principal with user, tenant, and role.",
+      "source": "principal_auth",
+      "target": "principal"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "lines 25-27",
+      "evidence": "principal loads settings to decode and validate JWT claims.",
+      "source": "principal_auth",
+      "target": "settings"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/auth.py",
+      "source_location": "lines 37-39",
+      "evidence": "Compares the request header against get_settings().internal_api_token.",
+      "source": "internal_auth",
+      "target": "settings"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "line 51",
+      "evidence": "Endpoint obtains livekit_url from get_settings().",
+      "source": "session_creation",
+      "target": "settings"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 27-30",
+      "evidence": "tenant_session opens SessionFactory and begins a transaction.",
+      "source": "tenant_session",
+      "target": "database_session"
+    },
+    {
+      "relation": "configures",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/main.py",
+      "source_location": "lines 1-35",
+      "evidence": "The API application initializes its logging and instrumentation hooks.",
+      "source": "api_application",
+      "target": "observability"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 14-85",
+      "evidence": "PostgresRepository exposes every operation declared by Repository.",
+      "source": "postgres_repository",
+      "target": "repository_contract"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 88-124",
+      "evidence": "MemoryRepository exposes every operation declared by Repository.",
+      "source": "memory_repository",
+      "target": "repository_contract"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "lines 44-50",
+      "evidence": "Endpoint calls repo.get_agent and repo.create_call.",
+      "source": "session_creation",
+      "target": "repository_contract"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/routes.py",
+      "source_location": "lines 65-66",
+      "evidence": "Endpoint calls repo.get_runtime.",
+      "source": "runtime_endpoint",
+      "target": "repository_contract"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 32-78",
+      "evidence": "Tenant-facing persistence methods enter self.tenant_session.",
+      "source": "postgres_repository",
+      "target": "tenant_session"
+    },
+    {
+      "relation": "implemented_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 50-59",
+      "evidence": "PostgresRepository.publish_agent performs the publish-and-clone transaction.",
+      "source": "agent_publish_flow",
+      "target": "postgres_repository"
+    },
+    {
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 25-124",
+      "evidence": "Both implement the same Repository operations with different persistence adapters.",
+      "source": "memory_repository",
+      "target": "postgres_repository"
+    },
+    {
+      "relation": "uses_shared_state",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/api/voiceos_api/repository.py",
+      "source_location": "lines 89-124",
+      "evidence": "MemoryRepository reads and writes MemoryStore agent, call, and tool dictionaries.",
+      "source": "memory_repository",
+      "target": "memory_store"
+    },
+    {
+      "relation": "consumes_session_cookie",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/middleware.ts",
+      "source_location": "lines 3-6",
+      "evidence": "Middleware checks the exact development and production cookie names configured by NextAuth.",
+      "source": "web_auth_middleware",
+      "target": "nextauth_config"
+    },
+    {
+      "relation": "supports_deterministic_provider_mocking",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "DECISIONS.md",
+      "source_location": "line 3",
+      "evidence": "Typed adapters enable deterministic fakes; Phase 1 includes a provider mock.",
+      "source": "typed-provider-adapters",
+      "target": "phase1-runtime"
+    },
+    {
+      "relation": "enables_exhaustive_coverage_of",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "DECISIONS.md",
+      "source_location": "line 4",
+      "evidence": "The first migration uses SQL for exhaustive schema/RLS coverage.",
+      "source": "sql-first-migration",
+      "target": "tenant-rls"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "PHASE-5-REPORT.md",
+      "source_location": "line 3",
+      "evidence": "Implemented a framework-free strict-TypeScript widget/SDK.",
+      "source": "phase5-widget",
+      "target": "framework-free-widget"
+    },
+    {
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "PHASE-0-REPORT.md",
+      "source_location": "Implemented bullets 3-4",
+      "evidence": "Tenant-scoped tables enable RLS and repository sets app.tenant_id.",
+      "source": "phase0-platform",
+      "target": "tenant-rls"
+    },
+    {
+      "relation": "validates_tenant_isolation_behavior",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "tests/test_api.py",
+      "source_location": "test_agent_publish_session_and_isolation",
+      "evidence": "Tenant B cannot observe tenant A agents or calls.",
+      "source": "api-isolation-tests",
+      "target": "tenant-rls"
+    },
+    {
+      "relation": "validates_schema_scope",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_migrations.py",
+      "source_location": "test_every_tenant_table_has_rls_contract",
+      "evidence": "All non-global migration tables are checked as tenant-scoped identifiers.",
+      "source": "migration-contract-tests",
+      "target": "tenant-rls"
+    },
+    {
+      "relation": "defines_typed_contracts_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "PHASE-1-REPORT.md",
+      "source_location": "line 3",
+      "evidence": "Implemented typed shared contracts for session/runtime.",
+      "source": "phase1-runtime",
+      "target": "runtime-config"
+    },
+    {
+      "relation": "uses_async_worker_boundary",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "PHASE-4-REPORT.md",
+      "source_location": "line 3",
+      "evidence": "Report names an async worker boundary; worker advertises WhatsApp jobs.",
+      "source": "phase4-whatsapp",
+      "target": "async-worker-loop"
+    },
+    {
+      "relation": "runs",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docker-compose.yml",
+      "source_location": "services.worker.command",
+      "evidence": "worker command is python apps/worker/main.py.",
+      "source": "compose-stack",
+      "target": "async-worker-loop"
+    },
+    {
+      "relation": "redirects_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/app/page.tsx",
+      "source_location": "Home",
+      "evidence": "redirect('/app/demo').",
+      "source": "home-redirect",
+      "target": "dashboard"
+    },
+    {
+      "relation": "redirects_to_after_authentication",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "emailLogin",
+      "evidence": "redirectTo is /app/demo.",
+      "source": "email-login",
+      "target": "dashboard"
+    },
+    {
+      "relation": "redirects_to_after_authentication",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "googleLogin",
+      "evidence": "redirectTo is /app/demo.",
+      "source": "google-login",
+      "target": "dashboard"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "form action",
+      "evidence": "Email form action invokes emailLogin.",
+      "source": "login",
+      "target": "email-login"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "form action",
+      "evidence": "Google form action invokes googleLogin.",
+      "source": "login",
+      "target": "google-login"
+    },
+    {
+      "relation": "semantically_aligns_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "packages/shared-ts/src/openapi.ts",
+      "source_location": "runtime operation",
+      "evidence": "The internal runtime endpoint returns agent runtime data represented by the shared Python contract.",
+      "source": "openapi-contract",
+      "target": "runtime-config"
+    },
+    {
+      "relation": "validates",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_api.py",
+      "source_location": "test_tool_and_internal_runtime",
+      "evidence": "Internal runtime returns 200 and language pt-BR.",
+      "source": "runtime-test",
+      "target": "runtime-config"
+    },
+    {
+      "relation": "validates_authentication_error_contract",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_api.py",
+      "source_location": "test_health_and_error_contract",
+      "evidence": "401 error must contain code, message, details and request_id.",
+      "source": "api-auth-tests",
+      "target": "error-envelope"
+    },
+    {
+      "relation": "validates_health_endpoint",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/smoke.py",
+      "source_location": "module body",
+      "evidence": "Calls /health, which is declared in generated paths.",
+      "source": "smoke-health-check",
+      "target": "openapi-contract"
+    },
+    {
+      "relation": "validates_tool_schema_rule",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "tests/test_schemas.py",
+      "source_location": "test_tool_name_contract",
+      "evidence": "ToolCreate validation constrains a schema exposed by the tool endpoint.",
+      "source": "tool-name-test",
+      "target": "openapi-contract"
+    },
+    {
+      "relation": "uses",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/00-README.md",
+      "source_location": "line 17",
+      "evidence": "A base t\u00c3\u00a9cnica \u00c3\u00a9 uma stack pr\u00c3\u00b3pria sobre LiveKit.",
+      "source": "00_readme_voiceos_platform",
+      "target": "00_readme_livekit_stack"
+    },
+    {
+      "relation": "uses",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/00-README.md",
+      "source_location": "line 18",
+      "evidence": "Backend definido como Python 3.12 com FastAPI e LiveKit Agents.",
+      "source": "00_readme_voiceos_platform",
+      "target": "00_readme_python_backend"
+    },
+    {
+      "relation": "deployed_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/00-README.md",
+      "source_location": "line 23",
+      "evidence": "Regi\u00c3\u00a3o fechada como AWS sa-east-1.",
+      "source": "00_readme_voiceos_platform",
+      "target": "00_readme_aws_sa_east_1"
+    },
+    {
+      "relation": "includes",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/subprocessors.md",
+      "source_location": "line 3",
+      "evidence": "AWS \u00c3\u00a9 listado como data plane no Brasil.",
+      "source": "subprocessors_provider_registry",
+      "target": "00_readme_aws_sa_east_1"
+    },
+    {
+      "relation": "governed_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/01-visao-produto.md",
+      "source_location": "lines 9-16, 38",
+      "evidence": "Pap\u00c3\u00a9is de tenant e RF-08 definem o RBAC do painel.",
+      "source": "01_visao_produto_multitenancy",
+      "target": "01_visao_produto_rbac"
+    },
+    {
+      "relation": "requires",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/01-visao-produto.md",
+      "source_location": "RNF-06",
+      "evidence": "Isolamento por RLS e tenant_id \u00c3\u00a9 requisito n\u00c3\u00a3o funcional.",
+      "source": "01_visao_produto_multitenancy",
+      "target": "01_visao_produto_rnf_isolamento"
+    },
+    {
+      "relation": "implemented_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/03-modelo-dados.md",
+      "source_location": "lines 173-179",
+      "evidence": "Modelo prescreve RLS e SET LOCAL para implementar isolamento.",
+      "source": "01_visao_produto_rnf_isolamento",
+      "target": "03_modelo_dados_rls"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+      "source_location": "line 51",
+      "evidence": "agent-worker \u00c3\u00a9 componente expl\u00c3\u00adcito da arquitetura.",
+      "source": "02_arquitetura_service_architecture",
+      "target": "02_arquitetura_agent_worker"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+      "source_location": "lines 52-53",
+      "evidence": "worker e whatsapp-worker executam jobs ass\u00c3\u00adncronos.",
+      "source": "02_arquitetura_service_architecture",
+      "target": "02_arquitetura_async_worker"
+    },
+    {
+      "relation": "executes",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+      "source_location": "lines 51, 63-64",
+      "evidence": "agent-worker instancia e executa o pipeline de voz.",
+      "source": "02_arquitetura_agent_worker",
+      "target": "05_voice_pipeline_streaming_pipeline"
+    },
+    {
+      "relation": "supports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+      "source_location": "line 52",
+      "evidence": "worker executa medi\u00c3\u00a7\u00c3\u00a3o de billing.",
+      "source": "02_arquitetura_async_worker",
+      "target": "10_billing_usage_billing"
+    },
+    {
+      "relation": "enforces",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/03-modelo-dados.md",
+      "source_location": "lines 173-179",
+      "evidence": "RLS \u00c3\u00a9 habilitado nas tabelas com tenant_id.",
+      "source": "03_modelo_dados_postgres_model",
+      "target": "03_modelo_dados_rls"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/03-modelo-dados.md",
+      "source_location": "line 56",
+      "evidence": "agent_versions integra o modelo e \u00c3\u00a9 imut\u00c3\u00a1vel ap\u00c3\u00b3s publica\u00c3\u00a7\u00c3\u00a3o.",
+      "source": "03_modelo_dados_postgres_model",
+      "target": "03_modelo_dados_immutable_versions"
+    },
+    {
+      "relation": "operates_on",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/04-api-contracts.md",
+      "source_location": "lines 29-115",
+      "evidence": "Endpoints correspondem diretamente \u00c3\u00a0s entidades descritas no modelo de dados.",
+      "source": "04_api_contracts_public_api",
+      "target": "03_modelo_dados_postgres_model"
+    },
+    {
+      "relation": "verifies",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/13-testes-aceite.md",
+      "source_location": "lines 13, 50-51",
+      "evidence": "Testes de isolamento RLS rodam por PR para cada tabela com tenant_id.",
+      "source": "13_testes_aceite_quality_gates",
+      "target": "03_modelo_dados_rls"
+    },
+    {
+      "relation": "secured_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/04-api-contracts.md",
+      "source_location": "lines 5-11",
+      "evidence": "Contratos distinguem JWT, secret keys e public keys.",
+      "source": "04_api_contracts_public_api",
+      "target": "04_api_contracts_authentication"
+    },
+    {
+      "relation": "exposed_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/04-api-contracts.md",
+      "source_location": "lines 91-94",
+      "evidence": "API oferece plano, checkout, portal, usage e invoices.",
+      "source": "10_billing_usage_billing",
+      "target": "04_api_contracts_public_api"
+    },
+    {
+      "relation": "provides",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/05-voice-pipeline.md",
+      "source_location": "lines 53-64",
+      "evidence": "Barge-in \u00c3\u00a9 parte expl\u00c3\u00adcita do loop de turnos.",
+      "source": "05_voice_pipeline_streaming_pipeline",
+      "target": "05_voice_pipeline_barge_in"
+    },
+    {
+      "relation": "measured_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/05-voice-pipeline.md",
+      "source_location": "lines 78-89",
+      "evidence": "Documento define or\u00c3\u00a7amento de lat\u00c3\u00aancia por etapa do pipeline.",
+      "source": "05_voice_pipeline_streaming_pipeline",
+      "target": "05_voice_pipeline_latency_budget"
+    },
+    {
+      "relation": "invokes",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/06-tools-integracoes.md",
+      "source_location": "lines 3-8",
+      "evidence": "LLM no pipeline v\u00c3\u00aa tools como function calling.",
+      "source": "05_voice_pipeline_streaming_pipeline",
+      "target": "06_tools_integracoes_tool_system"
+    },
+    {
+      "relation": "adapts",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/09-canais.md",
+      "source_location": "lines 3-47",
+      "evidence": "WebRTC e PSTN usam pipeline ao vivo, enquanto WhatsApp reutiliza prompt/tools/RAG de modo ass\u00c3\u00adncrono.",
+      "source": "09_canais_omnichannel",
+      "target": "05_voice_pipeline_streaming_pipeline"
+    },
+    {
+      "relation": "verifies",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/13-testes-aceite.md",
+      "source_location": "line 42",
+      "evidence": "Su\u00c3\u00adte obrigat\u00c3\u00b3ria cobre barge-in cedo e tarde.",
+      "source": "13_testes_aceite_quality_gates",
+      "target": "05_voice_pipeline_barge_in"
+    },
+    {
+      "relation": "measures",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/12-observabilidade.md",
+      "source_location": "lines 9-32",
+      "evidence": "Spans e dashboards medem lat\u00c3\u00aancia por est\u00c3\u00a1gio do pipeline.",
+      "source": "12_observabilidade_otel",
+      "target": "05_voice_pipeline_latency_budget"
+    },
+    {
+      "relation": "uses",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/06-tools-integracoes.md",
+      "source_location": "line 8",
+      "evidence": "Execu\u00c3\u00a7\u00c3\u00a3o na API mant\u00c3\u00a9m segredos fora do agent-worker.",
+      "source": "06_tools_integracoes_tool_system",
+      "target": "06_tools_integracoes_server_side_secrets"
+    },
+    {
+      "relation": "governed_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/06-tools-integracoes.md",
+      "source_location": "lines 85-86",
+      "evidence": "Teste bem-sucedido \u00c3\u00a9 obrigat\u00c3\u00b3rio antes da habilita\u00c3\u00a7\u00c3\u00a3o.",
+      "source": "06_tools_integracoes_tool_system",
+      "target": "06_tools_integracoes_webhook_test_gate"
+    },
+    {
+      "relation": "instructs_use_of",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/07-prompts.md",
+      "source_location": "lines 56-62",
+      "evidence": "Uma camada do prompt cont\u00c3\u00a9m regras geradas de tools.",
+      "source": "07_prompts_layered_prompt",
+      "target": "06_tools_integracoes_tool_system"
+    },
+    {
+      "relation": "enforces",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/08-painel-multitenant.md",
+      "source_location": "line 59",
+      "evidence": "Valida\u00c3\u00a7\u00c3\u00b5es de publica\u00c3\u00a7\u00c3\u00a3o exigem tools webhook com teste ok.",
+      "source": "08_painel_multitenant_agent_publish_validation",
+      "target": "06_tools_integracoes_webhook_test_gate"
+    },
+    {
+      "relation": "sequences",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/14-fases.md",
+      "source_location": "lines 23-83",
+      "evidence": "WebRTC \u00c3\u00a9 Fase 1, telefone Fase 2 e WhatsApp Fase 4.",
+      "source": "14_fases_delivery_roadmap",
+      "target": "09_canais_omnichannel"
+    },
+    {
+      "relation": "delivers_in_phase_3",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/14-fases.md",
+      "source_location": "lines 52-62",
+      "evidence": "Billing e ciclo Stripe completo s\u00c3\u00a3o entregues na Fase 3.",
+      "source": "14_fases_delivery_roadmap",
+      "target": "10_billing_usage_billing"
+    },
+    {
+      "relation": "documented_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/11-seguranca-lgpd.md",
+      "source_location": "line 19",
+      "evidence": "Especifica\u00c3\u00a7\u00c3\u00a3o aponta explicitamente para o DPA e define os pap\u00c3\u00a9is.",
+      "source": "11_seguranca_lgpd_compliance",
+      "target": "dpa_controller_processor_roles"
+    },
+    {
+      "relation": "documented_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/11-seguranca-lgpd.md",
+      "source_location": "line 26",
+      "evidence": "Incidentes seguem o runbook docs/incident-lgpd.md.",
+      "source": "11_seguranca_lgpd_compliance",
+      "target": "incident_lgpd_runbook"
+    },
+    {
+      "relation": "documented_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/11-seguranca-lgpd.md",
+      "source_location": "line 23",
+      "evidence": "Suboperadores devem ser documentados em docs/subprocessors.md.",
+      "source": "11_seguranca_lgpd_compliance",
+      "target": "subprocessors_provider_registry"
+    },
+    {
+      "relation": "requires",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/privacy-policy-template.md",
+      "source_location": "line 3",
+      "evidence": "Pol\u00c3\u00adtica prev\u00c3\u00aa acesso, exporta\u00c3\u00a7\u00c3\u00a3o, corre\u00c3\u00a7\u00c3\u00a3o e exclus\u00c3\u00a3o.",
+      "source": "11_seguranca_lgpd_compliance",
+      "target": "privacy_policy_data_subject_rights"
+    },
+    {
+      "relation": "secured_by",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/11-seguranca-lgpd.md",
+      "source_location": "line 5",
+      "evidence": "Programa de seguran\u00c3\u00a7a determina Secrets Manager e KMS envelope encryption.",
+      "source": "11_seguranca_lgpd_compliance",
+      "target": "11_seguranca_lgpd_encryption"
+    },
+    {
+      "relation": "delivers_in_phase_3",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/14-fases.md",
+      "source_location": "lines 52-62",
+      "evidence": "Fase 3 inclui LGPD, reten\u00c3\u00a7\u00c3\u00a3o, purga e documentos legais.",
+      "source": "14_fases_delivery_roadmap",
+      "target": "11_seguranca_lgpd_compliance"
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "tenant_security_flow",
+      "label": "defense-in-depth tenant isolation",
+      "nodes": [
+        "principal_auth",
+        "principal",
+        "tenant_session",
+        "tenant_rls"
+      ],
+      "relation": "jointly_enforces_tenant_boundary",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "evidence": "Authentication verifies JWT tenant membership and persistence sets app.tenant_id for PostgreSQL RLS."
+    },
+    {
+      "id": "session_runtime_flow",
+      "label": "voice session provisioning flow",
+      "nodes": [
+        "session_creation",
+        "repository_contract",
+        "settings",
+        "runtime_endpoint",
+        "worker_main"
+      ],
+      "relation": "participates_in_voice_session_lifecycle",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "evidence": "The API validates and records sessions, exposes runtime configuration, and the worker manages active room lifecycle."
+    },
+    {
+      "id": "dual_repository_pattern",
+      "label": "shared repository adapter contract",
+      "nodes": [
+        "repository_contract",
+        "postgres_repository",
+        "memory_repository",
+        "memory_store"
+      ],
+      "relation": "implements_swappable_persistence",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "evidence": "Both repository classes expose the protocol operations; MemoryRepository delegates state to MemoryStore."
+    },
+    {
+      "id": "web-auth-flow",
+      "label": "Web authentication to tenant dashboard flow",
+      "members": [
+        "auth-route-handlers",
+        "login",
+        "email-login",
+        "google-login",
+        "dashboard"
+      ],
+      "relation": "participates_in_authentication_flow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/app/login/page.tsx",
+      "source_location": "Login and server actions",
+      "evidence": "Login submits to provider-specific server actions and both redirect into the dashboard."
+    },
+    {
+      "id": "tenant-safety-verification",
+      "label": "Tenant safety verification",
+      "members": [
+        "tenant-rls",
+        "api-isolation-tests",
+        "migration-contract-tests",
+        "api-auth-tests"
+      ],
+      "relation": "jointly_enforces_and_validates_tenant_safety",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "PHASE-0-REPORT.md",
+      "source_location": "Implemented and How to test",
+      "evidence": "RLS, authorization, migration contracts and isolation tests jointly cover tenant safety."
+    },
+    {
+      "id": "voice_realtime_flow",
+      "label": "Real-time Voice Conversation Flow",
+      "nodes": [
+        "09_canais_omnichannel",
+        "02_arquitetura_agent_worker",
+        "05_voice_pipeline_streaming_pipeline",
+        "06_tools_integracoes_tool_system"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/02-arquitetura.md",
+      "source_location": "lines 59-73"
+    },
+    {
+      "id": "tenant_isolation_controls",
+      "label": "Tenant Isolation Controls",
+      "nodes": [
+        "01_visao_produto_multitenancy",
+        "01_visao_produto_rbac",
+        "01_visao_produto_rnf_isolamento",
+        "03_modelo_dados_rls",
+        "13_testes_aceite_quality_gates"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "docs/voiceos-spec-v1.0/voice-agent-spec/01-visao-produto.md",
+      "source_location": "RNF-06"
+    },
+    {
+      "id": "lgpd_governance_set",
+      "label": "LGPD Governance Artifacts",
+      "nodes": [
+        "11_seguranca_lgpd_compliance",
+        "dpa_controller_processor_roles",
+        "incident_lgpd_runbook",
+        "privacy_policy_data_subject_rights",
+        "subprocessors_provider_registry"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/14-fases.md",
+      "source_location": "lines 52-62"
+    }
+  ]
+}

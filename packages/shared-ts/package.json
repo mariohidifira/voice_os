@@ -1,0 +1,1 @@
+{"name":"@voiceos/shared","version":"0.1.0","private":true,"scripts":{"generate":"openapi-typescript openapi.json -o src/openapi.ts","build":"tsc","typecheck":"tsc --noEmit"},"devDependencies":{"openapi-typescript":"^7.10.1","typescript":"^5.7"}}
