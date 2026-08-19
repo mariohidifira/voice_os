@@ -1,7 +1,39 @@
 {
   "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\main.py": {
-    "mtime": 1786991488.7623785,
-    "hash": "c4dab865a35ab12180b6f566f439d811"
+    "mtime": 1787149061.4665172,
+    "hash": "993c1391efd065a3999e23b82484c168"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\voiceos_voice\\app.py": {
+    "mtime": 1787149037.9639342,
+    "hash": "506b32c68ccce89f8b9a21e091d33b8d"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\voiceos_voice\\contracts.py": {
+    "mtime": 1787147145.4019017,
+    "hash": "9e8949b60bc7af66dc8f1ab6de0cded0"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\voiceos_voice\\prompting.py": {
+    "mtime": 1787147149.4726548,
+    "hash": "7bc37e5eaac2eb64eb15f3d5f3f74208"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\voiceos_voice\\providers.py": {
+    "mtime": 1787147152.8845499,
+    "hash": "942b84e8fab04036f2ae9811c07d1a2f"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\voiceos_voice\\resilience.py": {
+    "mtime": 1787148992.6357439,
+    "hash": "a4e375db66faedaf7b5caee1984c8794"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\voiceos_voice\\session.py": {
+    "mtime": 1787147209.733337,
+    "hash": "1d6909ec6d048d45d643cfc994634595"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\voiceos_voice\\tools.py": {
+    "mtime": 1787147151.162108,
+    "hash": "b92b23503794cd701ec3c4c1e8ddc225"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\agent-worker\\voiceos_voice\\__init__.py": {
+    "mtime": 1787147143.0590034,
+    "hash": "7ed0e4187f5612bb022dd18fc1116d97"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\alembic\\env.py": {
     "mtime": 1786991675.0786247,
@@ -15,69 +47,81 @@
     "mtime": 1786993096.3261316,
     "hash": "3609defaeb2622f2bc6357318a59cf71"
   },
+  "G:\\DEV\\VOICE_OS\\apps\\api\\alembic\\versions\\0003_force_rls.py": {
+    "mtime": 1787075962.13102,
+    "hash": "b913655fe49805651ce45efb54fd6f62"
+  },
   "G:\\DEV\\VOICE_OS\\apps\\api\\scripts\\seed.py": {
-    "mtime": 1787009139.1763313,
-    "hash": "2efce8e9ced9e8e0936436e732cb349f"
+    "mtime": 1787064641.7422495,
+    "hash": "0653eacc624da18cd0162fb57bedd4b1"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\auth.py": {
     "mtime": 1786990399.0798833,
     "hash": "d74264eb52da862e6d584ad46c95983e"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\config.py": {
-    "mtime": 1787016308.9024627,
-    "hash": "2d99917d13f8147c268e5205038fbf4f"
+    "mtime": 1787080423.7191193,
+    "hash": "958767fda6f762c79c8de952d4bb1a51"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\db.py": {
     "mtime": 1786990397.9921427,
     "hash": "4d06081cdf5f433896598e48316e07dc"
   },
+  "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\health.py": {
+    "mtime": 1787061624.254178,
+    "hash": "ea570200dc5283a2ab9cc9d23bef9f61"
+  },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\main.py": {
-    "mtime": 1787016355.778402,
-    "hash": "fcc2a315c47679bee392e0256899cf65"
+    "mtime": 1787061675.4562256,
+    "hash": "48a4a1a78bc55eb5b88d59838a84fe97"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\observability.py": {
     "mtime": 1787016378.9519668,
     "hash": "b069c46d04415dad9812b3aacea41a39"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\repository.py": {
-    "mtime": 1786992654.1156893,
-    "hash": "1c4bda0c80f2abd30beb748314e80fd6"
+    "mtime": 1787156389.6827567,
+    "hash": "35a679fe522626a921678446e42a5d3c"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\routes.py": {
-    "mtime": 1786992655.190515,
-    "hash": "2689b66d792cf5f8800fedd878c5782b"
+    "mtime": 1787156391.5632198,
+    "hash": "a6a6d4facef7429d10fbe452dde56aca"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\schemas.py": {
-    "mtime": 1786990400.3254507,
-    "hash": "733517b5c8ff27d7260e6ae5834f915f"
+    "mtime": 1787155123.909222,
+    "hash": "962561833d896b127c4e0cd716a80c47"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\store.py": {
-    "mtime": 1786990401.541178,
-    "hash": "57bfb23383151eb14adf805fc2833a93"
+    "mtime": 1787155125.3225358,
+    "hash": "3fcbd719cd4c7e7b1013cdeac7089196"
   },
   "G:\\DEV\\VOICE_OS\\apps\\api\\voiceos_api\\__init__.py": {
     "mtime": 1786990395.912179,
     "hash": "38204bed025b9282a5a580053c3461de"
   },
   "G:\\DEV\\VOICE_OS\\apps\\mock\\main.py": {
-    "mtime": 1786990478.6393392,
-    "hash": "4b8e660d29bc4ef1e5a3b34b67ab295a"
+    "mtime": 1787081454.076459,
+    "hash": "3656bd87a2e8bf37adf4077b0467b82b"
   },
   "G:\\DEV\\VOICE_OS\\apps\\mock\\__init__.py": {
     "mtime": 1786990477.4553287,
     "hash": "68b329da9893e34099c7d8ad5cb9c940"
   },
+  "G:\\DEV\\VOICE_OS\\apps\\web\\auth.config.ts": {
+    "mtime": 1787088831.651436,
+    "hash": "8ab31ec7b57ef714ed947c7a21f5481d"
+  },
   "G:\\DEV\\VOICE_OS\\apps\\web\\auth.ts": {
-    "mtime": 1786993193.9994018,
-    "hash": "27ca321010c37b936ad78291fac96bc8"
+    "mtime": 1787086325.095211,
+    "hash": "11a3861202440d341a0a2f2b3d0e6c32"
   },
   "G:\\DEV\\VOICE_OS\\apps\\web\\eslint.config.mjs": {
     "mtime": 1787015751.7880168,
     "hash": "054f47171bd9eb80cc97be63bb81cfce"
   },
   "G:\\DEV\\VOICE_OS\\apps\\web\\middleware.ts": {
-    "mtime": 1786993195.7585008,
-    "hash": "d601760752851e87fa80e4ef7f2f31d6"
+    "mtime": 1787087302.286301,
+    "hash": "197127f117b32e28154d5371190d359d"
   },
   "G:\\DEV\\VOICE_OS\\apps\\web\\next-env.d.ts": {
     "mtime": 1786991100.9885528,
@@ -98,6 +142,10 @@
   "G:\\DEV\\VOICE_OS\\apps\\web\\app\\api\\auth\\[...nextauth]\\route.ts": {
     "mtime": 1786993064.5822399,
     "hash": "d985b9a82ccdf4ee96851a9437485a4d"
+  },
+  "G:\\DEV\\VOICE_OS\\apps\\web\\app\\api\\token\\route.ts": {
+    "mtime": 1787087562.8927655,
+    "hash": "3fa76ba8b1424b4c6b6f37e6d2cac988"
   },
   "G:\\DEV\\VOICE_OS\\apps\\web\\app\\app\\[tenantSlug]\\page.tsx": {
     "mtime": 1786990541.7920945,
@@ -136,12 +184,28 @@
     "hash": "f4dbb20deb8b6aa426ed9b51ab8f0b60"
   },
   "G:\\DEV\\VOICE_OS\\scripts\\smoke.py": {
-    "mtime": 1786990604.9085603,
-    "hash": "525dc5fa527293e930d8618864e7ddd9"
+    "mtime": 1787080424.7304535,
+    "hash": "1f1e72b6772850ab8614549373a48784"
+  },
+  "G:\\DEV\\VOICE_OS\\scripts\\test_agent_versions.py": {
+    "mtime": 1787156622.2665336,
+    "hash": "46e9fef1ff0c90dec8b51c6a1cbba74d"
+  },
+  "G:\\DEV\\VOICE_OS\\scripts\\test_auth_flow.py": {
+    "mtime": 1787087563.9902725,
+    "hash": "f6efadd42145ba046c2f0cf787f1e736"
+  },
+  "G:\\DEV\\VOICE_OS\\scripts\\test_rls.py": {
+    "mtime": 1787088854.0563393,
+    "hash": "2937582747865dce475126180d75a35e"
   },
   "G:\\DEV\\VOICE_OS\\tests\\test_api.py": {
-    "mtime": 1786992678.1112976,
-    "hash": "c4b6bcdfd30ffbe223a1505a3377ee68"
+    "mtime": 1787155149.7148643,
+    "hash": "ae4decf3c3c61a2c026abf788e7de2ef"
+  },
+  "G:\\DEV\\VOICE_OS\\tests\\test_health.py": {
+    "mtime": 1787061682.154039,
+    "hash": "399a6a9fececbaca5968e90e24a5a74b"
   },
   "G:\\DEV\\VOICE_OS\\tests\\test_migrations.py": {
     "mtime": 1787015973.1322634,
@@ -151,17 +215,25 @@
     "mtime": 1786991488.7713249,
     "hash": "97db8438917d198fcdf7cea82b508915"
   },
+  "G:\\DEV\\VOICE_OS\\tests\\test_voice_core.py": {
+    "mtime": 1787148947.6453543,
+    "hash": "75db61b6fe93cdc4031efc3cdbf75c92"
+  },
+  "G:\\DEV\\VOICE_OS\\tests\\test_voice_worker.py": {
+    "mtime": 1787149063.1362116,
+    "hash": "330ea486c4c1aae0bbb72f707926f5c6"
+  },
   "G:\\DEV\\VOICE_OS\\DECISIONS.md": {
     "mtime": 1786990321.931443,
     "hash": "51cdd422fb2896fc25a432faed0f2e4d"
   },
   "G:\\DEV\\VOICE_OS\\docker-compose.yml": {
-    "mtime": 1786990316.7877326,
-    "hash": "4968628a6cdcef9d9d06a8cec1b14276"
+    "mtime": 1787081445.3765867,
+    "hash": "5cd1cace2e3d3c7ef4f2b0977d3ab181"
   },
   "G:\\DEV\\VOICE_OS\\PHASE-0-REPORT.md": {
-    "mtime": 1787016009.0712776,
-    "hash": "338b3f106882b1ca05242b6103adca1c"
+    "mtime": 1787101375.7949114,
+    "hash": "5d1dd9eb09461ecf00a0676c94d99880"
   },
   "G:\\DEV\\VOICE_OS\\PHASE-1-REPORT.md": {
     "mtime": 1786990616.5808475,
@@ -182,6 +254,10 @@
   "G:\\DEV\\VOICE_OS\\PHASE-5-REPORT.md": {
     "mtime": 1786990620.398641,
     "hash": "1c525ec4ddb7d7c76481fbd0c347b2a8"
+  },
+  "G:\\DEV\\VOICE_OS\\PROVIDER-SETUP-CHECKLIST.md": {
+    "mtime": 1787102095.9707863,
+    "hash": "68d18e2645c60dda7b0d7c1731014138"
   },
   "G:\\DEV\\VOICE_OS\\docs\\00-README.md": {
     "mtime": 1786985418.7485788,
@@ -270,5 +346,9 @@
   "G:\\DEV\\VOICE_OS\\docs\\voiceos-spec-v1.0\\voice-agent-spec\\15-glossario.md": {
     "mtime": 1786985463.7528958,
     "hash": "f71bf9e04bdb3dd405e5128a3c4f84dd"
+  },
+  "G:\\DEV\\VOICE_OS\\graphify-out\\memory\\query_20260819_011222_lista_de_provedores_servicos_configuracoes_e_nomes.md": {
+    "mtime": 1787101942.465922,
+    "hash": "d79c793f2b3ea38518898817757c1155"
   }
 }

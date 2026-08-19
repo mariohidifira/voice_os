@@ -35,6 +35,7 @@ def test_health_and_error_contract() -> None:
 
 def test_agent_publish_session_and_isolation() -> None:
     store.agents.clear()
+    store.agent_versions.clear()
     store.calls.clear()
     tenant_a, tenant_b = str(uuid4()), str(uuid4())
     created = client.post("/v1/agents", json={"name": "Recepcionista"}, headers=headers(tenant_a))
@@ -45,6 +46,58 @@ def test_agent_publish_session_and_isolation() -> None:
     session = client.post("/v1/sessions", json={"agent_id": agent["id"]}, headers=headers(tenant_a))
     assert session.status_code == 201
     assert client.get("/v1/calls", headers=headers(tenant_b)).json()["data"] == []
+
+
+def test_agent_draft_versions_and_rollback() -> None:
+    store.agents.clear()
+    store.agent_versions.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    created = client.post("/v1/agents", json={"name": "Concierge"}, headers=auth).json()
+
+    detail = client.get(f"/v1/agents/{created['id']}", headers=auth)
+    assert detail.status_code == 200
+    assert detail.json()["draft"]["version"] == 1
+    assert detail.json()["current"] is None
+
+    draft = client.patch(
+        f"/v1/agents/{created['id']}/draft",
+        json={"system_prompt": "Atenda como concierge.", "llm": {"provider": "anthropic", "temperature": 0.2}},
+        headers=auth,
+    )
+    assert draft.status_code == 200
+    assert draft.json()["system_prompt"] == "Atenda como concierge."
+
+    first_publish = client.post(f"/v1/agents/{created['id']}/publish", headers=auth)
+    assert first_publish.status_code == 200
+    first_version_id = first_publish.json()["current_version_id"]
+    assert first_publish.json()["draft"]["version"] == 2
+
+    client.patch(
+        f"/v1/agents/{created['id']}/draft",
+        json={"system_prompt": "Atenda como concierge versão dois."},
+        headers=auth,
+    )
+    second_publish = client.post(f"/v1/agents/{created['id']}/publish", headers=auth)
+    second_version_id = second_publish.json()["current_version_id"]
+    assert second_version_id != first_version_id
+
+    versions = client.get(f"/v1/agents/{created['id']}/versions", headers=auth).json()["data"]
+    assert [version["version"] for version in versions] == [3, 2, 1]
+    assert client.get(f"/v1/agents/{created['id']}/versions/{first_version_id}", headers=auth).status_code == 200
+
+    rolled_back = client.post(
+        f"/v1/agents/{created['id']}/rollback",
+        json={"version_id": first_version_id},
+        headers=auth,
+    )
+    assert rolled_back.status_code == 200
+    assert rolled_back.json()["current_version_id"] == first_version_id
+
+    renamed = client.patch(f"/v1/agents/{created['id']}", json={"name": "Concierge BR"}, headers=auth)
+    assert renamed.json()["name"] == "Concierge BR"
+    assert client.delete(f"/v1/agents/{created['id']}", headers=auth).status_code == 204
+    assert client.get(f"/v1/agents/{created['id']}", headers=auth).status_code == 404
 
 
 def test_operator_cannot_create_agent() -> None:

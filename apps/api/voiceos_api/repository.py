@@ -16,6 +16,13 @@ class Repository(Protocol):
     async def create_agent(self, tenant_id: UUID, name: str, user_id: str) -> dict[str, Any]: ...
     async def publish_agent(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None: ...
     async def get_agent(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None: ...
+    async def get_agent_detail(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None: ...
+    async def update_agent(self, tenant_id: UUID, agent_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def delete_agent(self, tenant_id: UUID, agent_id: UUID) -> bool: ...
+    async def list_versions(self, tenant_id: UUID, agent_id: UUID) -> list[dict[str, Any]]: ...
+    async def get_version(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None: ...
+    async def update_draft(self, tenant_id: UUID, agent_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def rollback_agent(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None: ...
     async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]: ...
     async def list_calls(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
@@ -26,7 +33,10 @@ class PostgresRepository:
     @asynccontextmanager
     async def tenant_session(self, tenant_id: UUID) -> AsyncIterator[AsyncSession]:
         async with SessionFactory() as db, db.begin():
-            await db.execute(text("SET LOCAL app.tenant_id = :tenant_id"), {"tenant_id": str(tenant_id)})
+            await db.execute(
+                text("SELECT set_config('app.tenant_id', :tenant_id, true)"),
+                {"tenant_id": str(tenant_id)},
+            )
             yield db
 
     async def list_agents(self, tenant_id: UUID) -> list[dict[str, Any]]:
@@ -46,6 +56,99 @@ class PostgresRepository:
             row = await db.execute(text("SELECT * FROM agents WHERE id=:id AND deleted_at IS NULL"), {"id": agent_id})
             mapping = row.mappings().first()
             return dict(mapping) if mapping else None
+
+    async def get_agent_detail(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None:
+        agent = await self.get_agent(tenant_id, agent_id)
+        if not agent:
+            return None
+        versions = await self.list_versions(tenant_id, agent_id)
+        by_id = {version["id"]: version for version in versions}
+        return {
+            **agent,
+            "draft": by_id.get(agent["draft_version_id"]),
+            "current": by_id.get(agent["current_version_id"]),
+        }
+
+    async def update_agent(self, tenant_id: UUID, agent_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        assignments = []
+        params: dict[str, Any] = {"id": agent_id}
+        for field in ("name", "status"):
+            if field in data:
+                assignments.append(f"{field}=:{field}")
+                params[field] = data[field]
+        if not assignments:
+            return await self.get_agent(tenant_id, agent_id)
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(
+                text(f"UPDATE agents SET {', '.join(assignments)},updated_at=now() WHERE id=:id AND deleted_at IS NULL RETURNING id"),
+                params,
+            )
+            if not result.scalar_one_or_none():
+                return None
+        return await self.get_agent(tenant_id, agent_id)
+
+    async def delete_agent(self, tenant_id: UUID, agent_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(
+                text("UPDATE agents SET deleted_at=now(),updated_at=now() WHERE id=:id AND deleted_at IS NULL RETURNING id"),
+                {"id": agent_id},
+            )
+            return result.scalar_one_or_none() is not None
+
+    async def list_versions(self, tenant_id: UUID, agent_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(
+                text("SELECT * FROM agent_versions WHERE agent_id=:agent ORDER BY version DESC,created_at DESC"),
+                {"agent": agent_id},
+            )
+            return [dict(row) for row in rows.mappings()]
+
+    async def get_version(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text("SELECT * FROM agent_versions WHERE id=:id AND agent_id=:agent"),
+                {"id": version_id, "agent": agent_id},
+            )
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def update_draft(self, tenant_id: UUID, agent_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        json_fields = {"llm", "stt", "tts", "turn_config", "behavior", "rag", "variables"}
+        allowed = {
+            "system_prompt", "greeting", "language", "extra_languages", "llm", "stt", "tts",
+            "turn_config", "behavior", "knowledge_base_id", "rag", "variables",
+        }
+        assignments: list[str] = []
+        params: dict[str, Any] = {"agent": agent_id}
+        for field, value in data.items():
+            if field not in allowed:
+                continue
+            params[field] = __import__("json").dumps(value) if field in json_fields else value
+            assignments.append(f"{field}=CAST(:{field} AS jsonb)" if field in json_fields else f"{field}=:{field}")
+        if not assignments:
+            agent = await self.get_agent(tenant_id, agent_id)
+            return await self.get_version(tenant_id, agent_id, agent["draft_version_id"]) if agent else None
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(f"UPDATE agent_versions SET {', '.join(assignments)},updated_at=now() WHERE id=(SELECT draft_version_id FROM agents WHERE id=:agent AND deleted_at IS NULL) AND published_at IS NULL RETURNING *"),
+                params,
+            )
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def rollback_agent(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            target = await db.execute(
+                text("SELECT id FROM agent_versions WHERE id=:version AND agent_id=:agent AND published_at IS NOT NULL"),
+                {"version": version_id, "agent": agent_id},
+            )
+            if target.scalar_one_or_none() is None:
+                return None
+            await db.execute(
+                text("UPDATE agents SET current_version_id=:version,status='active',updated_at=now() WHERE id=:agent AND deleted_at IS NULL"),
+                {"version": version_id, "agent": agent_id},
+            )
+        return await self.get_agent_detail(tenant_id, agent_id)
 
     async def publish_agent(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None:
         new_draft = uuid4()
@@ -80,7 +183,17 @@ class PostgresRepository:
     async def get_runtime(self, agent_id: UUID) -> dict[str, Any] | None:
         async with SessionFactory() as db, db.begin():
             await db.execute(text("SET LOCAL row_security = off"))
-            row = await db.execute(text("SELECT a.id agent_id,a.tenant_id,a.name,v.* FROM agents a JOIN agent_versions v ON v.id=COALESCE(a.current_version_id,a.draft_version_id) WHERE a.id=:id AND a.deleted_at IS NULL"), {"id": agent_id})
+            row = await db.execute(
+                text(
+                    "SELECT a.id agent_id,a.tenant_id,a.name,v.id version_id,v.system_prompt,"
+                    "v.greeting,v.language,v.extra_languages,v.llm,v.stt,v.tts,v.turn_config,"
+                    "v.behavior,v.knowledge_base_id,v.rag,v.variables "
+                    "FROM agents a JOIN agent_versions v "
+                    "ON v.id=COALESCE(a.current_version_id,a.draft_version_id) "
+                    "WHERE a.id=:id AND a.deleted_at IS NULL"
+                ),
+                {"id": agent_id},
+            )
             mapping = row.mappings().first()
             return dict(mapping) if mapping else None
 
@@ -99,11 +212,76 @@ class MemoryRepository:
         agent = self.memory.agents.get(agent_id)
         return agent if agent and agent["tenant_id"] == tenant_id else None
 
+    async def get_agent_detail(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None:
+        agent = await self.get_agent(tenant_id, agent_id)
+        if not agent:
+            return None
+        return {
+            **agent,
+            "draft": self.memory.agent_versions.get(agent["draft_version_id"]),
+            "current": self.memory.agent_versions.get(agent["current_version_id"]),
+        }
+
+    async def update_agent(self, tenant_id: UUID, agent_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        agent = await self.get_agent(tenant_id, agent_id)
+        if not agent:
+            return None
+        agent.update(data)
+        agent["updated_at"] = datetime.now(UTC)
+        return agent
+
+    async def delete_agent(self, tenant_id: UUID, agent_id: UUID) -> bool:
+        agent = await self.get_agent(tenant_id, agent_id)
+        if not agent:
+            return False
+        agent["deleted_at"] = datetime.now(UTC)
+        self.memory.agents.pop(agent_id)
+        return True
+
+    async def list_versions(self, tenant_id: UUID, agent_id: UUID) -> list[dict[str, Any]]:
+        return sorted(
+            [v for v in self.memory.agent_versions.values() if v["tenant_id"] == tenant_id and v["agent_id"] == agent_id],
+            key=lambda version: (version["version"], version["created_at"]),
+            reverse=True,
+        )
+
+    async def get_version(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None:
+        version = self.memory.agent_versions.get(version_id)
+        return version if version and version["tenant_id"] == tenant_id and version["agent_id"] == agent_id else None
+
+    async def update_draft(self, tenant_id: UUID, agent_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        agent = await self.get_agent(tenant_id, agent_id)
+        if not agent:
+            return None
+        draft = self.memory.agent_versions[agent["draft_version_id"]]
+        if draft["published_at"] is not None:
+            return None
+        draft.update(data)
+        draft["updated_at"] = datetime.now(UTC)
+        return draft
+
+    async def rollback_agent(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None:
+        agent = await self.get_agent(tenant_id, agent_id)
+        version = await self.get_version(tenant_id, agent_id, version_id)
+        if not agent or not version or version["published_at"] is None:
+            return None
+        agent["current_version_id"] = version_id
+        agent["status"] = "active"
+        agent["updated_at"] = datetime.now(UTC)
+        return await self.get_agent_detail(tenant_id, agent_id)
+
     async def publish_agent(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None:
         agent = await self.get_agent(tenant_id, agent_id)
         if agent:
-            agent["current_version_id"], agent["draft_version_id"], agent["status"] = agent["draft_version_id"], uuid4(), "active"
-        return agent
+            now = datetime.now(UTC)
+            published = self.memory.agent_versions[agent["draft_version_id"]]
+            published["published_at"] = now
+            new_id = uuid4()
+            draft = {**published, "id": new_id, "version": published["version"] + 1, "published_at": None, "created_at": now, "updated_at": now}
+            self.memory.agent_versions[new_id] = draft
+            agent["current_version_id"], agent["draft_version_id"], agent["status"] = published["id"], new_id, "active"
+            agent["updated_at"] = now
+        return await self.get_agent_detail(tenant_id, agent_id)
 
     async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
         call_id = uuid4()
@@ -121,7 +299,11 @@ class MemoryRepository:
         return result
 
     async def get_runtime(self, agent_id: UUID) -> dict[str, Any] | None:
-        return self.memory.agents.get(agent_id)
+        agent = self.memory.agents.get(agent_id)
+        if not agent:
+            return None
+        version = self.memory.agent_versions.get(agent["current_version_id"] or agent["draft_version_id"])
+        return {**agent, **(version or {}), "version_id": (version or {}).get("id")}
 
 
 postgres_repository = PostgresRepository()

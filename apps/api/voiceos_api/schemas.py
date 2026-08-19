@@ -14,6 +14,25 @@ class AgentPatch(BaseModel):
     status: str | None = None
 
 
+class AgentDraftPatch(BaseModel):
+    system_prompt: str | None = Field(default=None, max_length=6000)
+    greeting: str | None = Field(default=None, max_length=1000)
+    language: str | None = Field(default=None, min_length=2, max_length=20)
+    extra_languages: list[str] | None = None
+    llm: dict[str, Any] | None = None
+    stt: dict[str, Any] | None = None
+    tts: dict[str, Any] | None = None
+    turn_config: dict[str, Any] | None = None
+    behavior: dict[str, Any] | None = None
+    knowledge_base_id: UUID | None = None
+    rag: dict[str, Any] | None = None
+    variables: dict[str, Any] | None = None
+
+
+class AgentRollback(BaseModel):
+    version_id: UUID
+
+
 class SessionCreate(BaseModel):
     agent_id: UUID
     end_user: dict[str, Any] | None = None
@@ -43,4 +62,3 @@ class CallEvent(BaseModel):
     type: str
     payload: dict[str, Any] = Field(default_factory=dict)
     at: datetime
-

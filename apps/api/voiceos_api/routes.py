@@ -7,7 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from .auth import Principal, internal_token, principal
 from .config import get_settings
 from .repository import Repository, get_repository
-from .schemas import AgentCreate, SessionCreate, ToolCreate
+from .schemas import (
+    AgentCreate,
+    AgentDraftPatch,
+    AgentPatch,
+    AgentRollback,
+    SessionCreate,
+    ToolCreate,
+)
 
 v1 = APIRouter(prefix="/v1")
 internal = APIRouter(prefix="/internal", dependencies=[Depends(internal_token)])
@@ -32,11 +39,74 @@ async def create_agent(body: AgentCreate, auth: Auth, repo: Repo) -> dict[str, A
     return await repo.create_agent(auth.tenant_id, body.name, auth.user_id)
 
 
+@v1.get("/agents/{agent_id}")
+async def get_agent(agent_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    agent = await repo.get_agent_detail(auth.tenant_id, agent_id)
+    if not agent:
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    return agent
+
+
+@v1.patch("/agents/{agent_id}")
+async def update_agent(agent_id: UUID, body: AgentPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if auth.role not in {"owner", "admin"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
+    agent = await repo.update_agent(auth.tenant_id, agent_id, body.model_dump(exclude_unset=True))
+    if not agent:
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    return agent
+
+
+@v1.delete("/agents/{agent_id}", status_code=204)
+async def delete_agent(agent_id: UUID, auth: Auth, repo: Repo) -> None:
+    if auth.role not in {"owner", "admin"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
+    if not await repo.delete_agent(auth.tenant_id, agent_id):
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+
+
+@v1.get("/agents/{agent_id}/versions")
+async def list_versions(agent_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if not await repo.get_agent(auth.tenant_id, agent_id):
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    return {"data": await repo.list_versions(auth.tenant_id, agent_id), "next_cursor": None}
+
+
+@v1.get("/agents/{agent_id}/versions/{version_id}")
+async def get_version(agent_id: UUID, version_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    version = await repo.get_version(auth.tenant_id, agent_id, version_id)
+    if not version:
+        raise HTTPException(404, detail={"code": "version_not_found", "message": "Version not found"})
+    return version
+
+
+@v1.patch("/agents/{agent_id}/draft")
+async def update_draft(agent_id: UUID, body: AgentDraftPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if auth.role not in {"owner", "admin"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
+    draft = await repo.update_draft(auth.tenant_id, agent_id, body.model_dump(exclude_unset=True))
+    if not draft:
+        raise HTTPException(404, detail={"code": "draft_not_found", "message": "Draft not found"})
+    return draft
+
+
 @v1.post("/agents/{agent_id}/publish")
 async def publish_agent(agent_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if auth.role not in {"owner", "admin"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
     agent = await repo.publish_agent(auth.tenant_id, agent_id)
     if not agent:
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    return agent
+
+
+@v1.post("/agents/{agent_id}/rollback")
+async def rollback_agent(agent_id: UUID, body: AgentRollback, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if auth.role not in {"owner", "admin"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
+    agent = await repo.rollback_agent(auth.tenant_id, agent_id, body.version_id)
+    if not agent:
+        raise HTTPException(404, detail={"code": "version_not_found", "message": "Published version not found"})
     return agent
 
 
@@ -66,4 +136,4 @@ async def runtime(agent_id: UUID, repo: Repo) -> dict[str, Any]:
     agent = await repo.get_runtime(agent_id)
     if not agent:
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
-    return {"tenant_id": agent["tenant_id"], "agent_id": agent_id, "version_id": agent["current_version_id"] or agent["draft_version_id"], "system_prompt": "Você é um agente de voz. Responda de forma curta e natural.", "greeting": f"Olá! Aqui é {agent['name']}. Como posso ajudar?", "language": "pt-BR", "llm": {"provider": "anthropic", "temperature": 0.3, "max_tokens": 350}, "stt": {"provider": "deepgram", "model": "nova-3"}, "tts": {"provider": "elevenlabs", "model": "eleven_flash_v2_5"}, "turn": {"allow_interruptions": True}, "behavior": {"max_call_duration_s": 900}, "rag": {"enabled": False}, "tools": []}
+    return {"tenant_id": agent["tenant_id"], "agent_id": agent_id, "version_id": agent["version_id"], "system_prompt": agent["system_prompt"], "greeting": agent["greeting"], "language": agent["language"], "llm": agent["llm"], "stt": agent["stt"], "tts": agent["tts"], "turn": agent["turn_config"], "behavior": agent["behavior"], "rag": agent["rag"], "tools": []}
