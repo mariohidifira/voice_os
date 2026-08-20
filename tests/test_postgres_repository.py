@@ -46,6 +46,20 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
             {"name": f"repo_tool_{str(agent_id)[:8]}", "description": "Teste", "type": "webhook", "native_kind": None, "parameters_schema": {"type": "object"}, "webhook": None, "speak_before": None, "async": False},
         )
         tool_id = tool["id"]
+        assert [item["id"] for item in await repo.list_tools(TENANT) if item["id"] == tool_id] == [tool_id]
+        assert await repo.get_tool(TENANT, tool_id)
+        updated_tool = await repo.update_tool(TENANT, tool_id, {"speak_before": "Consultando"})
+        assert updated_tool and updated_tool["speak_before"] == "Consultando"
+        linked = await repo.set_draft_tools(TENANT, agent_id, [tool_id])
+        assert linked and linked[0]["id"] == tool_id
+        draft_runtime = await repo.get_runtime(agent_id, "draft")
+        assert draft_runtime and draft_runtime["tools"][0]["id"] == tool_id
+        published_with_tool = await repo.publish_agent(TENANT, agent_id)
+        assert published_with_tool
+        current_runtime = await repo.get_runtime(agent_id, "current")
+        assert current_runtime and current_runtime["tools"][0]["id"] == tool_id
+        assert await repo.get_runtime(agent_id, str(current_runtime["version_id"]))
+        assert await repo.get_runtime(agent_id, "invalid") is None
 
         end_user = await repo.upsert_end_user(TENANT, {"external_id": f"repo-{agent_id}", "name": "Mario", "metadata": {"source": "pytest"}})
         end_user_id = end_user["id"]
@@ -87,6 +101,8 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
                 await db.execute(text("DELETE FROM call_tool_calls WHERE call_id=:id"), {"id": call_id})
                 await db.execute(text("DELETE FROM call_turns WHERE call_id=:id"), {"id": call_id})
                 await db.execute(text("DELETE FROM calls WHERE id=:id"), {"id": call_id})
+            if tool_id:
+                await db.execute(text("DELETE FROM agent_tools WHERE tool_id=:id"), {"id": tool_id})
             await db.execute(text("DELETE FROM agent_versions WHERE agent_id=:id"), {"id": agent_id})
             await db.execute(text("DELETE FROM agents WHERE id=:id"), {"id": agent_id})
             if tool_id:

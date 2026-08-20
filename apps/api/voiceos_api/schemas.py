@@ -33,6 +33,10 @@ class AgentRollback(BaseModel):
     version_id: UUID
 
 
+class AgentToolsSet(BaseModel):
+    tool_ids: list[UUID]
+
+
 class SessionCreate(BaseModel):
     agent_id: UUID
     end_user: dict[str, Any] | None = None
@@ -56,6 +60,16 @@ class ToolCreate(BaseModel):
         if len(value) > 40 or not value.replace("_", "").isalnum() or value.lower() != value:
             raise ValueError("name must be snake_case and <= 40 characters")
         return value
+
+
+class ToolPatch(BaseModel):
+    name: str | None = None
+    description: str | None = Field(default=None, max_length=300)
+    native_kind: str | None = None
+    parameters_schema: dict[str, Any] | None = None
+    webhook: dict[str, Any] | None = None
+    speak_before: str | None = None
+    async_: bool | None = Field(default=None, alias="async")
 
 
 class CallEvent(BaseModel):

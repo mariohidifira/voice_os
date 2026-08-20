@@ -56,5 +56,10 @@
   "54": "Auth HTTP Handlers",
   "55": "Runtime Settings",
   "56": "Demo Tenant Seed",
-  "57": "Local Stack Verification"
+  "57": "Local Stack Verification",
+  "58": "__init__.py",
+  "59": "{ GET, POST }",
+  "60": "voiceos",
+  "61": "generate_openapi.py",
+  "62": "smoke.py"
 }

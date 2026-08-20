@@ -160,6 +160,7 @@ def test_internal_auth() -> None:
 def test_tool_and_internal_runtime() -> None:
     store.agents.clear()
     store.tools.clear()
+    store.agent_tools.clear()
     tenant = str(uuid4())
     agent = client.post("/v1/agents", json={"name": "Runtime"}, headers=headers(tenant)).json()
     tool = client.post(
@@ -173,12 +174,25 @@ def test_tool_and_internal_runtime() -> None:
         headers=headers(tenant),
     )
     assert tool.status_code == 201
+    tool_id = tool.json()["id"]
+    assert client.get("/v1/tools", headers=headers(tenant)).json()["data"][0]["id"] == tool_id
+    assert client.patch(f"/v1/tools/{tool_id}", json={"speak_before": "Consultando"}, headers=headers(tenant)).json()["speak_before"] == "Consultando"
+    assert client.put(f"/v1/agents/{agent['id']}/draft/tools", json={"tool_ids": [tool_id]}, headers=headers(tenant)).status_code == 200
     runtime = client.get(
-        f"/internal/agents/{agent['id']}/runtime",
+        f"/internal/agents/{agent['id']}/runtime?version=draft",
         headers={"X-Internal-Token": get_settings().internal_api_token},
     )
     assert runtime.status_code == 200
     assert runtime.json()["language"] == "pt-BR"
+    assert runtime.json()["tools"][0]["name"] == "consultar_pedido"
+    published = client.post(f"/v1/agents/{agent['id']}/publish", headers=headers(tenant)).json()
+    current = client.get(f"/internal/agents/{agent['id']}/runtime?version=current", headers={"X-Internal-Token": get_settings().internal_api_token}).json()
+    assert current["version_id"] == published["current_version_id"]
+    assert current["tools"][0]["id"] == tool_id
+    next_draft = client.get(f"/internal/agents/{agent['id']}/runtime?version=draft", headers={"X-Internal-Token": get_settings().internal_api_token}).json()
+    assert next_draft["tools"][0]["id"] == tool_id
+    assert client.get(f"/internal/agents/{agent['id']}/runtime?version=invalid", headers={"X-Internal-Token": get_settings().internal_api_token}).status_code == 404
+    assert client.delete(f"/v1/tools/{tool_id}", headers=headers(tenant)).status_code == 204
 
 
 def test_call_lifecycle_internal_batches_and_detail() -> None:

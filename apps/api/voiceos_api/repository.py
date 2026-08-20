@@ -36,7 +36,12 @@ class Repository(Protocol):
     async def append_call_tool_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
     async def get_call_tenant(self, call_id: UUID) -> UUID | None: ...
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
-    async def get_runtime(self, agent_id: UUID) -> dict[str, Any] | None: ...
+    async def list_tools(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def get_tool(self, tenant_id: UUID, tool_id: UUID) -> dict[str, Any] | None: ...
+    async def update_tool(self, tenant_id: UUID, tool_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def delete_tool(self, tenant_id: UUID, tool_id: UUID) -> bool: ...
+    async def set_draft_tools(self, tenant_id: UUID, agent_id: UUID, tool_ids: list[UUID]) -> list[dict[str, Any]] | None: ...
+    async def get_runtime(self, agent_id: UUID, version: str = "current") -> dict[str, Any] | None: ...
 
 
 class PostgresRepository:
@@ -168,6 +173,7 @@ class PostgresRepository:
                 return None
             await db.execute(text("UPDATE agent_versions SET published_at=now() WHERE id=:version"), {"version": current})
             await db.execute(text("INSERT INTO agent_versions(id,tenant_id,agent_id,version,system_prompt,greeting,llm,stt,tts,turn_config,behavior,rag,variables,created_by) SELECT :new,tenant_id,agent_id,version+1,system_prompt,greeting,llm,stt,tts,turn_config,behavior,rag,variables,created_by FROM agent_versions WHERE id=:current"), {"new": new_draft, "current": current})
+            await db.execute(text("INSERT INTO agent_tools(tenant_id,agent_version_id,tool_id,enabled) SELECT tenant_id,:new,tool_id,enabled FROM agent_tools WHERE agent_version_id=:current"), {"new": new_draft, "current": current})
             await db.execute(text("UPDATE agents SET current_version_id=:current,draft_version_id=:draft,status='active',updated_at=now() WHERE id=:id"), {"current": current, "draft": new_draft, "id": agent_id})
         return await self.get_agent(tenant_id, agent_id)
 
@@ -334,22 +340,80 @@ class PostgresRepository:
             await db.execute(text("INSERT INTO tools(id,tenant_id,name,description,type,native_kind,parameters_schema,webhook,speak_before,is_async) VALUES(:id,:tenant,:name,:description,:type,:native_kind,CAST(:schema AS jsonb),CAST(:webhook AS jsonb),:speak_before,:is_async)"), {"id": tool_id, "tenant": tenant_id, "name": data["name"], "description": data["description"], "type": data["type"], "native_kind": data.get("native_kind"), "schema": json.dumps(data["parameters_schema"]), "webhook": json.dumps(data.get("webhook")), "speak_before": data.get("speak_before"), "is_async": data.get("async", False)})
         return {"id": tool_id, "tenant_id": tenant_id, **data}
 
-    async def get_runtime(self, agent_id: UUID) -> dict[str, Any] | None:
+    async def list_tools(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT * FROM tools ORDER BY created_at DESC"))
+            return [dict(row) for row in rows.mappings()]
+
+    async def get_tool(self, tenant_id: UUID, tool_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("SELECT * FROM tools WHERE id=:id"), {"id": tool_id})
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def update_tool(self, tenant_id: UUID, tool_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        json_fields = {"parameters_schema", "webhook"}
+        column_names = {"async": "is_async"}
+        assignments, params = [], {"id": tool_id}
+        for field, value in data.items():
+            column = column_names.get(field, field)
+            params[field] = __import__("json").dumps(value) if field in json_fields else value
+            assignments.append(f"{column}=CAST(:{field} AS jsonb)" if field in json_fields else f"{column}=:{field}")
+        if not assignments:
+            return await self.get_tool(tenant_id, tool_id)
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text(f"UPDATE tools SET {', '.join(assignments)},updated_at=now() WHERE id=:id RETURNING *"), params)
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def delete_tool(self, tenant_id: UUID, tool_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(text("DELETE FROM tools WHERE id=:id RETURNING id"), {"id": tool_id})
+            return result.scalar_one_or_none() is not None
+
+    async def set_draft_tools(self, tenant_id: UUID, agent_id: UUID, tool_ids: list[UUID]) -> list[dict[str, Any]] | None:
+        async with self.tenant_session(tenant_id) as db:
+            draft_id = (await db.execute(text("SELECT draft_version_id FROM agents WHERE id=:id AND deleted_at IS NULL"), {"id": agent_id})).scalar_one_or_none()
+            if draft_id is None:
+                return None
+            if tool_ids:
+                count = (await db.execute(text("SELECT count(*) FROM tools WHERE id = ANY(:ids)"), {"ids": tool_ids})).scalar_one()
+                if count != len(set(tool_ids)):
+                    raise ValueError("one or more tools do not belong to tenant")
+            await db.execute(text("DELETE FROM agent_tools WHERE agent_version_id=:version"), {"version": draft_id})
+            for tool_id in dict.fromkeys(tool_ids):
+                await db.execute(text("INSERT INTO agent_tools(tenant_id,agent_version_id,tool_id,enabled) VALUES(:tenant,:version,:tool,true)"), {"tenant": tenant_id, "version": draft_id, "tool": tool_id})
+        return [tool for tool_id in tool_ids if (tool := await self.get_tool(tenant_id, tool_id))]
+
+    async def get_runtime(self, agent_id: UUID, version: str = "current") -> dict[str, Any] | None:
         async with SessionFactory() as db, db.begin():
             await db.execute(text("SET LOCAL row_security = off"))
+            agent_row = await db.execute(text("SELECT tenant_id,current_version_id,draft_version_id FROM agents WHERE id=:id AND deleted_at IS NULL"), {"id": agent_id})
+            agent = agent_row.mappings().first()
+            if not agent:
+                return None
+            try:
+                version_id = agent["current_version_id"] if version == "current" else agent["draft_version_id"] if version == "draft" else UUID(version)
+            except ValueError:
+                return None
+            if version_id is None:
+                return None
             row = await db.execute(
                 text(
                     "SELECT a.id agent_id,a.tenant_id,a.name,v.id version_id,v.system_prompt,"
                     "v.greeting,v.language,v.extra_languages,v.llm,v.stt,v.tts,v.turn_config,"
                     "v.behavior,v.knowledge_base_id,v.rag,v.variables "
                     "FROM agents a JOIN agent_versions v "
-                    "ON v.id=COALESCE(a.current_version_id,a.draft_version_id) "
-                    "WHERE a.id=:id AND a.deleted_at IS NULL"
+                    "ON v.agent_id=a.id "
+                    "WHERE a.id=:id AND v.id=:version AND a.deleted_at IS NULL"
                 ),
-                {"id": agent_id},
+                {"id": agent_id, "version": version_id},
             )
             mapping = row.mappings().first()
-            return dict(mapping) if mapping else None
+            if not mapping:
+                return None
+            tools = await db.execute(text("SELECT t.* FROM tools t JOIN agent_tools at ON at.tool_id=t.id WHERE at.agent_version_id=:version AND at.enabled ORDER BY t.name"), {"version": version_id})
+            return {**dict(mapping), "tools": [dict(tool) for tool in tools.mappings()]}
 
 
 class MemoryRepository:
@@ -433,6 +497,7 @@ class MemoryRepository:
             new_id = uuid4()
             draft = {**published, "id": new_id, "version": published["version"] + 1, "published_at": None, "created_at": now, "updated_at": now}
             self.memory.agent_versions[new_id] = draft
+            self.memory.agent_tools[new_id] = set(self.memory.agent_tools.get(published["id"], set()))
             agent["current_version_id"], agent["draft_version_id"], agent["status"] = published["id"], new_id, "active"
             agent["updated_at"] = now
         return await self.get_agent_detail(tenant_id, agent_id)
@@ -522,12 +587,52 @@ class MemoryRepository:
         self.memory.tools[tool_id] = result
         return result
 
-    async def get_runtime(self, agent_id: UUID) -> dict[str, Any] | None:
+    async def list_tools(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return [tool for tool in self.memory.tools.values() if tool["tenant_id"] == tenant_id]
+
+    async def get_tool(self, tenant_id: UUID, tool_id: UUID) -> dict[str, Any] | None:
+        tool = self.memory.tools.get(tool_id)
+        return tool if tool and tool["tenant_id"] == tenant_id else None
+
+    async def update_tool(self, tenant_id: UUID, tool_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        tool = await self.get_tool(tenant_id, tool_id)
+        if not tool:
+            return None
+        tool.update(data)
+        tool["updated_at"] = datetime.now(UTC)
+        return tool
+
+    async def delete_tool(self, tenant_id: UUID, tool_id: UUID) -> bool:
+        if not await self.get_tool(tenant_id, tool_id):
+            return False
+        self.memory.tools.pop(tool_id)
+        for tool_ids in self.memory.agent_tools.values():
+            tool_ids.discard(tool_id)
+        return True
+
+    async def set_draft_tools(self, tenant_id: UUID, agent_id: UUID, tool_ids: list[UUID]) -> list[dict[str, Any]] | None:
+        agent = await self.get_agent(tenant_id, agent_id)
+        if not agent:
+            return None
+        tools = [tool for tool_id in tool_ids if (tool := await self.get_tool(tenant_id, tool_id))]
+        if len(tools) != len(set(tool_ids)):
+            raise ValueError("one or more tools do not belong to tenant")
+        self.memory.agent_tools[agent["draft_version_id"]] = set(tool_ids)
+        return tools
+
+    async def get_runtime(self, agent_id: UUID, version: str = "current") -> dict[str, Any] | None:
         agent = self.memory.agents.get(agent_id)
         if not agent:
             return None
-        version = self.memory.agent_versions.get(agent["current_version_id"] or agent["draft_version_id"])
-        return {**agent, **(version or {}), "version_id": (version or {}).get("id")}
+        try:
+            version_id = agent["current_version_id"] if version == "current" else agent["draft_version_id"] if version == "draft" else UUID(version)
+        except ValueError:
+            return None
+        selected = self.memory.agent_versions.get(version_id)
+        if not selected or selected["agent_id"] != agent_id:
+            return None
+        tools = [self.memory.tools[tool_id] for tool_id in self.memory.agent_tools.get(version_id, set()) if tool_id in self.memory.tools]
+        return {**agent, **selected, "version_id": selected["id"], "tools": sorted(tools, key=lambda tool: tool["name"])}
 
 
 postgres_repository = PostgresRepository()

@@ -14,6 +14,7 @@ from .schemas import (
     AgentDraftPatch,
     AgentPatch,
     AgentRollback,
+    AgentToolsSet,
     CallEventBatch,
     CallPatch,
     CallToolCallCreate,
@@ -21,6 +22,7 @@ from .schemas import (
     InternalCallCreate,
     SessionCreate,
     ToolCreate,
+    ToolPatch,
 )
 
 v1 = APIRouter(prefix="/v1")
@@ -207,12 +209,50 @@ async def create_tool(body: ToolCreate, auth: Auth, repo: Repo) -> dict[str, Any
     return await repo.create_tool(auth.tenant_id, body.model_dump(by_alias=True))
 
 
+@v1.get("/tools")
+async def list_tools(auth: Auth, repo: Repo) -> dict[str, Any]:
+    return {"data": await repo.list_tools(auth.tenant_id), "next_cursor": None}
+
+
+@v1.get("/tools/{tool_id}")
+async def get_tool(tool_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    tool = await repo.get_tool(auth.tenant_id, tool_id)
+    if not tool:
+        raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
+    return tool
+
+
+@v1.patch("/tools/{tool_id}")
+async def update_tool(tool_id: UUID, body: ToolPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    tool = await repo.update_tool(auth.tenant_id, tool_id, body.model_dump(exclude_unset=True, by_alias=True))
+    if not tool:
+        raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
+    return tool
+
+
+@v1.delete("/tools/{tool_id}", status_code=204)
+async def delete_tool(tool_id: UUID, auth: Auth, repo: Repo) -> None:
+    if not await repo.delete_tool(auth.tenant_id, tool_id):
+        raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
+
+
+@v1.put("/agents/{agent_id}/draft/tools")
+async def set_draft_tools(agent_id: UUID, body: AgentToolsSet, auth: Auth, repo: Repo) -> dict[str, Any]:
+    try:
+        tools = await repo.set_draft_tools(auth.tenant_id, agent_id, body.tool_ids)
+    except ValueError as exc:
+        raise HTTPException(422, detail={"code": "invalid_tools", "message": str(exc)}) from exc
+    if tools is None:
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    return {"data": tools}
+
+
 @internal.get("/agents/{agent_id}/runtime")
-async def runtime(agent_id: UUID, repo: Repo) -> dict[str, Any]:
-    agent = await repo.get_runtime(agent_id)
+async def runtime(agent_id: UUID, repo: Repo, version: str = "current") -> dict[str, Any]:
+    agent = await repo.get_runtime(agent_id, version)
     if not agent:
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
-    return {"tenant_id": agent["tenant_id"], "agent_id": agent_id, "version_id": agent["version_id"], "system_prompt": agent["system_prompt"], "greeting": agent["greeting"], "language": agent["language"], "llm": agent["llm"], "stt": agent["stt"], "tts": agent["tts"], "turn": agent["turn_config"], "behavior": agent["behavior"], "rag": agent["rag"], "tools": []}
+    return {"tenant_id": agent["tenant_id"], "agent_id": agent_id, "version_id": agent["version_id"], "system_prompt": agent["system_prompt"], "greeting": agent["greeting"], "language": agent["language"], "llm": agent["llm"], "stt": agent["stt"], "tts": agent["tts"], "turn": agent["turn_config"], "behavior": agent["behavior"], "knowledge_base_id": agent["knowledge_base_id"], "rag": agent["rag"], "variables": agent["variables"], "tools": agent["tools"]}
 
 
 @internal.post("/calls", status_code=201)

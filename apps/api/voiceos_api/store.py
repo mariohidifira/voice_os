@@ -15,6 +15,7 @@ class MemoryStore:
         self.call_turns: dict[UUID, list[dict[str, Any]]] = {}
         self.call_tool_calls: dict[UUID, list[dict[str, Any]]] = {}
         self.tools: dict[UUID, dict[str, Any]] = {}
+        self.agent_tools: dict[UUID, set[UUID]] = {}
 
     def create_agent(self, tenant_id: UUID, name: str) -> dict[str, Any]:
         agent_id, draft_id = uuid4(), uuid4()
