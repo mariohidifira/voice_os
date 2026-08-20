@@ -72,6 +72,17 @@ class ToolPatch(BaseModel):
     async_: bool | None = Field(default=None, alias="async")
 
 
+class ToolTestRequest(BaseModel):
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    session_variables: dict[str, Any] = Field(default_factory=dict)
+    end_user: dict[str, Any] = Field(default_factory=dict)
+
+
+class InternalToolExecute(ToolTestRequest):
+    tool_id: UUID
+    call_id: UUID
+
+
 class CallEvent(BaseModel):
     type: str
     payload: dict[str, Any] = Field(default_factory=dict)

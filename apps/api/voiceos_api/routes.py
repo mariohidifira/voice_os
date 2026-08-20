@@ -20,16 +20,20 @@ from .schemas import (
     CallToolCallCreate,
     CallTurnBatch,
     InternalCallCreate,
+    InternalToolExecute,
     SessionCreate,
     ToolCreate,
     ToolPatch,
+    ToolTestRequest,
 )
+from .tool_execution import ToolExecutor, get_tool_executor
 
 v1 = APIRouter(prefix="/v1")
 internal = APIRouter(prefix="/internal", dependencies=[Depends(internal_token)])
 Auth = Annotated[Principal, Depends(principal)]
 Repo = Annotated[Repository, Depends(get_repository)]
 Bus = Annotated[EventBus, Depends(get_event_bus)]
+Executor = Annotated[ToolExecutor, Depends(get_tool_executor)]
 
 
 @v1.get("/me")
@@ -236,6 +240,17 @@ async def delete_tool(tool_id: UUID, auth: Auth, repo: Repo) -> None:
         raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
 
 
+@v1.post("/tools/{tool_id}/test")
+async def test_tool(tool_id: UUID, body: ToolTestRequest, auth: Auth, repo: Repo, executor: Executor) -> dict[str, Any]:
+    tool = await repo.get_tool(auth.tenant_id, tool_id)
+    if not tool:
+        raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
+    result = await executor.execute(tool, body.arguments, {"tenant_id": auth.tenant_id, "session_variables": body.session_variables, "end_user": body.end_user, "call": {}})
+    if "error" not in result and result.get("status", 500) < 300:
+        await repo.update_tool(auth.tenant_id, tool_id, {"last_test_ok_at": datetime.now(UTC)})
+    return result
+
+
 @v1.put("/agents/{agent_id}/draft/tools")
 async def set_draft_tools(agent_id: UUID, body: AgentToolsSet, auth: Auth, repo: Repo) -> dict[str, Any]:
     try:
@@ -303,3 +318,19 @@ async def append_call_tool_call(call_id: UUID, body: CallToolCallCreate, repo: R
     if tenant_id:
         await bus.publish(tenant_id, call_id, {"type": "tool.called", "tool_call": item})
     return item
+
+
+@internal.post("/tools/execute")
+async def execute_tool(body: InternalToolExecute, repo: Repo, executor: Executor) -> dict[str, Any]:
+    tenant_id = await repo.get_call_tenant(body.call_id)
+    if not tenant_id:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    tool = await repo.get_tool(tenant_id, body.tool_id)
+    call = await repo.get_call(tenant_id, body.call_id)
+    if not tool or not call:
+        raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
+    result = await executor.execute(tool, body.arguments, {"tenant_id": tenant_id, "session_variables": body.session_variables, "end_user": body.end_user, "call": call})
+    raw_result = result.get("result", result)
+    llm_result: dict[str, Any] = raw_result if isinstance(raw_result, dict) else {"value": raw_result}
+    await repo.append_call_tool_call(body.call_id, {"id": None, "turn_id": None, "tool_id": body.tool_id, "name": tool["name"], "arguments": body.arguments, "result": llm_result, "status": "error" if "error" in llm_result else "ok", "duration_ms": result.get("latency_ms"), "started_at": datetime.now(UTC)})
+    return llm_result
