@@ -257,3 +257,33 @@ def test_invalid_token_and_wrong_tenant() -> None:
     settings = get_settings()
     token = jwt.encode({"sub": "u", "iss": settings.jwt_issuer, "aud": settings.jwt_audience, "tenants": []}, settings.auth_secret, algorithm="HS256")
     assert client.get("/v1/me", headers={"Authorization": f"Bearer {token}", "X-Tenant-Id": tenant}).status_code == 403
+
+
+def test_knowledge_base_and_document_crud_is_tenant_scoped() -> None:
+    store.knowledge_bases.clear()
+    store.documents.clear()
+    store.chunks.clear()
+    tenant_a, tenant_b = str(uuid4()), str(uuid4())
+    auth_a, auth_b = headers(tenant_a), headers(tenant_b)
+    kb = client.post("/v1/knowledge-bases", json={"name": "FAQ", "chunk_size": 400, "chunk_overlap": 50}, headers=auth_a)
+    assert kb.status_code == 201
+    kb_id = kb.json()["id"]
+    assert client.get("/v1/knowledge-bases", headers=auth_b).json()["data"] == []
+    assert client.patch(f"/v1/knowledge-bases/{kb_id}", json={"name": "FAQ BR"}, headers=auth_a).json()["name"] == "FAQ BR"
+    document = client.post(f"/v1/knowledge-bases/{kb_id}/documents", json={"name": "Atendimento", "text": "Prazo de entrega de dois dias."}, headers=auth_a)
+    assert document.status_code == 202
+    document_id = document.json()["id"]
+    documents = client.get(f"/v1/knowledge-bases/{kb_id}/documents", headers=auth_a).json()["data"]
+    assert documents[0]["status"] == "ready"
+    assert documents[0]["chunk_count"] == 1
+    query = client.post(f"/v1/knowledge-bases/{kb_id}/query", json={"query": "Prazo de entrega de dois dias.", "min_score": 0.99}, headers=auth_a)
+    assert query.json()["data"][0]["content"] == "Prazo de entrega de dois dias."
+    internal_query = client.post("/internal/rag/query", json={"knowledge_base_id": kb_id, "query": "Prazo de entrega de dois dias.", "min_score": 0.99}, headers={"X-Internal-Token": get_settings().internal_api_token})
+    assert internal_query.json()["data"][0]["score"] > 0.99
+    upload = client.post(f"/v1/knowledge-bases/{kb_id}/documents", files={"file": ("faq.html", b"<h1>Trocas</h1><p>Prazo de sete dias.</p>", "text/html")}, headers=auth_a)
+    assert upload.status_code == 202
+    uploaded_documents = client.get(f"/v1/knowledge-bases/{kb_id}/documents", headers=auth_a).json()["data"]
+    assert any(item["name"] == "faq.html" and item["status"] == "ready" for item in uploaded_documents)
+    assert client.get(f"/v1/knowledge-bases/{kb_id}", headers=auth_b).status_code == 404
+    assert client.delete(f"/v1/knowledge-bases/{kb_id}/documents/{document_id}", headers=auth_a).status_code == 204
+    assert client.delete(f"/v1/knowledge-bases/{kb_id}", headers=auth_a).status_code == 204

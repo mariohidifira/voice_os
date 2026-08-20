@@ -8,7 +8,8 @@ dependencies = [
   "pyjwt[crypto]>=2.10,<3", "httpx>=0.28,<1", "redis>=5.2,<6",
   "structlog>=24.4,<26", "jinja2>=3.1,<4", "jsonschema>=4.23,<5",
   "opentelemetry-distro[otlp]>=0.59b0,<1", "opentelemetry-instrumentation-fastapi>=0.59b0,<1",
-  "sentry-sdk[fastapi]>=2.0,<3"
+  "sentry-sdk[fastapi]>=2.0,<3", "python-multipart>=0.0.20,<1",
+  "pypdf>=5.0,<7", "python-docx>=1.1,<2"
 ]
 [project.optional-dependencies]
 dev = ["pytest>=8.3,<9", "pytest-asyncio>=0.25,<1", "pytest-cov>=6,<7", "mypy>=1.14,<2", "ruff>=0.9,<1", "types-jsonschema>=4.23,<5"]

@@ -18,6 +18,8 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
     call_ids: list[UUID] = []
     tool_id: UUID | None = None
     end_user_id: UUID | None = None
+    kb_id: UUID | None = None
+    document_id: UUID | None = None
     try:
         assert await repo.get_agent(TENANT, agent_id)
         assert await repo.get_agent_detail(TENANT, agent_id)
@@ -60,6 +62,21 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
         assert current_runtime and current_runtime["tools"][0]["id"] == tool_id
         assert await repo.get_runtime(agent_id, str(current_runtime["version_id"]))
         assert await repo.get_runtime(agent_id, "invalid") is None
+
+        kb = await repo.create_knowledge_base(TENANT, {"name": f"KB {str(agent_id)[:8]}", "embedding_model": "text-embedding-3-small", "chunk_size": 400, "chunk_overlap": 50})
+        kb_id = kb["id"]
+        assert await repo.get_knowledge_base(TENANT, kb_id)
+        assert await repo.get_knowledge_base_tenant(kb_id) == TENANT
+        assert any(item["id"] == kb_id for item in await repo.list_knowledge_bases(TENANT))
+        assert (await repo.update_knowledge_base(TENANT, kb_id, {"name": "KB updated"}))["name"] == "KB updated"  # type: ignore[index]
+        document = await repo.create_document(TENANT, kb_id, {"name": "FAQ", "source_type": "text", "source_uri": None})
+        assert document
+        document_id = document["id"]
+        vector = [1.0] + [0.0] * 1535
+        await repo.complete_document(TENANT, document_id, [{"content": "Prazo dois dias", "embedding": vector, "metadata": {}, "token_count": 4}])
+        assert (await repo.list_documents(TENANT, kb_id))[0]["status"] == "ready"
+        matches = await repo.query_chunks(TENANT, kb_id, vector, 5, 0.99)
+        assert matches[0]["content"] == "Prazo dois dias"
 
         end_user = await repo.upsert_end_user(TENANT, {"external_id": f"repo-{agent_id}", "name": "Mario", "metadata": {"source": "pytest"}})
         end_user_id = end_user["id"]
@@ -109,3 +126,8 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
                 await db.execute(text("DELETE FROM tools WHERE id=:id"), {"id": tool_id})
             if end_user_id:
                 await db.execute(text("DELETE FROM end_users WHERE id=:id"), {"id": end_user_id})
+            if document_id:
+                await db.execute(text("DELETE FROM chunks WHERE document_id=:id"), {"id": document_id})
+                await db.execute(text("DELETE FROM documents WHERE id=:id"), {"id": document_id})
+            if kb_id:
+                await db.execute(text("DELETE FROM knowledge_bases WHERE id=:id"), {"id": kb_id})

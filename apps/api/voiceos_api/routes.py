@@ -2,11 +2,12 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from .auth import Principal, internal_token, principal
 from .config import get_settings
+from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_embeddings
 from .live import EventBus, encode_sse, get_event_bus
 from .repository import Repository, get_repository
 from .schemas import (
@@ -19,8 +20,13 @@ from .schemas import (
     CallPatch,
     CallToolCallCreate,
     CallTurnBatch,
+    DocumentCreate,
     InternalCallCreate,
+    InternalRagQuery,
     InternalToolExecute,
+    KnowledgeBaseCreate,
+    KnowledgeBasePatch,
+    KnowledgeQuery,
     SessionCreate,
     ToolCreate,
     ToolPatch,
@@ -34,6 +40,19 @@ Auth = Annotated[Principal, Depends(principal)]
 Repo = Annotated[Repository, Depends(get_repository)]
 Bus = Annotated[EventBus, Depends(get_event_bus)]
 Executor = Annotated[ToolExecutor, Depends(get_tool_executor)]
+Embedder = Annotated[Embeddings, Depends(get_embeddings)]
+
+
+async def _ingest_document(repo: Repository, embeddings: Embeddings, tenant_id: UUID, document: dict[str, Any], kb: dict[str, Any], content: str | None, upload: bytes | None = None) -> None:
+    try:
+        extracted = await extract_url(document["source_uri"]) if document["source_type"] == "url" else extract_bytes(upload, document.get("mime"), document["name"]) if upload is not None else content or ""
+        texts = chunk_text(extracted, kb["chunk_size"], kb["chunk_overlap"])
+        if not texts:
+            raise ValueError("document has no extractable text")
+        vectors = await embeddings.create(texts, kb["embedding_model"])
+        await repo.complete_document(tenant_id, document["id"], [{"content": text, "embedding": vector, "metadata": {"url": document.get("source_uri")}, "token_count": max(1, len(text) // 4)} for text, vector in zip(texts, vectors, strict=True)])
+    except Exception as exc:
+        await repo.fail_document(tenant_id, document["id"], str(exc))
 
 
 @v1.get("/me")
@@ -262,6 +281,83 @@ async def set_draft_tools(agent_id: UUID, body: AgentToolsSet, auth: Auth, repo:
     return {"data": tools}
 
 
+@v1.get("/knowledge-bases")
+async def list_knowledge_bases(auth: Auth, repo: Repo) -> dict[str, Any]:
+    return {"data": await repo.list_knowledge_bases(auth.tenant_id), "next_cursor": None}
+
+
+@v1.post("/knowledge-bases", status_code=201)
+async def create_knowledge_base(body: KnowledgeBaseCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    return await repo.create_knowledge_base(auth.tenant_id, body.model_dump())
+
+
+@v1.get("/knowledge-bases/{kb_id}")
+async def get_knowledge_base(kb_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    item = await repo.get_knowledge_base(auth.tenant_id, kb_id)
+    if not item:
+        raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
+    return item
+
+
+@v1.patch("/knowledge-bases/{kb_id}")
+async def update_knowledge_base(kb_id: UUID, body: KnowledgeBasePatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    item = await repo.update_knowledge_base(auth.tenant_id, kb_id, body.model_dump(exclude_unset=True))
+    if not item:
+        raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
+    return item
+
+
+@v1.delete("/knowledge-bases/{kb_id}", status_code=204)
+async def delete_knowledge_base(kb_id: UUID, auth: Auth, repo: Repo) -> None:
+    if not await repo.delete_knowledge_base(auth.tenant_id, kb_id):
+        raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
+
+
+@v1.get("/knowledge-bases/{kb_id}/documents")
+async def list_documents(kb_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if not await repo.get_knowledge_base(auth.tenant_id, kb_id):
+        raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
+    return {"data": await repo.list_documents(auth.tenant_id, kb_id), "next_cursor": None}
+
+
+@v1.post("/knowledge-bases/{kb_id}/documents", status_code=202)
+async def create_document(kb_id: UUID, request: Request, background: BackgroundTasks, auth: Auth, repo: Repo, embeddings: Embedder) -> dict[str, Any]:
+    upload_bytes: bytes | None = None
+    if request.headers.get("content-type", "").startswith("multipart/form-data"):
+        form = await request.form()
+        uploaded = form.get("file")
+        if not hasattr(uploaded, "read"):
+            raise HTTPException(422, detail={"code": "file_required", "message": "Multipart field 'file' is required"})
+        upload_bytes = await uploaded.read()  # type: ignore[union-attr]
+        body = DocumentCreate(name=getattr(uploaded, "filename", None) or "documento", text="uploaded")
+        source_type, mime = "upload", getattr(uploaded, "content_type", None)
+    else:
+        body = DocumentCreate.model_validate(await request.json())
+        source_type, mime = ("url" if body.url else "text"), None
+    item = await repo.create_document(auth.tenant_id, kb_id, {"name": body.name, "source_type": source_type, "source_uri": body.url, "mime": mime, "size_bytes": len(upload_bytes) if upload_bytes is not None else None})
+    if not item:
+        raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
+    kb = await repo.get_knowledge_base(auth.tenant_id, kb_id)
+    assert kb is not None
+    background.add_task(_ingest_document, repo, embeddings, auth.tenant_id, item, kb, None if source_type == "upload" else body.text, upload_bytes)
+    return item
+
+
+@v1.delete("/knowledge-bases/{kb_id}/documents/{document_id}", status_code=204)
+async def delete_document(kb_id: UUID, document_id: UUID, auth: Auth, repo: Repo) -> None:
+    if not await repo.delete_document(auth.tenant_id, kb_id, document_id):
+        raise HTTPException(404, detail={"code": "document_not_found", "message": "Document not found"})
+
+
+@v1.post("/knowledge-bases/{kb_id}/query")
+async def query_knowledge_base(kb_id: UUID, body: KnowledgeQuery, auth: Auth, repo: Repo, embeddings: Embedder) -> dict[str, Any]:
+    kb = await repo.get_knowledge_base(auth.tenant_id, kb_id)
+    if not kb:
+        raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
+    vector = (await embeddings.create([body.query], kb["embedding_model"]))[0]
+    return {"data": await repo.query_chunks(auth.tenant_id, kb_id, vector, body.top_k, body.min_score)}
+
+
 @internal.get("/agents/{agent_id}/runtime")
 async def runtime(agent_id: UUID, repo: Repo, version: str = "current") -> dict[str, Any]:
     agent = await repo.get_runtime(agent_id, version)
@@ -334,3 +430,14 @@ async def execute_tool(body: InternalToolExecute, repo: Repo, executor: Executor
     llm_result: dict[str, Any] = raw_result if isinstance(raw_result, dict) else {"value": raw_result}
     await repo.append_call_tool_call(body.call_id, {"id": None, "turn_id": None, "tool_id": body.tool_id, "name": tool["name"], "arguments": body.arguments, "result": llm_result, "status": "error" if "error" in llm_result else "ok", "duration_ms": result.get("latency_ms"), "started_at": datetime.now(UTC)})
     return llm_result
+
+
+@internal.post("/rag/query")
+async def internal_rag_query(body: InternalRagQuery, repo: Repo, embeddings: Embedder) -> dict[str, Any]:
+    tenant_id = await repo.get_knowledge_base_tenant(body.knowledge_base_id)
+    if not tenant_id:
+        raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
+    kb = await repo.get_knowledge_base(tenant_id, body.knowledge_base_id)
+    assert kb is not None
+    vector = (await embeddings.create([body.query], kb["embedding_model"]))[0]
+    return {"data": await repo.query_chunks(tenant_id, body.knowledge_base_id, vector, body.top_k, body.min_score)}

@@ -83,6 +83,49 @@ class InternalToolExecute(ToolTestRequest):
     call_id: UUID
 
 
+class KnowledgeBaseCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    embedding_model: str = "text-embedding-3-small"
+    chunk_size: int = Field(default=800, ge=100, le=4000)
+    chunk_overlap: int = Field(default=120, ge=0, le=1000)
+
+    @field_validator("chunk_overlap")
+    @classmethod
+    def overlap_is_bounded(cls, value: int, info: Any) -> int:
+        if value >= info.data.get("chunk_size", 800):
+            raise ValueError("chunk_overlap must be smaller than chunk_size")
+        return value
+
+
+class KnowledgeBasePatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    chunk_size: int | None = Field(default=None, ge=100, le=4000)
+    chunk_overlap: int | None = Field(default=None, ge=0, le=1000)
+
+
+class DocumentCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    text: str | None = None
+    url: str | None = None
+
+    @field_validator("url")
+    @classmethod
+    def require_one_source(cls, value: str | None, info: Any) -> str | None:
+        if not value and not info.data.get("text"):
+            raise ValueError("text or url is required")
+        return value
+
+
+class KnowledgeQuery(BaseModel):
+    query: str = Field(min_length=1, max_length=4000)
+    top_k: int = Field(default=5, ge=1, le=20)
+    min_score: float = Field(default=0.65, ge=0, le=1)
+
+
+class InternalRagQuery(KnowledgeQuery):
+    knowledge_base_id: UUID
+
+
 class CallEvent(BaseModel):
     type: str
     payload: dict[str, Any] = Field(default_factory=dict)

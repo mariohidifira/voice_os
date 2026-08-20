@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     livekit_url: str = "wss://example.invalid"
     livekit_api_key: str = "dev"
     livekit_api_secret: str = "dev"
+    openai_api_key: str | None = None
     otel_exporter_otlp_endpoint: str | None = None
     otel_exporter_otlp_headers: str | None = None
     sentry_dsn: str | None = None

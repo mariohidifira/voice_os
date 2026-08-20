@@ -42,6 +42,18 @@ class Repository(Protocol):
     async def delete_tool(self, tenant_id: UUID, tool_id: UUID) -> bool: ...
     async def set_draft_tools(self, tenant_id: UUID, agent_id: UUID, tool_ids: list[UUID]) -> list[dict[str, Any]] | None: ...
     async def get_runtime(self, agent_id: UUID, version: str = "current") -> dict[str, Any] | None: ...
+    async def list_knowledge_bases(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def create_knowledge_base(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def get_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> dict[str, Any] | None: ...
+    async def update_knowledge_base(self, tenant_id: UUID, kb_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def delete_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> bool: ...
+    async def list_documents(self, tenant_id: UUID, kb_id: UUID) -> list[dict[str, Any]]: ...
+    async def create_document(self, tenant_id: UUID, kb_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def delete_document(self, tenant_id: UUID, kb_id: UUID, document_id: UUID) -> bool: ...
+    async def complete_document(self, tenant_id: UUID, document_id: UUID, chunks: list[dict[str, Any]]) -> None: ...
+    async def fail_document(self, tenant_id: UUID, document_id: UUID, error: str) -> None: ...
+    async def query_chunks(self, tenant_id: UUID, kb_id: UUID, embedding: list[float], top_k: int, min_score: float) -> list[dict[str, Any]]: ...
+    async def get_knowledge_base_tenant(self, kb_id: UUID) -> UUID | None: ...
 
 
 class PostgresRepository:
@@ -415,6 +427,80 @@ class PostgresRepository:
             tools = await db.execute(text("SELECT t.* FROM tools t JOIN agent_tools at ON at.tool_id=t.id WHERE at.agent_version_id=:version AND at.enabled ORDER BY t.name"), {"version": version_id})
             return {**dict(mapping), "tools": [dict(tool) for tool in tools.mappings()]}
 
+    async def list_knowledge_bases(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT * FROM knowledge_bases ORDER BY created_at DESC"))
+            return [dict(row) for row in rows.mappings()]
+
+    async def create_knowledge_base(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        kb_id = uuid4()
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("INSERT INTO knowledge_bases(id,tenant_id,name,embedding_model,chunk_size,chunk_overlap,status) VALUES(:id,:tenant,:name,:embedding_model,:chunk_size,:chunk_overlap,'ready') RETURNING *"), {"id": kb_id, "tenant": tenant_id, **data})
+            return dict(row.mappings().one())
+
+    async def get_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("SELECT * FROM knowledge_bases WHERE id=:id"), {"id": kb_id})
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def update_knowledge_base(self, tenant_id: UUID, kb_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        if not data:
+            return await self.get_knowledge_base(tenant_id, kb_id)
+        assignments = [f"{field}=:{field}" for field in data]
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text(f"UPDATE knowledge_bases SET {', '.join(assignments)},updated_at=now() WHERE id=:id RETURNING *"), {"id": kb_id, **data})
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def delete_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(text("DELETE FROM knowledge_bases WHERE id=:id RETURNING id"), {"id": kb_id})
+            return result.scalar_one_or_none() is not None
+
+    async def list_documents(self, tenant_id: UUID, kb_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT * FROM documents WHERE knowledge_base_id=:kb AND deleted_at IS NULL ORDER BY created_at DESC"), {"kb": kb_id})
+            return [dict(row) for row in rows.mappings()]
+
+    async def create_document(self, tenant_id: UUID, kb_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        if not await self.get_knowledge_base(tenant_id, kb_id):
+            return None
+        document_id = uuid4()
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("INSERT INTO documents(id,tenant_id,knowledge_base_id,name,source_type,source_uri,mime,size_bytes,status) VALUES(:id,:tenant,:kb,:name,:source_type,:source_uri,:mime,:size_bytes,'pending') RETURNING *"), {"id": document_id, "tenant": tenant_id, "kb": kb_id, "name": data["name"], "source_type": data["source_type"], "source_uri": data.get("source_uri"), "mime": data.get("mime"), "size_bytes": data.get("size_bytes")})
+            return dict(row.mappings().one())
+
+    async def delete_document(self, tenant_id: UUID, kb_id: UUID, document_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(text("UPDATE documents SET deleted_at=now(),updated_at=now() WHERE id=:id AND knowledge_base_id=:kb AND deleted_at IS NULL RETURNING id"), {"id": document_id, "kb": kb_id})
+            return result.scalar_one_or_none() is not None
+
+    async def complete_document(self, tenant_id: UUID, document_id: UUID, chunks: list[dict[str, Any]]) -> None:
+        import json
+
+        async with self.tenant_session(tenant_id) as db:
+            document = (await db.execute(text("SELECT knowledge_base_id FROM documents WHERE id=:id FOR UPDATE"), {"id": document_id})).scalar_one()
+            await db.execute(text("DELETE FROM chunks WHERE document_id=:id"), {"id": document_id})
+            for ordinal, chunk in enumerate(chunks):
+                vector = "[" + ",".join(str(value) for value in chunk["embedding"]) + "]"
+                await db.execute(text("INSERT INTO chunks(id,tenant_id,document_id,knowledge_base_id,ordinal,content,embedding,metadata,token_count) VALUES(:id,:tenant,:document,:kb,:ordinal,:content,CAST(:embedding AS vector),CAST(:metadata AS jsonb),:tokens)"), {"id": uuid4(), "tenant": tenant_id, "document": document_id, "kb": document, "ordinal": ordinal, "content": chunk["content"], "embedding": vector, "metadata": json.dumps(chunk.get("metadata", {})), "tokens": chunk["token_count"]})
+            await db.execute(text("UPDATE documents SET status='ready',error=NULL,chunk_count=:count,updated_at=now() WHERE id=:id"), {"id": document_id, "count": len(chunks)})
+
+    async def fail_document(self, tenant_id: UUID, document_id: UUID, error: str) -> None:
+        async with self.tenant_session(tenant_id) as db:
+            await db.execute(text("UPDATE documents SET status='error',error=:error,updated_at=now() WHERE id=:id"), {"id": document_id, "error": error[:1000]})
+
+    async def query_chunks(self, tenant_id: UUID, kb_id: UUID, embedding: list[float], top_k: int, min_score: float) -> list[dict[str, Any]]:
+        vector = "[" + ",".join(str(value) for value in embedding) + "]"
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT id,document_id,ordinal,content,metadata,token_count,1-(embedding <=> CAST(:embedding AS vector)) AS score FROM chunks WHERE knowledge_base_id=:kb AND 1-(embedding <=> CAST(:embedding AS vector)) >= :score ORDER BY embedding <=> CAST(:embedding AS vector) LIMIT :limit"), {"embedding": vector, "kb": kb_id, "score": min_score, "limit": top_k})
+            return [dict(row) for row in rows.mappings()]
+
+    async def get_knowledge_base_tenant(self, kb_id: UUID) -> UUID | None:
+        async with self._internal_session() as db:
+            return (await db.execute(text("SELECT tenant_id FROM knowledge_bases WHERE id=:id"), {"id": kb_id})).scalar_one_or_none()
+
 
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
@@ -633,6 +719,77 @@ class MemoryRepository:
             return None
         tools = [self.memory.tools[tool_id] for tool_id in self.memory.agent_tools.get(version_id, set()) if tool_id in self.memory.tools]
         return {**agent, **selected, "version_id": selected["id"], "tools": sorted(tools, key=lambda tool: tool["name"])}
+
+    async def list_knowledge_bases(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return [kb for kb in self.memory.knowledge_bases.values() if kb["tenant_id"] == tenant_id]
+
+    async def create_knowledge_base(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        item = {"id": uuid4(), "tenant_id": tenant_id, **data, "status": "ready", "created_at": now, "updated_at": now}
+        self.memory.knowledge_bases[item["id"]] = item
+        return item
+
+    async def get_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> dict[str, Any] | None:
+        item = self.memory.knowledge_bases.get(kb_id)
+        return item if item and item["tenant_id"] == tenant_id else None
+
+    async def update_knowledge_base(self, tenant_id: UUID, kb_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        item = await self.get_knowledge_base(tenant_id, kb_id)
+        if not item:
+            return None
+        item.update(data)
+        item["updated_at"] = datetime.now(UTC)
+        return item
+
+    async def delete_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> bool:
+        if not await self.get_knowledge_base(tenant_id, kb_id):
+            return False
+        self.memory.knowledge_bases.pop(kb_id)
+        for document_id in [doc_id for doc_id, doc in self.memory.documents.items() if doc["knowledge_base_id"] == kb_id]:
+            self.memory.documents.pop(document_id)
+            self.memory.chunks.pop(document_id, None)
+        return True
+
+    async def list_documents(self, tenant_id: UUID, kb_id: UUID) -> list[dict[str, Any]]:
+        return [doc for doc in self.memory.documents.values() if doc["tenant_id"] == tenant_id and doc["knowledge_base_id"] == kb_id and not doc.get("deleted_at")]
+
+    async def create_document(self, tenant_id: UUID, kb_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        if not await self.get_knowledge_base(tenant_id, kb_id):
+            return None
+        now = datetime.now(UTC)
+        item = {"id": uuid4(), "tenant_id": tenant_id, "knowledge_base_id": kb_id, **data, "status": "pending", "chunk_count": 0, "created_at": now, "updated_at": now}
+        self.memory.documents[item["id"]] = item
+        return item
+
+    async def delete_document(self, tenant_id: UUID, kb_id: UUID, document_id: UUID) -> bool:
+        item = self.memory.documents.get(document_id)
+        if not item or item["tenant_id"] != tenant_id or item["knowledge_base_id"] != kb_id or item.get("deleted_at"):
+            return False
+        item["deleted_at"] = datetime.now(UTC)
+        self.memory.chunks.pop(document_id, None)
+        return True
+
+    async def complete_document(self, tenant_id: UUID, document_id: UUID, chunks: list[dict[str, Any]]) -> None:
+        document = self.memory.documents[document_id]
+        if document["tenant_id"] != tenant_id:
+            return
+        self.memory.chunks[document_id] = [{**chunk, "id": uuid4(), "document_id": document_id, "knowledge_base_id": document["knowledge_base_id"], "ordinal": ordinal} for ordinal, chunk in enumerate(chunks)]
+        document.update({"status": "ready", "error": None, "chunk_count": len(chunks), "updated_at": datetime.now(UTC)})
+
+    async def fail_document(self, tenant_id: UUID, document_id: UUID, error: str) -> None:
+        document = self.memory.documents.get(document_id)
+        if document and document["tenant_id"] == tenant_id:
+            document.update({"status": "error", "error": error[:1000], "updated_at": datetime.now(UTC)})
+
+    async def query_chunks(self, tenant_id: UUID, kb_id: UUID, embedding: list[float], top_k: int, min_score: float) -> list[dict[str, Any]]:
+        from .knowledge import cosine_similarity
+
+        candidates = [{**chunk, "score": cosine_similarity(embedding, chunk["embedding"])} for document_id, chunks in self.memory.chunks.items() if self.memory.documents[document_id]["tenant_id"] == tenant_id and self.memory.documents[document_id]["knowledge_base_id"] == kb_id for chunk in chunks]
+        return sorted([chunk for chunk in candidates if chunk["score"] >= min_score], key=lambda chunk: chunk["score"], reverse=True)[:top_k]
+
+    async def get_knowledge_base_tenant(self, kb_id: UUID) -> UUID | None:
+        item = self.memory.knowledge_bases.get(kb_id)
+        return item["tenant_id"] if item else None
 
 
 postgres_repository = PostgresRepository()
