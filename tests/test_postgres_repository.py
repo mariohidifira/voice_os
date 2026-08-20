@@ -17,6 +17,7 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
     agent_id = agent["id"]
     call_ids: list[UUID] = []
     tool_id: UUID | None = None
+    end_user_id: UUID | None = None
     try:
         assert await repo.get_agent(TENANT, agent_id)
         assert await repo.get_agent_detail(TENANT, agent_id)
@@ -46,11 +47,18 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
         )
         tool_id = tool["id"]
 
-        call = await repo.create_call(TENANT, agent_id, {"name": "Mario"}, {"source": "pytest"})
+        end_user = await repo.upsert_end_user(TENANT, {"external_id": f"repo-{agent_id}", "name": "Mario", "metadata": {"source": "pytest"}})
+        end_user_id = end_user["id"]
+        updated_end_user = await repo.upsert_end_user(TENANT, {"external_id": f"repo-{agent_id}", "phone": "+5511999999999", "metadata": {"updated": True}})
+        assert updated_end_user["id"] == end_user_id
+        assert updated_end_user["metadata"] == {"source": "pytest", "updated": True}
+
+        call = await repo.create_call(TENANT, agent_id, {"name": "Mario"}, {"source": "pytest"}, agent_version_id=first_version, end_user_id=end_user_id)
         call_id = call["id"]
         call_ids.append(call_id)
         assert await repo.get_call(TENANT, call_id)
         assert any(item["id"] == call_id for item in await repo.list_calls(TENANT))
+        assert [item["id"] for item in await repo.list_calls(TENANT, {"agent_id": agent_id, "channel": "web", "status": "queued", "end_user_id": end_user_id})] == [call_id]
         assert await repo.update_call(TENANT, call_id, {"status": "in_progress", "latency": {"ttfb_p50_ms": 700}})
         assert await repo.update_call(TENANT, call_id, {})
 
@@ -83,3 +91,5 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
             await db.execute(text("DELETE FROM agents WHERE id=:id"), {"id": agent_id})
             if tool_id:
                 await db.execute(text("DELETE FROM tools WHERE id=:id"), {"id": tool_id})
+            if end_user_id:
+                await db.execute(text("DELETE FROM end_users WHERE id=:id"), {"id": end_user_id})

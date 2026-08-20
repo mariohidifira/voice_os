@@ -1,10 +1,13 @@
 import asyncio
+import os
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 config = context.config
+if database_url := os.getenv("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:

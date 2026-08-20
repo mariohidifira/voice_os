@@ -9,6 +9,7 @@ class MemoryStore:
     def __init__(self) -> None:
         self.agents: dict[UUID, dict[str, Any]] = {}
         self.agent_versions: dict[UUID, dict[str, Any]] = {}
+        self.end_users: dict[UUID, dict[str, Any]] = {}
         self.calls: dict[UUID, dict[str, Any]] = {}
         self.call_events: dict[UUID, list[dict[str, Any]]] = {}
         self.call_turns: dict[UUID, list[dict[str, Any]]] = {}

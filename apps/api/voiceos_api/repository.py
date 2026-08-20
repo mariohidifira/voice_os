@@ -23,8 +23,9 @@ class Repository(Protocol):
     async def get_version(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None: ...
     async def update_draft(self, tenant_id: UUID, agent_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
     async def rollback_agent(self, tenant_id: UUID, agent_id: UUID, version_id: UUID) -> dict[str, Any] | None: ...
-    async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]: ...
-    async def list_calls(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def upsert_end_user(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any], *, agent_version_id: UUID | None = None, end_user_id: UUID | None = None) -> dict[str, Any]: ...
+    async def list_calls(self, tenant_id: UUID, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]: ...
     async def get_call(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None: ...
     async def get_call_detail(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None: ...
     async def update_call(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
@@ -169,15 +170,58 @@ class PostgresRepository:
             await db.execute(text("UPDATE agents SET current_version_id=:current,draft_version_id=:draft,status='active',updated_at=now() WHERE id=:id"), {"current": current, "draft": new_draft, "id": agent_id})
         return await self.get_agent(tenant_id, agent_id)
 
-    async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+    async def upsert_end_user(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        import json
+
+        if not any(data.get(field) for field in ("external_id", "phone", "email")):
+            raise ValueError("end_user requires external_id, phone, or email")
+        async with self.tenant_session(tenant_id) as db:
+            existing = await db.execute(
+                text("""SELECT id FROM end_users WHERE
+                (external_id=:external_id AND :external_id IS NOT NULL) OR
+                (phone=:phone AND :phone IS NOT NULL) OR
+                (email=:email AND :email IS NOT NULL)
+                ORDER BY updated_at DESC LIMIT 1 FOR UPDATE"""),
+                {"external_id": data.get("external_id"), "phone": data.get("phone"), "email": data.get("email")},
+            )
+            existing_id = existing.scalar_one_or_none()
+            if existing_id:
+                row = await db.execute(
+                    text("""UPDATE end_users SET external_id=COALESCE(:external_id,external_id),phone=COALESCE(:phone,phone),email=COALESCE(:email,email),name=COALESCE(:name,name),metadata=metadata || CAST(:metadata AS jsonb),last_seen_at=now(),updated_at=now() WHERE id=:id RETURNING *"""),
+                    {"id": existing_id, "external_id": data.get("external_id"), "phone": data.get("phone"), "email": data.get("email"), "name": data.get("name"), "metadata": json.dumps(data.get("metadata", {}))},
+                )
+                return dict(row.mappings().one())
+            row = await db.execute(
+                text("INSERT INTO end_users(id,tenant_id,external_id,phone,email,name,metadata,first_seen_at,last_seen_at) VALUES(:id,:tenant,:external_id,:phone,:email,:name,CAST(:metadata AS jsonb),now(),now()) RETURNING *"),
+                {"id": uuid4(), "tenant": tenant_id, "external_id": data.get("external_id"), "phone": data.get("phone"), "email": data.get("email"), "name": data.get("name"), "metadata": json.dumps(data.get("metadata", {}))},
+            )
+            return dict(row.mappings().one())
+
+    async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any], *, agent_version_id: UUID | None = None, end_user_id: UUID | None = None) -> dict[str, Any]:
         call_id = uuid4()
         async with self.tenant_session(tenant_id) as db:
-            await db.execute(text("INSERT INTO calls(id,tenant_id,agent_id,channel,status,variables,metadata,started_at) VALUES(:id,:tenant,:agent,'web','queued',CAST(:variables AS jsonb),CAST(:metadata AS jsonb),now())"), {"id": call_id, "tenant": tenant_id, "agent": agent_id, "variables": __import__('json').dumps(variables), "metadata": __import__('json').dumps(metadata)})
-        return {"id": call_id, "tenant_id": tenant_id, "agent_id": agent_id, "channel": "web", "status": "queued", "variables": variables, "metadata": metadata}
+            await db.execute(text("INSERT INTO calls(id,tenant_id,agent_id,agent_version_id,end_user_id,channel,status,variables,metadata,started_at) VALUES(:id,:tenant,:agent,:version,:end_user,'web','queued',CAST(:variables AS jsonb),CAST(:metadata AS jsonb),now())"), {"id": call_id, "tenant": tenant_id, "agent": agent_id, "version": agent_version_id, "end_user": end_user_id, "variables": __import__('json').dumps(variables), "metadata": __import__('json').dumps(metadata)})
+        return {"id": call_id, "tenant_id": tenant_id, "agent_id": agent_id, "agent_version_id": agent_version_id, "end_user_id": end_user_id, "channel": "web", "status": "queued", "variables": variables, "metadata": metadata}
 
-    async def list_calls(self, tenant_id: UUID) -> list[dict[str, Any]]:
+    async def list_calls(self, tenant_id: UUID, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        filters = filters or {}
+        clauses, params = [], {}
+        for field in ("agent_id", "channel", "status", "end_user_id"):
+            if filters.get(field) is not None:
+                clauses.append(f"{field}=:{field}")
+                params[field] = filters[field]
+        if filters.get("from") is not None:
+            clauses.append("started_at >= :from_date")
+            params["from_date"] = filters["from"]
+        if filters.get("to") is not None:
+            clauses.append("started_at <= :to_date")
+            params["to_date"] = filters["to"]
+        if filters.get("q"):
+            clauses.append("(summary ILIKE :q OR EXISTS (SELECT 1 FROM call_turns ct WHERE ct.call_id=calls.id AND ct.text ILIKE :q))")
+            params["q"] = f"%{filters['q']}%"
         async with self.tenant_session(tenant_id) as db:
-            rows = await db.execute(text("SELECT * FROM calls ORDER BY created_at DESC"))
+            where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+            rows = await db.execute(text(f"SELECT * FROM calls{where} ORDER BY created_at DESC"), params)
             return [dict(row) for row in rows.mappings()]
 
     async def get_call(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None:
@@ -388,14 +432,35 @@ class MemoryRepository:
             agent["updated_at"] = now
         return await self.get_agent_detail(tenant_id, agent_id)
 
-    async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
+    async def upsert_end_user(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        if not any(data.get(field) for field in ("external_id", "phone", "email")):
+            raise ValueError("end_user requires external_id, phone, or email")
+        match = next((item for item in self.memory.end_users.values() if item["tenant_id"] == tenant_id and any(data.get(field) and item.get(field) == data[field] for field in ("external_id", "phone", "email"))), None)
+        now = datetime.now(UTC)
+        if match:
+            match.update({key: value for key, value in data.items() if value is not None})
+            match["last_seen_at"] = now
+            return match
+        item = {"id": uuid4(), "tenant_id": tenant_id, **data, "metadata": data.get("metadata", {}), "first_seen_at": now, "last_seen_at": now}
+        self.memory.end_users[item["id"]] = item
+        return item
+
+    async def create_call(self, tenant_id: UUID, agent_id: UUID, variables: dict[str, Any], metadata: dict[str, Any], *, agent_version_id: UUID | None = None, end_user_id: UUID | None = None) -> dict[str, Any]:
         call_id = uuid4()
-        result = {"id": call_id, "tenant_id": tenant_id, "agent_id": agent_id, "channel": "web", "status": "queued", "metadata": metadata, "variables": variables, "created_at": datetime.now(UTC)}
+        result = {"id": call_id, "tenant_id": tenant_id, "agent_id": agent_id, "agent_version_id": agent_version_id, "end_user_id": end_user_id, "channel": "web", "status": "queued", "metadata": metadata, "variables": variables, "created_at": datetime.now(UTC)}
         self.memory.calls[call_id] = result
         return result
 
-    async def list_calls(self, tenant_id: UUID) -> list[dict[str, Any]]:
-        return [c for c in self.memory.calls.values() if c["tenant_id"] == tenant_id]
+    async def list_calls(self, tenant_id: UUID, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        filters = filters or {}
+        calls = [c for c in self.memory.calls.values() if c["tenant_id"] == tenant_id]
+        for field in ("agent_id", "channel", "status", "end_user_id"):
+            if filters.get(field) is not None:
+                calls = [call for call in calls if call.get(field) == filters[field]]
+        if filters.get("q"):
+            query = filters["q"].casefold()
+            calls = [call for call in calls if query in (call.get("summary") or "").casefold() or any(query in turn.get("text", "").casefold() for turn in self.memory.call_turns.get(call["id"], []))]
+        return calls
 
     async def get_call(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None:
         call = self.memory.calls.get(call_id)

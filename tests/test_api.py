@@ -36,6 +36,7 @@ def test_health_and_error_contract() -> None:
 def test_agent_publish_session_and_isolation() -> None:
     store.agents.clear()
     store.agent_versions.clear()
+    store.end_users.clear()
     store.calls.clear()
     tenant_a, tenant_b = str(uuid4()), str(uuid4())
     created = client.post("/v1/agents", json={"name": "Recepcionista"}, headers=headers(tenant_a))
@@ -46,6 +47,36 @@ def test_agent_publish_session_and_isolation() -> None:
     session = client.post("/v1/sessions", json={"agent_id": agent["id"]}, headers=headers(tenant_a))
     assert session.status_code == 201
     assert client.get("/v1/calls", headers=headers(tenant_b)).json()["data"] == []
+
+
+def test_session_end_user_filters_and_draft_test_session() -> None:
+    store.agents.clear()
+    store.agent_versions.clear()
+    store.end_users.clear()
+    store.calls.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Sessions"}, headers=auth).json()
+    published = client.post(f"/v1/agents/{agent['id']}/publish", headers=auth).json()
+    session = client.post(
+        "/v1/sessions",
+        json={"agent_id": agent["id"], "end_user": {"external_id": "customer-42", "name": "Cliente"}},
+        headers=auth,
+    ).json()
+    call = client.get(f"/v1/calls/{session['call_id']}", headers=auth).json()
+    assert call["agent_version_id"] == published["current_version_id"]
+    assert call["end_user_id"]
+    assert len(client.get(f"/v1/calls?agent_id={agent['id']}&channel=web&status=queued", headers=auth).json()["data"]) == 1
+
+    detail = client.get(f"/v1/agents/{agent['id']}", headers=auth).json()
+    test_session = client.post(
+        f"/v1/agents/{agent['id']}/test-session",
+        json={"agent_id": agent["id"], "end_user": {"external_id": "customer-42", "phone": "+5511999999999"}},
+        headers=auth,
+    ).json()
+    test_call = client.get(f"/v1/calls/{test_session['call_id']}", headers=auth).json()
+    assert test_call["agent_version_id"] == detail["draft"]["id"]
+    assert len(store.end_users) == 1
 
 
 def test_agent_draft_versions_and_rollback() -> None:

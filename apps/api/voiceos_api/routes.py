@@ -1,8 +1,8 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from .auth import Principal, internal_token, principal
 from .config import get_settings
@@ -120,7 +120,13 @@ async def create_session(body: SessionCreate, auth: Auth, repo: Repo) -> dict[st
     agent = await repo.get_agent(auth.tenant_id, body.agent_id)
     if not agent or agent["status"] != "active":
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Active agent not found"})
-    call = await repo.create_call(auth.tenant_id, body.agent_id, body.variables, body.metadata)
+    end_user = None
+    if body.end_user:
+        try:
+            end_user = await repo.upsert_end_user(auth.tenant_id, body.end_user)
+        except ValueError as exc:
+            raise HTTPException(422, detail={"code": "invalid_end_user", "message": str(exc)}) from exc
+    call = await repo.create_call(auth.tenant_id, body.agent_id, body.variables, body.metadata, agent_version_id=agent["current_version_id"], end_user_id=end_user["id"] if end_user else None)
     call_id = call["id"]
     return {"session_id": call_id, "call_id": call_id, "livekit_url": get_settings().livekit_url, "token": f"dev_{call_id}", "expires_at": datetime.now(UTC) + timedelta(hours=1)}
 
@@ -132,9 +138,34 @@ async def delete_session(session_id: UUID, auth: Auth, repo: Repo) -> None:
         raise HTTPException(404, detail={"code": "session_not_found", "message": "Session not found"})
 
 
+@v1.post("/agents/{agent_id}/test-session", status_code=201)
+async def create_test_session(agent_id: UUID, body: SessionCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if body.agent_id != agent_id:
+        raise HTTPException(422, detail={"code": "agent_mismatch", "message": "Path and body agent_id must match"})
+    agent = await repo.get_agent(auth.tenant_id, agent_id)
+    if not agent:
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    end_user = await repo.upsert_end_user(auth.tenant_id, body.end_user) if body.end_user else None
+    metadata = {**body.metadata, "test_session": True}
+    call = await repo.create_call(auth.tenant_id, agent_id, body.variables, metadata, agent_version_id=agent["draft_version_id"], end_user_id=end_user["id"] if end_user else None)
+    call_id = call["id"]
+    return {"session_id": call_id, "call_id": call_id, "livekit_url": get_settings().livekit_url, "token": f"dev_{call_id}", "expires_at": datetime.now(UTC) + timedelta(hours=1)}
+
+
 @v1.get("/calls")
-async def calls(auth: Auth, repo: Repo) -> dict[str, Any]:
-    return {"data": await repo.list_calls(auth.tenant_id), "next_cursor": None}
+async def calls(
+    auth: Auth,
+    repo: Repo,
+    agent_id: UUID | None = None,
+    channel: str | None = None,
+    status: str | None = None,
+    end_user_id: UUID | None = None,
+    from_date: Annotated[date | None, Query(alias="from")] = None,
+    to_date: Annotated[date | None, Query(alias="to")] = None,
+    q: str | None = None,
+) -> dict[str, Any]:
+    filters = {"agent_id": agent_id, "channel": channel, "status": status, "end_user_id": end_user_id, "from": from_date, "to": to_date, "q": q}
+    return {"data": await repo.list_calls(auth.tenant_id, filters), "next_cursor": None}
 
 
 @v1.get("/calls/{call_id}")
