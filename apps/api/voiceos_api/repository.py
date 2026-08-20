@@ -58,6 +58,8 @@ class Repository(Protocol):
     async def list_secrets(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
     async def get_secret(self, tenant_id: UUID, secret_id: UUID) -> dict[str, Any] | None: ...
     async def delete_secret(self, tenant_id: UUID, secret_id: UUID) -> bool: ...
+    async def get_integration(self, tenant_id: UUID, provider: str) -> dict[str, Any] | None: ...
+    async def upsert_integration(self, tenant_id: UUID, provider: str, data: dict[str, Any]) -> dict[str, Any]: ...
 
 
 class PostgresRepository:
@@ -527,6 +529,21 @@ class PostgresRepository:
             result = await db.execute(text("DELETE FROM secrets WHERE id=:id RETURNING id"), {"id": secret_id})
             return result.scalar_one_or_none() is not None
 
+    async def get_integration(self, tenant_id: UUID, provider: str) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("SELECT * FROM integrations WHERE provider=:provider ORDER BY updated_at DESC LIMIT 1"), {"provider": provider})
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def upsert_integration(self, tenant_id: UUID, provider: str, data: dict[str, Any]) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            existing = (await db.execute(text("SELECT id FROM integrations WHERE provider=:provider ORDER BY updated_at DESC LIMIT 1 FOR UPDATE"), {"provider": provider})).scalar_one_or_none()
+            if existing:
+                row = await db.execute(text("UPDATE integrations SET scopes=:scopes,refresh_token_secret_id=:secret,account_email=:email,status=:status,updated_at=now() WHERE id=:id RETURNING *"), {"id": existing, "scopes": data["scopes"], "secret": data.get("refresh_token_secret_id"), "email": data.get("account_email"), "status": data["status"]})
+            else:
+                row = await db.execute(text("INSERT INTO integrations(id,tenant_id,provider,scopes,refresh_token_secret_id,account_email,status) VALUES(:id,:tenant,:provider,:scopes,:secret,:email,:status) RETURNING *"), {"id": uuid4(), "tenant": tenant_id, "provider": provider, "scopes": data["scopes"], "secret": data.get("refresh_token_secret_id"), "email": data.get("account_email"), "status": data["status"]})
+            return dict(row.mappings().one())
+
 
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
@@ -836,6 +853,20 @@ class MemoryRepository:
             return False
         self.memory.secrets.pop(secret_id)
         return True
+
+    async def get_integration(self, tenant_id: UUID, provider: str) -> dict[str, Any] | None:
+        return next((item for item in self.memory.integrations.values() if item["tenant_id"] == tenant_id and item["provider"] == provider), None)
+
+    async def upsert_integration(self, tenant_id: UUID, provider: str, data: dict[str, Any]) -> dict[str, Any]:
+        item = await self.get_integration(tenant_id, provider)
+        now = datetime.now(UTC)
+        if item:
+            item.update(data)
+            item["updated_at"] = now
+            return item
+        item = {"id": uuid4(), "tenant_id": tenant_id, "provider": provider, **data, "created_at": now, "updated_at": now}
+        self.memory.integrations[item["id"]] = item
+        return item
 
 
 postgres_repository = PostgresRepository()

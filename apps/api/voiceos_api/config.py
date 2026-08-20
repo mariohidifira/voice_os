@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     aws_kms_key_id: str | None = None
     aws_region: str = "us-east-1"
+    resend_api_key: str | None = None
+    email_from: str = "VoiceOS <noreply@example.invalid>"
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_redirect_uri: str = "http://localhost:8005/v1/integrations/google/callback"
     otel_exporter_otlp_endpoint: str | None = None
     otel_exporter_otlp_headers: str | None = None
     sentry_dsn: str | None = None

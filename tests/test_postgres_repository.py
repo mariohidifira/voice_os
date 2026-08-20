@@ -21,6 +21,7 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
     kb_id: UUID | None = None
     document_id: UUID | None = None
     secret_id: UUID | None = None
+    integration_id: UUID | None = None
     try:
         assert await repo.get_agent(TENANT, agent_id)
         assert await repo.get_agent_detail(TENANT, agent_id)
@@ -83,6 +84,11 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
         assert "ciphertext" not in secret
         assert (await repo.get_secret(TENANT, secret_id))["ciphertext"] == b"encrypted"  # type: ignore[index]
         assert any(item["id"] == secret_id for item in await repo.list_secrets(TENANT))
+        integration = await repo.upsert_integration(TENANT, "google", {"scopes": ["calendar"], "refresh_token_secret_id": secret_id, "account_email": "owner@example.com", "status": "active"})
+        integration_id = integration["id"]
+        assert (await repo.get_integration(TENANT, "google"))["account_email"] == "owner@example.com"  # type: ignore[index]
+        updated_integration = await repo.upsert_integration(TENANT, "google", {"scopes": ["calendar"], "refresh_token_secret_id": secret_id, "account_email": "new@example.com", "status": "active"})
+        assert updated_integration["id"] == integration_id and updated_integration["account_email"] == "new@example.com"
 
         end_user = await repo.upsert_end_user(TENANT, {"external_id": f"repo-{agent_id}", "name": "Mario", "metadata": {"source": "pytest"}})
         end_user_id = end_user["id"]
@@ -138,4 +144,6 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
             if kb_id:
                 await db.execute(text("DELETE FROM knowledge_bases WHERE id=:id"), {"id": kb_id})
             if secret_id:
+                if integration_id:
+                    await db.execute(text("DELETE FROM integrations WHERE id=:id"), {"id": integration_id})
                 await db.execute(text("DELETE FROM secrets WHERE id=:id"), {"id": secret_id})

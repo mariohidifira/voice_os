@@ -2,13 +2,17 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
+import httpx
+import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
+from jsonschema import ValidationError, validate
 
 from .auth import Principal, internal_token, principal
 from .config import get_settings
 from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_embeddings
 from .live import EventBus, encode_sse, get_event_bus
+from .native_integrations import NativeIntegrations, get_native_integrations
 from .repository import Repository, get_repository
 from .schemas import (
     AgentCreate,
@@ -44,6 +48,7 @@ Bus = Annotated[EventBus, Depends(get_event_bus)]
 Executor = Annotated[ToolExecutor, Depends(get_tool_executor)]
 Embedder = Annotated[Embeddings, Depends(get_embeddings)]
 Cipher = Annotated[SecretCipher, Depends(get_secret_cipher)]
+Native = Annotated[NativeIntegrations, Depends(get_native_integrations)]
 
 
 async def _resolve_tool_secret(repo: Repository, cipher: SecretCipher, tenant_id: UUID, tool: dict[str, Any]) -> str | None:
@@ -323,6 +328,30 @@ async def delete_secret(secret_id: UUID, auth: Auth, repo: Repo) -> None:
         raise HTTPException(404, detail={"code": "secret_not_found", "message": "Secret not found"})
 
 
+@v1.get("/integrations/google/connect")
+async def google_connect(auth: Auth, native: Native) -> dict[str, str]:
+    try:
+        return {"url": native.google_connect_url(auth.tenant_id, auth.user_id)}
+    except RuntimeError as exc:
+        raise HTTPException(503, detail={"code": "integration_unavailable", "message": str(exc)}) from exc
+
+
+@v1.get("/integrations/google/callback")
+async def google_callback(code: str, state: str, repo: Repo, cipher: Cipher, native: Native) -> dict[str, Any]:
+    try:
+        integration = await native.google_callback(code, state, repo, cipher)
+    except (ValueError, jwt.PyJWTError, httpx.HTTPError) as exc:
+        raise HTTPException(400, detail={"code": "oauth_failed", "message": str(exc)}) from exc
+    return {key: value for key, value in integration.items() if key != "refresh_token_secret_id"}
+
+
+@v1.get("/integrations")
+async def list_integrations(auth: Auth, repo: Repo) -> dict[str, Any]:
+    google = await repo.get_integration(auth.tenant_id, "google")
+    sanitized = {key: value for key, value in google.items() if key != "refresh_token_secret_id"} if google else None
+    return {"data": [sanitized] if sanitized else []}
+
+
 @v1.put("/agents/{agent_id}/draft/tools")
 async def set_draft_tools(agent_id: UUID, body: AgentToolsSet, auth: Auth, repo: Repo) -> dict[str, Any]:
     try:
@@ -470,7 +499,7 @@ async def append_call_tool_call(call_id: UUID, body: CallToolCallCreate, repo: R
 
 
 @internal.post("/tools/execute")
-async def execute_tool(body: InternalToolExecute, repo: Repo, executor: Executor, cipher: Cipher) -> dict[str, Any]:
+async def execute_tool(body: InternalToolExecute, repo: Repo, executor: Executor, cipher: Cipher, native: Native) -> dict[str, Any]:
     tenant_id = await repo.get_call_tenant(body.call_id)
     if not tenant_id:
         raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
@@ -478,9 +507,22 @@ async def execute_tool(body: InternalToolExecute, repo: Repo, executor: Executor
     call = await repo.get_call(tenant_id, body.call_id)
     if not tool or not call:
         raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
-    secret = await _resolve_tool_secret(repo, cipher, tenant_id, tool)
-    result = await executor.execute(tool, body.arguments, {"tenant_id": tenant_id, "session_variables": body.session_variables, "end_user": body.end_user, "call": call, "secret": secret})
-    raw_result = result.get("result", result)
+    try:
+        validate(body.arguments, tool["parameters_schema"])
+    except ValidationError as exc:
+        raw_result: Any = {"error": "invalid_arguments", "details": exc.message}
+        result: dict[str, Any] = raw_result
+    else:
+        if tool["type"] == "native":
+            try:
+                raw_result = await native.execute(tool.get("native_kind") or tool["name"], body.arguments, tenant_id, repo, cipher)
+            except (httpx.HTTPError, RuntimeError, KeyError, ValueError) as exc:
+                raw_result = {"error": "integration_failed", "message": str(exc)}
+            result = raw_result
+        else:
+            secret = await _resolve_tool_secret(repo, cipher, tenant_id, tool)
+            result = await executor.execute(tool, body.arguments, {"tenant_id": tenant_id, "session_variables": body.session_variables, "end_user": body.end_user, "call": call, "secret": secret})
+            raw_result = result.get("result", result)
     llm_result: dict[str, Any] = raw_result if isinstance(raw_result, dict) else {"value": raw_result}
     await repo.append_call_tool_call(body.call_id, {"id": None, "turn_id": None, "tool_id": body.tool_id, "name": tool["name"], "arguments": body.arguments, "result": llm_result, "status": "error" if "error" in llm_result else "ok", "duration_ms": result.get("latency_ms"), "started_at": datetime.now(UTC)})
     return llm_result

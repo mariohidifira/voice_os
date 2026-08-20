@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/config.py": {
-    "mtime": 1787189120.9214623,
-    "ast_hash": "a71cce72da81d7787f73b8fb8a478f00",
+    "mtime": 1787219880.2627118,
+    "ast_hash": "bae2657d7e608205da9126d032dbd914",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/db.py": {
@@ -100,13 +100,13 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/repository.py": {
-    "mtime": 1787189309.1985645,
-    "ast_hash": "49e672c34b53f84a94b66c36f2f021ad",
+    "mtime": 1787219899.5463233,
+    "ast_hash": "69b2c60c3ce6cdda186257ca2e3514ad",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787189245.6785195,
-    "ast_hash": "3aa10584ae19ce6694f50708490694ea",
+    "mtime": 1787220146.0257337,
+    "ast_hash": "fe24bee10da78cb8dca198f48820c945",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
@@ -115,8 +115,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/store.py": {
-    "mtime": 1787189122.014504,
-    "ast_hash": "60e66618283508bbc8407cebf10d1f40",
+    "mtime": 1787219881.3005862,
+    "ast_hash": "80013dd8cd8d9ac4dce120c2d5679b71",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/__init__.py": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "tests/test_postgres_repository.py": {
-    "mtime": 1787189384.1831777,
-    "ast_hash": "a445c3ca1e64f5989dc4cad7f189704a",
+    "mtime": 1787220027.2541018,
+    "ast_hash": "e92c726bdae3483abeff5da0005d3e0c",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
@@ -567,6 +567,21 @@
   "tests/test_secrets.py": {
     "mtime": 1787189270.2510028,
     "ast_hash": "32c56e24411eaf9fbe4a45952625d454",
+    "semantic_hash": ""
+  },
+  "apps/api/alembic/versions/0005_integration_identity.py": {
+    "mtime": 1787219906.7305262,
+    "ast_hash": "3e7206ff292256bb75ee97e648ed1b13",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/native_integrations.py": {
+    "mtime": 1787219941.2115312,
+    "ast_hash": "7a8ccd3d56f8e8a54c34794688e93eac",
+    "semantic_hash": ""
+  },
+  "tests/test_native_integrations.py": {
+    "mtime": 1787219989.8417368,
+    "ast_hash": "bee516b8f3165dae3dc67c83916e084e",
     "semantic_hash": ""
   }
 }
