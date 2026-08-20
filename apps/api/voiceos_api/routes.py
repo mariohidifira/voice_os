@@ -2,10 +2,12 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 
 from .auth import Principal, internal_token, principal
 from .config import get_settings
+from .live import EventBus, encode_sse, get_event_bus
 from .repository import Repository, get_repository
 from .schemas import (
     AgentCreate,
@@ -25,6 +27,7 @@ v1 = APIRouter(prefix="/v1")
 internal = APIRouter(prefix="/internal", dependencies=[Depends(internal_token)])
 Auth = Annotated[Principal, Depends(principal)]
 Repo = Annotated[Repository, Depends(get_repository)]
+Bus = Annotated[EventBus, Depends(get_event_bus)]
 
 
 @v1.get("/me")
@@ -176,6 +179,21 @@ async def get_call(call_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
     return call
 
 
+@v1.get("/calls/{call_id}/live")
+async def live_call(call_id: UUID, request: Request, auth: Auth, repo: Repo, bus: Bus) -> StreamingResponse:
+    if not await repo.get_call(auth.tenant_id, call_id):
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+
+    async def stream() -> Any:
+        yield encode_sse({"type": "connected", "call_id": call_id})
+        async for event in bus.subscribe(auth.tenant_id, call_id):
+            if await request.is_disconnected():
+                break
+            yield encode_sse(event)
+
+    return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @v1.post("/calls/{call_id}/hangup")
 async def hangup_call(call_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
     call = await repo.update_call(auth.tenant_id, call_id, {"status": "completed", "end_reason": "agent_hangup", "ended_at": datetime.now(UTC)})
@@ -211,24 +229,37 @@ async def update_internal_call(call_id: UUID, body: CallPatch, repo: Repo) -> di
 
 
 @internal.post("/calls/{call_id}/events")
-async def append_call_events(call_id: UUID, body: CallEventBatch, repo: Repo) -> dict[str, int]:
-    count = await repo.append_call_events(call_id, [event.model_dump() for event in body.events])
+async def append_call_events(call_id: UUID, body: CallEventBatch, repo: Repo, bus: Bus) -> dict[str, int]:
+    events = [event.model_dump() for event in body.events]
+    count = await repo.append_call_events(call_id, events)
     if not count:
         raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    tenant_id = await repo.get_call_tenant(call_id)
+    if tenant_id:
+        for event in events:
+            await bus.publish(tenant_id, call_id, event)
     return {"accepted": count}
 
 
 @internal.post("/calls/{call_id}/turns")
-async def append_call_turns(call_id: UUID, body: CallTurnBatch, repo: Repo) -> dict[str, int]:
-    count = await repo.append_call_turns(call_id, [turn.model_dump() for turn in body.turns])
+async def append_call_turns(call_id: UUID, body: CallTurnBatch, repo: Repo, bus: Bus) -> dict[str, int]:
+    turns = [turn.model_dump() for turn in body.turns]
+    count = await repo.append_call_turns(call_id, turns)
     if not count:
         raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    tenant_id = await repo.get_call_tenant(call_id)
+    if tenant_id:
+        for turn in turns:
+            await bus.publish(tenant_id, call_id, {"type": f"turn.{turn['role']}", "turn": turn})
     return {"accepted": count}
 
 
 @internal.post("/calls/{call_id}/tool-calls", status_code=201)
-async def append_call_tool_call(call_id: UUID, body: CallToolCallCreate, repo: Repo) -> dict[str, Any]:
+async def append_call_tool_call(call_id: UUID, body: CallToolCallCreate, repo: Repo, bus: Bus) -> dict[str, Any]:
     item = await repo.append_call_tool_call(call_id, body.model_dump())
     if not item:
         raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    tenant_id = await repo.get_call_tenant(call_id)
+    if tenant_id:
+        await bus.publish(tenant_id, call_id, {"type": "tool.called", "tool_call": item})
     return item

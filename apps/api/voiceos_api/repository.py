@@ -34,6 +34,7 @@ class Repository(Protocol):
     async def append_call_events(self, call_id: UUID, events: list[dict[str, Any]]) -> int: ...
     async def append_call_turns(self, call_id: UUID, turns: list[dict[str, Any]]) -> int: ...
     async def append_call_tool_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def get_call_tenant(self, call_id: UUID) -> UUID | None: ...
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
     async def get_runtime(self, agent_id: UUID) -> dict[str, Any] | None: ...
 
@@ -293,6 +294,10 @@ class PostgresRepository:
     async def _call_tenant(self, db: AsyncSession, call_id: UUID) -> UUID | None:
         return (await db.execute(text("SELECT tenant_id FROM calls WHERE id=:id"), {"id": call_id})).scalar_one_or_none()
 
+    async def get_call_tenant(self, call_id: UUID) -> UUID | None:
+        async with self._internal_session() as db:
+            return await self._call_tenant(db, call_id)
+
     async def append_call_events(self, call_id: UUID, events: list[dict[str, Any]]) -> int:
         async with self._internal_session() as db:
             tenant_id = await self._call_tenant(db, call_id)
@@ -506,6 +511,10 @@ class MemoryRepository:
         item = {**data, "id": data.get("id") or uuid4()}
         self.memory.call_tool_calls.setdefault(call_id, []).append(item)
         return item
+
+    async def get_call_tenant(self, call_id: UUID) -> UUID | None:
+        call = self.memory.calls.get(call_id)
+        return call["tenant_id"] if call else None
 
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
         tool_id = uuid4()

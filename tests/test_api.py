@@ -4,6 +4,7 @@ import jwt
 from fastapi.testclient import TestClient
 from voiceos_api.config import get_settings
 from voiceos_api.health import get_health_checker
+from voiceos_api.live import get_event_bus
 from voiceos_api.main import app
 from voiceos_api.repository import MemoryRepository, get_repository
 from voiceos_api.store import store
@@ -18,6 +19,22 @@ class HealthyChecker:
 
 
 app.dependency_overrides[get_health_checker] = HealthyChecker
+
+
+class FakeEventBus:
+    def __init__(self) -> None:
+        self.events: list[tuple[object, object, dict[str, object]]] = []
+
+    async def publish(self, tenant_id: object, call_id: object, event: dict[str, object]) -> None:
+        self.events.append((tenant_id, call_id, event))
+
+    async def subscribe(self, tenant_id: object, call_id: object):  # type: ignore[no-untyped-def]
+        if False:
+            yield {}
+
+
+event_bus = FakeEventBus()
+app.dependency_overrides[get_event_bus] = lambda: event_bus
 
 
 def headers(tenant: str, role: str = "owner") -> dict[str, str]:
@@ -171,6 +188,7 @@ def test_call_lifecycle_internal_batches_and_detail() -> None:
     store.call_events.clear()
     store.call_turns.clear()
     store.call_tool_calls.clear()
+    event_bus.events.clear()
     tenant = str(uuid4())
     auth = headers(tenant)
     internal = {"X-Internal-Token": get_settings().internal_api_token}
@@ -206,6 +224,7 @@ def test_call_lifecycle_internal_batches_and_detail() -> None:
         headers=internal,
     )
     assert tool_call.status_code == 201
+    assert [event[2]["type"] for event in event_bus.events] == ["call.answered", "turn.user", "turn.agent", "tool.called"]
 
     detail = client.get(f"/v1/calls/{call_id}", headers=auth).json()
     assert [turn["role"] for turn in detail["turns"]] == ["user", "agent"]
@@ -215,6 +234,7 @@ def test_call_lifecycle_internal_batches_and_detail() -> None:
     ended = client.post(f"/v1/calls/{call_id}/hangup", headers=auth)
     assert ended.json()["end_reason"] == "agent_hangup"
     assert client.delete(f"/v1/sessions/{call_id}", headers=auth).status_code == 204
+    assert client.get(f"/v1/calls/{uuid4()}/live", headers=auth).status_code == 404
 
 
 def test_invalid_token_and_wrong_tenant() -> None:
