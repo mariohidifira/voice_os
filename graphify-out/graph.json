@@ -51,6 +51,17 @@
   },
   "nodes": [
     {
+      "label": "livekit_main.py",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/livekit_main.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "apps_agent_worker_livekit_main",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "livekit_main.py"
+    },
+    {
       "label": "main.py",
       "file_type": "code",
       "source_file": "apps/agent-worker/main.py",
@@ -643,6 +654,83 @@
       "community": 0,
       "community_name": "Voice Core Modules",
       "norm_label": ".query()"
+    },
+    {
+      "label": "livekit_worker.py",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "livekit_worker.py"
+    },
+    {
+      "label": "room_metadata()",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "apps_agent_worker_voiceos_voice_livekit_worker_room_metadata",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "room_metadata()"
+    },
+    {
+      "label": "Any",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "apps_agent_worker_voiceos_voice_livekit_worker_py_any",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "any"
+    },
+    {
+      "label": "provider_pipeline()",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "apps_agent_worker_voiceos_voice_livekit_worker_provider_pipeline",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "provider_pipeline()"
+    },
+    {
+      "label": "voiceos_agent()",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L74",
+      "_origin": "ast",
+      "id": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "voiceos_agent()"
+    },
+    {
+      "label": "JobContext",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "jobcontext",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "jobcontext"
+    },
+    {
+      "label": "run()",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L110",
+      "_origin": "ast",
+      "id": "apps_agent_worker_voiceos_voice_livekit_worker_run",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "run()"
     },
     {
       "label": "prompting.py",
@@ -1740,8 +1828,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_health",
-      "community": 67,
-      "community_name": "test_health.py",
+      "community": 1,
+      "community_name": "API Authentication Routes",
       "norm_label": "health.py"
     },
     {
@@ -1883,8 +1971,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_knowledge_chunk_text",
-      "community": 65,
-      "community_name": "knowledge.py",
+      "community": 5,
+      "community_name": "API Schemas and Mock",
       "norm_label": "chunk_text()"
     },
     {
@@ -1949,8 +2037,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_knowledge_extract_url",
-      "community": 5,
-      "community_name": "API Schemas and Mock",
+      "community": 65,
+      "community_name": "knowledge.py",
       "norm_label": "extract_url()"
     },
     {
@@ -1982,8 +2070,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_knowledge_cosine_similarity",
-      "community": 77,
-      "community_name": "repository.py",
+      "community": 65,
+      "community_name": "knowledge.py",
       "norm_label": "cosine_similarity()"
     },
     {
@@ -2488,8 +2576,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_py_uuid",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": "uuid"
     },
     {
@@ -2499,8 +2587,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_py_any",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 63,
+      "community_name": "Any",
       "norm_label": "any"
     },
     {
@@ -2686,8 +2774,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_create_internal_call",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 63,
+      "community_name": "Any",
       "norm_label": ".create_internal_call()"
     },
     {
@@ -2906,8 +2994,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_delete_document",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".delete_document()"
     },
     {
@@ -2928,8 +3016,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_fail_document",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".fail_document()"
     },
     {
@@ -2994,8 +3082,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_delete_secret",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".delete_secret()"
     },
     {
@@ -3225,8 +3313,8 @@
       "source_location": "L258",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_get_call_detail",
-      "community": 64,
-      "community_name": "PostgresRepository",
+      "community": 78,
+      "community_name": "Repository protocol",
       "norm_label": ".get_call_detail()"
     },
     {
@@ -3236,8 +3324,8 @@
       "source_location": "L277",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_update_call",
-      "community": 70,
-      "community_name": "._internal_session",
+      "community": 78,
+      "community_name": "Repository protocol",
       "norm_label": ".update_call()"
     },
     {
@@ -3368,8 +3456,8 @@
       "source_location": "L372",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_update_tool",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 64,
+      "community_name": "PostgresRepository",
       "norm_label": ".update_tool()"
     },
     {
@@ -3390,8 +3478,8 @@
       "source_location": "L392",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_set_draft_tools",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 64,
+      "community_name": "PostgresRepository",
       "norm_label": ".set_draft_tools()"
     },
     {
@@ -3786,8 +3874,8 @@
       "source_location": "L664",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_call",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 78,
+      "community_name": "Repository protocol",
       "norm_label": ".get_call()"
     },
     {
@@ -3797,8 +3885,8 @@
       "source_location": "L668",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_call_detail",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 78,
+      "community_name": "Repository protocol",
       "norm_label": ".get_call_detail()"
     },
     {
@@ -3995,8 +4083,8 @@
       "source_location": "L779",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_update_knowledge_base",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 73,
+      "community_name": "auth.py",
       "norm_label": ".update_knowledge_base()"
     },
     {
@@ -4006,8 +4094,8 @@
       "source_location": "L787",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_delete_knowledge_base",
-      "community": 73,
-      "community_name": "auth.py",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".delete_knowledge_base()"
     },
     {
@@ -4028,8 +4116,8 @@
       "source_location": "L799",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_create_document",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 73,
+      "community_name": "auth.py",
       "norm_label": ".create_document()"
     },
     {
@@ -4072,8 +4160,8 @@
       "source_location": "L827",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_query_chunks",
-      "community": 77,
-      "community_name": "repository.py",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".query_chunks()"
     },
     {
@@ -5216,8 +5304,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "secrets.py"
     },
     {
@@ -5271,8 +5359,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "envelopecipher"
     },
     {
@@ -5282,8 +5370,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher_init",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": ".__init__()"
     },
     {
@@ -5293,8 +5381,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher_encrypt",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": ".encrypt()"
     },
     {
@@ -5304,8 +5392,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher_decrypt",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": ".decrypt()"
     },
     {
@@ -5315,8 +5403,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_get_secret_cipher",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "get_secret_cipher()"
     },
     {
@@ -8293,6 +8381,39 @@
       "norm_label": "test_tenant_scoped_channel_and_sse_encoding()"
     },
     {
+      "label": "test_livekit_worker.py",
+      "file_type": "code",
+      "source_file": "tests/test_livekit_worker.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "tests_test_livekit_worker",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "test_livekit_worker.py"
+    },
+    {
+      "label": "test_room_metadata_parses_dispatch_contract()",
+      "file_type": "code",
+      "source_file": "tests/test_livekit_worker.py",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "tests_test_livekit_worker_test_room_metadata_parses_dispatch_contract",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "test_room_metadata_parses_dispatch_contract()"
+    },
+    {
+      "label": "test_room_metadata_rejects_invalid_dispatch_contract()",
+      "file_type": "code",
+      "source_file": "tests/test_livekit_worker.py",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "tests_test_livekit_worker_test_room_metadata_rejects_invalid_dispatch_contract",
+      "community": 72,
+      "community_name": ".get_call",
+      "norm_label": "test_room_metadata_rejects_invalid_dispatch_contract()"
+    },
+    {
       "label": "test_migrations.py",
       "file_type": "code",
       "source_file": "tests/test_migrations.py",
@@ -8354,8 +8475,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_native_integrations",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "test_native_integrations.py"
     },
     {
@@ -8365,8 +8486,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_test_native_integrations_test_google_oauth_refresh_calendar_and_resend",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "test_google_oauth_refresh_calendar_and_resend()"
     },
     {
@@ -8420,8 +8541,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_secrets",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "test_secrets.py"
     },
     {
@@ -8431,8 +8552,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "tests_test_secrets_test_local_envelope_cipher_roundtrip",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "test_local_envelope_cipher_roundtrip()"
     },
     {
@@ -9344,9 +9465,9 @@
       "source_file": "apps/api/voiceos_api/repository.py",
       "source_location": "lines 14-22",
       "description": "Defines tenant-aware agent, call, tool, and runtime persistence operations used by routes.",
-      "community": 78,
+      "community": 7,
       "norm_label": "repository protocol",
-      "community_name": "Repository protocol",
+      "community_name": "Backend Design Rationale",
       "id": "apps_api_voiceos_api_repository_contract"
     },
     {
@@ -9392,9 +9513,9 @@
       "source_file": "apps/api/voiceos_api/routes.py",
       "source_location": "lines 64-69",
       "description": "Returns the active agent runtime configuration to trusted internal consumers.",
-      "community": 78,
+      "community": 7,
       "norm_label": "internal agent runtime endpoint",
-      "community_name": "Repository protocol",
+      "community_name": "Backend Design Rationale",
       "id": "runtime_endpoint"
     },
     {
@@ -10862,6 +10983,18 @@
   ],
   "links": [
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/livekit_main.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_livekit_main",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/main.py",
@@ -11041,6 +11174,18 @@
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_api_client",
       "target": "apps_agent_worker_voiceos_voice_api_client_workerapi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_api_client",
       "confidence_score": 1.0
     },
     {
@@ -11348,6 +11493,30 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_api_client_redisruntimecache",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L81",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
+      "target": "apps_agent_worker_voiceos_voice_api_client_redisruntimecache"
+    },
+    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -11573,6 +11742,30 @@
       "source": "apps_agent_worker_voiceos_voice_api_client_workerapi",
       "target": "apps_agent_worker_voiceos_voice_api_client_workerapi_update_call",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_api_client_workerapi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L78",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
+      "target": "apps_agent_worker_voiceos_voice_api_client_workerapi"
     },
     {
       "relation": "imports",
@@ -13427,6 +13620,182 @@
       "confidence_score": 1.0,
       "source": "protocol",
       "target": "apps_agent_worker_voiceos_voice_contracts_ragprovider"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_provider_pipeline",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_room_metadata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L110",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_run",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_prompting",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_prompting_build_system_prompt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_livekit_worker.py",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_livekit_worker",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker_room_metadata",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_py_any",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L75",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_room_metadata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_livekit_worker.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_livekit_worker_test_room_metadata_parses_dispatch_contract",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_room_metadata"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_livekit_worker.py",
+      "source_location": "L16",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_livekit_worker_test_room_metadata_rejects_invalid_dispatch_contract",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_room_metadata"
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker_provider_pipeline",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_py_any",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L94",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
+      "target": "apps_agent_worker_voiceos_voice_livekit_worker_provider_pipeline",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L85",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
+      "target": "apps_agent_worker_voiceos_voice_prompting_build_system_prompt"
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/livekit_worker.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
+      "target": "jobcontext",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -33154,6 +33523,28 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "tests/test_livekit_worker.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_livekit_worker",
+      "target": "tests_test_livekit_worker_test_room_metadata_parses_dispatch_contract",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_livekit_worker.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_livekit_worker",
+      "target": "tests_test_livekit_worker_test_room_metadata_rejects_invalid_dispatch_contract",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "tests/test_migrations.py",
       "source_location": "L5",
       "weight": 1.0,
@@ -35019,5 +35410,5 @@
       "source_file": "PHASE-0-REPORT.md"
     }
   ],
-  "built_at_commit": "443af6a39c101c55477a7fabe2eae0b8fd0e1679"
+  "built_at_commit": "627d116d237999a56f064e3e3efa3b8ed088e220"
 }

@@ -27,11 +27,12 @@ services:
     ports: ["3000:3000"]
   agent-worker:
     build: {context: ., dockerfile: infra/docker/python-worker.Dockerfile}
-    command: ["python", "apps/agent-worker/main.py"]
+    command: ["python", "apps/agent-worker/livekit_main.py", "start"]
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://voiceos:voiceos@db:5432/voiceos
       REDIS_URL: redis://redis:6379/0
+      WORKER_API_URL: http://api:8000
     depends_on: [api]
     ports: ["8081:8081"]
   worker:

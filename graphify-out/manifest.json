@@ -285,8 +285,8 @@
     "semantic_hash": ""
   },
   "docker-compose.yml": {
-    "mtime": 1787081445.3765867,
-    "ast_hash": "5cd1cace2e3d3c7ef4f2b0977d3ab181",
+    "mtime": 1787253942.3656676,
+    "ast_hash": "49fb7b50812bca796bbc28562ac40a78",
     "semantic_hash": ""
   },
   "PHASE-0-REPORT.md": {
@@ -510,8 +510,8 @@
     "semantic_hash": ""
   },
   "pyproject.toml": {
-    "mtime": 1787189311.4679973,
-    "ast_hash": "6355463db7f590912087bba7ff97872d",
+    "mtime": 1787252521.884308,
+    "ast_hash": "ea9559490d913e4ee8ee286e2340b5dc",
     "semantic_hash": ""
   },
   "scripts/test_live_redis.py": {
@@ -602,6 +602,21 @@
   "tests/test_worker_runtime.py": {
     "mtime": 1787251519.9556923,
     "ast_hash": "52e04c7c878651758e7af5d714d3719d",
+    "semantic_hash": ""
+  },
+  "apps/agent-worker/livekit_main.py": {
+    "mtime": 1787255422.3998141,
+    "ast_hash": "7adea61085c28a6e2d52d47f431e8ec6",
+    "semantic_hash": ""
+  },
+  "apps/agent-worker/voiceos_voice/livekit_worker.py": {
+    "mtime": 1787253940.111318,
+    "ast_hash": "50f37f0d0a57447169837d68780afa96",
+    "semantic_hash": ""
+  },
+  "tests/test_livekit_worker.py": {
+    "mtime": 1787253943.5179935,
+    "ast_hash": "85f1093abc1d3ef8b0662ac077c6f9f8",
     "semantic_hash": ""
   }
 }
