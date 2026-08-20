@@ -20,6 +20,7 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
     end_user_id: UUID | None = None
     kb_id: UUID | None = None
     document_id: UUID | None = None
+    secret_id: UUID | None = None
     try:
         assert await repo.get_agent(TENANT, agent_id)
         assert await repo.get_agent_detail(TENANT, agent_id)
@@ -77,6 +78,11 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
         assert (await repo.list_documents(TENANT, kb_id))[0]["status"] == "ready"
         matches = await repo.query_chunks(TENANT, kb_id, vector, 5, 0.99)
         assert matches[0]["content"] == "Prazo dois dias"
+        secret = await repo.create_secret(TENANT, "repo_secret", b"encrypted", "test-key")
+        secret_id = secret["id"]
+        assert "ciphertext" not in secret
+        assert (await repo.get_secret(TENANT, secret_id))["ciphertext"] == b"encrypted"  # type: ignore[index]
+        assert any(item["id"] == secret_id for item in await repo.list_secrets(TENANT))
 
         end_user = await repo.upsert_end_user(TENANT, {"external_id": f"repo-{agent_id}", "name": "Mario", "metadata": {"source": "pytest"}})
         end_user_id = end_user["id"]
@@ -131,3 +137,5 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
                 await db.execute(text("DELETE FROM documents WHERE id=:id"), {"id": document_id})
             if kb_id:
                 await db.execute(text("DELETE FROM knowledge_bases WHERE id=:id"), {"id": kb_id})
+            if secret_id:
+                await db.execute(text("DELETE FROM secrets WHERE id=:id"), {"id": secret_id})

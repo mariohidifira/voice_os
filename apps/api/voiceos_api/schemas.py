@@ -126,6 +126,11 @@ class InternalRagQuery(KnowledgeQuery):
     knowledge_base_id: UUID
 
 
+class SecretCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    value: str = Field(min_length=1, max_length=16_384)
+
+
 class CallEvent(BaseModel):
     type: str
     payload: dict[str, Any] = Field(default_factory=dict)

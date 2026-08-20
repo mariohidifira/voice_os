@@ -54,6 +54,10 @@ class Repository(Protocol):
     async def fail_document(self, tenant_id: UUID, document_id: UUID, error: str) -> None: ...
     async def query_chunks(self, tenant_id: UUID, kb_id: UUID, embedding: list[float], top_k: int, min_score: float) -> list[dict[str, Any]]: ...
     async def get_knowledge_base_tenant(self, kb_id: UUID) -> UUID | None: ...
+    async def create_secret(self, tenant_id: UUID, name: str, ciphertext: bytes, key_id: str) -> dict[str, Any]: ...
+    async def list_secrets(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def get_secret(self, tenant_id: UUID, secret_id: UUID) -> dict[str, Any] | None: ...
+    async def delete_secret(self, tenant_id: UUID, secret_id: UUID) -> bool: ...
 
 
 class PostgresRepository:
@@ -501,6 +505,28 @@ class PostgresRepository:
         async with self._internal_session() as db:
             return (await db.execute(text("SELECT tenant_id FROM knowledge_bases WHERE id=:id"), {"id": kb_id})).scalar_one_or_none()
 
+    async def create_secret(self, tenant_id: UUID, name: str, ciphertext: bytes, key_id: str) -> dict[str, Any]:
+        secret_id = uuid4()
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("INSERT INTO secrets(id,tenant_id,name,ciphertext,kms_key_id) VALUES(:id,:tenant,:name,:ciphertext,:key) RETURNING id,tenant_id,name,kms_key_id,created_at,rotated_at"), {"id": secret_id, "tenant": tenant_id, "name": name, "ciphertext": ciphertext, "key": key_id})
+            return dict(row.mappings().one())
+
+    async def list_secrets(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT id,tenant_id,name,kms_key_id,created_at,rotated_at FROM secrets ORDER BY created_at DESC"))
+            return [dict(row) for row in rows.mappings()]
+
+    async def get_secret(self, tenant_id: UUID, secret_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("SELECT * FROM secrets WHERE id=:id"), {"id": secret_id})
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def delete_secret(self, tenant_id: UUID, secret_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(text("DELETE FROM secrets WHERE id=:id RETURNING id"), {"id": secret_id})
+            return result.scalar_one_or_none() is not None
+
 
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
@@ -790,6 +816,26 @@ class MemoryRepository:
     async def get_knowledge_base_tenant(self, kb_id: UUID) -> UUID | None:
         item = self.memory.knowledge_bases.get(kb_id)
         return item["tenant_id"] if item else None
+
+    async def create_secret(self, tenant_id: UUID, name: str, ciphertext: bytes, key_id: str) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        secret_id = uuid4()
+        item = {"id": secret_id, "tenant_id": tenant_id, "name": name, "ciphertext": ciphertext, "kms_key_id": key_id, "created_at": now, "rotated_at": None}
+        self.memory.secrets[secret_id] = item
+        return {key: value for key, value in item.items() if key != "ciphertext"}
+
+    async def list_secrets(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return [{key: value for key, value in item.items() if key != "ciphertext"} for item in self.memory.secrets.values() if item["tenant_id"] == tenant_id]
+
+    async def get_secret(self, tenant_id: UUID, secret_id: UUID) -> dict[str, Any] | None:
+        item = self.memory.secrets.get(secret_id)
+        return item if item and item["tenant_id"] == tenant_id else None
+
+    async def delete_secret(self, tenant_id: UUID, secret_id: UUID) -> bool:
+        if not await self.get_secret(tenant_id, secret_id):
+            return False
+        self.memory.secrets.pop(secret_id)
+        return True
 
 
 postgres_repository = PostgresRepository()

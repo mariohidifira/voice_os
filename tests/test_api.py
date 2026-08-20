@@ -168,7 +168,8 @@ def test_tool_and_internal_runtime() -> None:
         json={
             "name": "consultar_pedido",
             "description": "Use quando consultar um pedido",
-            "type": "webhook",
+            "type": "native",
+            "native_kind": "end_call",
             "parameters_schema": {"type": "object"},
         },
         headers=headers(tenant),
@@ -193,6 +194,35 @@ def test_tool_and_internal_runtime() -> None:
     assert next_draft["tools"][0]["id"] == tool_id
     assert client.get(f"/internal/agents/{agent['id']}/runtime?version=invalid", headers={"X-Internal-Token": get_settings().internal_api_token}).status_code == 404
     assert client.delete(f"/v1/tools/{tool_id}", headers=headers(tenant)).status_code == 204
+
+
+def test_secret_values_are_encrypted_and_never_returned() -> None:
+    store.secrets.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    created = client.post("/v1/secrets", json={"name": "crm_token", "value": "super-secret"}, headers=auth)
+    assert created.status_code == 201
+    assert "value" not in created.json() and "ciphertext" not in created.json()
+    secret_id = created.json()["id"]
+    assert next(iter(store.secrets.values()))["ciphertext"] != b"super-secret"
+    listed = client.get("/v1/secrets", headers=auth).json()["data"]
+    assert listed[0]["name"] == "crm_token" and "ciphertext" not in listed[0]
+    assert client.delete(f"/v1/secrets/{secret_id}", headers=auth).status_code == 204
+
+
+def test_publish_rejects_untested_webhook_tool() -> None:
+    store.agents.clear()
+    store.agent_versions.clear()
+    store.tools.clear()
+    store.agent_tools.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Guarded"}, headers=auth).json()
+    tool = client.post("/v1/tools", json={"name": "crm_lookup", "description": "Use para consultar o CRM", "type": "webhook", "parameters_schema": {"type": "object"}, "webhook": {"url": "https://example.test", "auth": {"type": "none"}}}, headers=auth).json()
+    client.put(f"/v1/agents/{agent['id']}/draft/tools", json={"tool_ids": [tool["id"]]}, headers=auth)
+    rejected = client.post(f"/v1/agents/{agent['id']}/publish", headers=auth)
+    assert rejected.status_code == 422
+    assert "must pass a test" in rejected.json()["error"]["details"]["errors"][0]
 
 
 def test_call_lifecycle_internal_batches_and_detail() -> None:

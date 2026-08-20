@@ -31,3 +31,15 @@ async def test_webhook_http_error_is_safe() -> None:
     tool = {"type": "webhook", "parameters_schema": {"type": "object"}, "webhook": {"url": "https://example.test", "auth": {"type": "none"}}}
     result = await executor.execute(tool, {}, {"call": {}})
     assert result["result"] == {"error": "http_503", "message": "unavailable details"}
+
+
+@pytest.mark.asyncio
+async def test_webhook_bearer_secret_is_applied() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer decrypted-token"
+        return httpx.Response(200, json={"ok": True})
+
+    executor = ToolExecutor(httpx.MockTransport(handler))
+    tool = {"type": "webhook", "parameters_schema": {"type": "object"}, "webhook": {"url": "https://example.test", "auth": {"type": "bearer", "secret_id": "ignored"}}}
+    result = await executor.execute(tool, {}, {"call": {}, "secret": "decrypted-token"})
+    assert result["result"] == {"ok": True}

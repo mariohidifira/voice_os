@@ -27,11 +27,13 @@ from .schemas import (
     KnowledgeBaseCreate,
     KnowledgeBasePatch,
     KnowledgeQuery,
+    SecretCreate,
     SessionCreate,
     ToolCreate,
     ToolPatch,
     ToolTestRequest,
 )
+from .secrets import SecretCipher, get_secret_cipher
 from .tool_execution import ToolExecutor, get_tool_executor
 
 v1 = APIRouter(prefix="/v1")
@@ -41,6 +43,19 @@ Repo = Annotated[Repository, Depends(get_repository)]
 Bus = Annotated[EventBus, Depends(get_event_bus)]
 Executor = Annotated[ToolExecutor, Depends(get_tool_executor)]
 Embedder = Annotated[Embeddings, Depends(get_embeddings)]
+Cipher = Annotated[SecretCipher, Depends(get_secret_cipher)]
+
+
+async def _resolve_tool_secret(repo: Repository, cipher: SecretCipher, tenant_id: UUID, tool: dict[str, Any]) -> str | None:
+    auth = (tool.get("webhook") or {}).get("auth") or {}
+    secret_id = auth.get("secret_id")
+    if not secret_id:
+        return None
+    try:
+        secret = await repo.get_secret(tenant_id, UUID(str(secret_id)))
+    except ValueError:
+        return None
+    return await cipher.decrypt(secret["ciphertext"], secret["kms_key_id"]) if secret else None
 
 
 async def _ingest_document(repo: Repository, embeddings: Embeddings, tenant_id: UUID, document: dict[str, Any], kb: dict[str, Any], content: str | None, upload: bytes | None = None) -> None:
@@ -127,6 +142,26 @@ async def update_draft(agent_id: UUID, body: AgentDraftPatch, auth: Auth, repo: 
 async def publish_agent(agent_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
     if auth.role not in {"owner", "admin"}:
         raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
+    existing = await repo.get_agent(auth.tenant_id, agent_id)
+    draft = await repo.get_runtime(agent_id, "draft") if existing else None
+    if not draft:
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    errors: list[str] = []
+    if not str(draft.get("system_prompt", "")).strip():
+        errors.append("system_prompt is required")
+    if not draft.get("tts"):
+        errors.append("tts voice configuration is required")
+    for tool in draft["tools"]:
+        if tool["type"] == "webhook" and not tool.get("last_test_ok_at"):
+            errors.append(f"webhook tool '{tool['name']}' must pass a test")
+        if tool.get("native_kind") == "transfer_call" and not draft.get("behavior", {}).get("transfer_number"):
+            errors.append("transfer_number is required when transfer_call is enabled")
+    if draft.get("knowledge_base_id"):
+        documents = await repo.list_documents(auth.tenant_id, draft["knowledge_base_id"])
+        if not any(document["status"] == "ready" for document in documents):
+            errors.append("selected knowledge base requires at least one ready document")
+    if errors:
+        raise HTTPException(422, detail={"code": "publish_validation_failed", "message": "Agent draft is not publishable", "details": {"errors": errors}})
     agent = await repo.publish_agent(auth.tenant_id, agent_id)
     if not agent:
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
@@ -260,14 +295,32 @@ async def delete_tool(tool_id: UUID, auth: Auth, repo: Repo) -> None:
 
 
 @v1.post("/tools/{tool_id}/test")
-async def test_tool(tool_id: UUID, body: ToolTestRequest, auth: Auth, repo: Repo, executor: Executor) -> dict[str, Any]:
+async def test_tool(tool_id: UUID, body: ToolTestRequest, auth: Auth, repo: Repo, executor: Executor, cipher: Cipher) -> dict[str, Any]:
     tool = await repo.get_tool(auth.tenant_id, tool_id)
     if not tool:
         raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
-    result = await executor.execute(tool, body.arguments, {"tenant_id": auth.tenant_id, "session_variables": body.session_variables, "end_user": body.end_user, "call": {}})
+    secret = await _resolve_tool_secret(repo, cipher, auth.tenant_id, tool)
+    result = await executor.execute(tool, body.arguments, {"tenant_id": auth.tenant_id, "session_variables": body.session_variables, "end_user": body.end_user, "call": {}, "secret": secret})
     if "error" not in result and result.get("status", 500) < 300:
         await repo.update_tool(auth.tenant_id, tool_id, {"last_test_ok_at": datetime.now(UTC)})
     return result
+
+
+@v1.get("/secrets")
+async def list_secrets(auth: Auth, repo: Repo) -> dict[str, Any]:
+    return {"data": await repo.list_secrets(auth.tenant_id), "next_cursor": None}
+
+
+@v1.post("/secrets", status_code=201)
+async def create_secret(body: SecretCreate, auth: Auth, repo: Repo, cipher: Cipher) -> dict[str, Any]:
+    ciphertext, key_id = await cipher.encrypt(body.value)
+    return await repo.create_secret(auth.tenant_id, body.name, ciphertext, key_id)
+
+
+@v1.delete("/secrets/{secret_id}", status_code=204)
+async def delete_secret(secret_id: UUID, auth: Auth, repo: Repo) -> None:
+    if not await repo.delete_secret(auth.tenant_id, secret_id):
+        raise HTTPException(404, detail={"code": "secret_not_found", "message": "Secret not found"})
 
 
 @v1.put("/agents/{agent_id}/draft/tools")
@@ -417,7 +470,7 @@ async def append_call_tool_call(call_id: UUID, body: CallToolCallCreate, repo: R
 
 
 @internal.post("/tools/execute")
-async def execute_tool(body: InternalToolExecute, repo: Repo, executor: Executor) -> dict[str, Any]:
+async def execute_tool(body: InternalToolExecute, repo: Repo, executor: Executor, cipher: Cipher) -> dict[str, Any]:
     tenant_id = await repo.get_call_tenant(body.call_id)
     if not tenant_id:
         raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
@@ -425,7 +478,8 @@ async def execute_tool(body: InternalToolExecute, repo: Repo, executor: Executor
     call = await repo.get_call(tenant_id, body.call_id)
     if not tool or not call:
         raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
-    result = await executor.execute(tool, body.arguments, {"tenant_id": tenant_id, "session_variables": body.session_variables, "end_user": body.end_user, "call": call})
+    secret = await _resolve_tool_secret(repo, cipher, tenant_id, tool)
+    result = await executor.execute(tool, body.arguments, {"tenant_id": tenant_id, "session_variables": body.session_variables, "end_user": body.end_user, "call": call, "secret": secret})
     raw_result = result.get("result", result)
     llm_result: dict[str, Any] = raw_result if isinstance(raw_result, dict) else {"value": raw_result}
     await repo.append_call_tool_call(body.call_id, {"id": None, "turn_id": None, "tool_id": body.tool_id, "name": tool["name"], "arguments": body.arguments, "result": llm_result, "status": "error" if "error" in llm_result else "ok", "duration_ms": result.get("latency_ms"), "started_at": datetime.now(UTC)})

@@ -19,6 +19,7 @@ class MemoryStore:
         self.knowledge_bases: dict[UUID, dict[str, Any]] = {}
         self.documents: dict[UUID, dict[str, Any]] = {}
         self.chunks: dict[UUID, list[dict[str, Any]]] = {}
+        self.secrets: dict[UUID, dict[str, Any]] = {}
 
     def create_agent(self, tenant_id: UUID, name: str) -> dict[str, Any]:
         agent_id, draft_id = uuid4(), uuid4()

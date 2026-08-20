@@ -1,10 +1,19 @@
+import asyncio
+import base64
+import hashlib
+import hmac
+import ipaddress
 import json
 import re
+import socket
 import time
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from jsonschema import ValidationError, validate
+
+from .config import Settings, get_settings
 
 
 def _lookup(path: str, context: dict[str, Any]) -> Any:
@@ -33,9 +42,22 @@ def _json_path(data: Any, path: str) -> Any:
     return _lookup(path[2:], data)
 
 
+async def _safe_url(url: str, settings: Settings) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme not in ({"http", "https"} if settings.app_env in {"dev", "test"} else {"https"}) or not parsed.hostname:
+        return False
+    if settings.app_env in {"dev", "test"}:
+        return True
+    try:
+        addresses = await asyncio.to_thread(socket.getaddrinfo, parsed.hostname, parsed.port or 443)
+    except OSError:
+        return False
+    return all(ipaddress.ip_address(item[4][0]).is_global for item in addresses)
+
+
 class ToolExecutor:
-    def __init__(self, transport: httpx.AsyncBaseTransport | None = None) -> None:
-        self.transport = transport
+    def __init__(self, transport: httpx.AsyncBaseTransport | None = None, settings: Settings | None = None) -> None:
+        self.transport, self.settings = transport, settings or get_settings()
 
     async def execute(self, tool: dict[str, Any], arguments: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -45,14 +67,32 @@ class ToolExecutor:
         if tool["type"] != "webhook" or not tool.get("webhook"):
             return {"error": "unsupported_tool", "message": "Native tool executes in agent-worker"}
         webhook = tool["webhook"]
-        auth = webhook.get("auth") or {"type": "none"}
-        if auth.get("type", "none") != "none":
-            return {"error": "secret_unavailable", "message": "Configured authentication secret could not be resolved"}
         render_context = {**arguments, "var": context.get("session_variables", {}), "end_user": context.get("end_user", {}), "call": context.get("call", {})}
         url = _render(webhook["url"], render_context)
+        if not isinstance(url, str) or not await _safe_url(url, self.settings):
+            return {"error": "invalid_url", "message": "Webhook URL must use HTTPS"}
         headers = _render(webhook.get("headers", {}), render_context)
         headers.update({"X-VoiceOS-Call-Id": str(context.get("call", {}).get("id", "")), "X-VoiceOS-Tenant-Id": str(context.get("tenant_id", "")), "X-VoiceOS-Agent-Id": str(context.get("call", {}).get("agent_id", ""))})
         body = _render(webhook.get("body_template"), render_context)
+        auth = webhook.get("auth") or {"type": "none"}
+        secret = context.get("secret")
+        auth_type = auth.get("type", "none")
+        if auth_type != "none" and not secret:
+            return {"error": "secret_unavailable", "message": "Configured authentication secret could not be resolved"}
+        if auth_type == "bearer":
+            headers["Authorization"] = f"Bearer {secret}"
+        elif auth_type == "basic":
+            headers["Authorization"] = "Basic " + base64.b64encode(str(secret).encode()).decode()
+        elif auth_type == "header":
+            headers[auth.get("name", "X-API-Key")] = str(secret)
+        elif auth_type == "hmac":
+            payload = json.dumps(body, separators=(",", ":"), ensure_ascii=False).encode() if body is not None else b""
+            algorithm = auth.get("algorithm", "sha256")
+            if algorithm not in {"sha256", "sha512"}:
+                return {"error": "invalid_auth", "message": "Unsupported HMAC algorithm"}
+            headers[auth.get("header", "X-Signature")] = hmac.new(str(secret).encode(), payload, getattr(hashlib, algorithm)).hexdigest()
+        elif auth_type != "none":
+            return {"error": "invalid_auth", "message": "Unsupported authentication type"}
         started = time.perf_counter()
         try:
             async with httpx.AsyncClient(transport=self.transport, timeout=webhook.get("timeout_ms", 8000) / 1000) as client:
@@ -76,4 +116,4 @@ class ToolExecutor:
 
 
 def get_tool_executor() -> ToolExecutor:
-    return ToolExecutor()
+    return ToolExecutor(settings=get_settings())

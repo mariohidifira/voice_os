@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/config.py": {
-    "mtime": 1787187868.7579613,
-    "ast_hash": "b011dd24ae48ff17f234ce41ce0da22d",
+    "mtime": 1787189120.9214623,
+    "ast_hash": "a71cce72da81d7787f73b8fb8a478f00",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/db.py": {
@@ -100,23 +100,23 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/repository.py": {
-    "mtime": 1787188697.8883727,
-    "ast_hash": "e7bb6583370dac2655a23e3962f8cf38",
+    "mtime": 1787189309.1985645,
+    "ast_hash": "49e672c34b53f84a94b66c36f2f021ad",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787188699.2324283,
-    "ast_hash": "e3f36ad85f19e6756c2e4363e88b31a3",
+    "mtime": 1787189245.6785195,
+    "ast_hash": "3aa10584ae19ce6694f50708490694ea",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
-    "mtime": 1787187930.7158988,
-    "ast_hash": "5b2ca65080f262ad4653024746add09f",
+    "mtime": 1787189123.1266415,
+    "ast_hash": "5e9e98c75234def37618a72e0985e756",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/store.py": {
-    "mtime": 1787187718.7943017,
-    "ast_hash": "f2d0743026c43fa859f22e4f0b19683d",
+    "mtime": 1787189122.014504,
+    "ast_hash": "60e66618283508bbc8407cebf10d1f40",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/__init__.py": {
@@ -250,8 +250,8 @@
     "semantic_hash": ""
   },
   "tests/test_api.py": {
-    "mtime": 1787188713.3265908,
-    "ast_hash": "c17e1ff74ae89c636dbd67163e88fad6",
+    "mtime": 1787189382.951039,
+    "ast_hash": "0e894ed9fdb5e39e9e0701c4c70c5d63",
     "semantic_hash": ""
   },
   "tests/test_health.py": {
@@ -510,8 +510,8 @@
     "semantic_hash": ""
   },
   "pyproject.toml": {
-    "mtime": 1787188788.2108116,
-    "ast_hash": "00d41841ddd733b5c6ea4c6f903118e2",
+    "mtime": 1787189311.4679973,
+    "ast_hash": "6355463db7f590912087bba7ff97872d",
     "semantic_hash": ""
   },
   "scripts/test_live_redis.py": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "tests/test_postgres_repository.py": {
-    "mtime": 1787188026.1092699,
-    "ast_hash": "29ef1186af4c50c667a67c45eac3f59f",
+    "mtime": 1787189384.1831777,
+    "ast_hash": "a445c3ca1e64f5989dc4cad7f189704a",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
@@ -545,8 +545,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/tool_execution.py": {
-    "mtime": 1787187239.5062873,
-    "ast_hash": "2979f9763eddc11489c5de301de5b4c7",
+    "mtime": 1787189448.1085153,
+    "ast_hash": "8b110b068bf468129790c3613d4931aa",
     "semantic_hash": ""
   },
   "tests/test_knowledge.py": {
@@ -555,8 +555,18 @@
     "semantic_hash": ""
   },
   "tests/test_tool_execution.py": {
-    "mtime": 1787187271.0474517,
-    "ast_hash": "ea9a34075d4a85c972f1e9e80706c57f",
+    "mtime": 1787189269.150131,
+    "ast_hash": "22fa035e06e54cf604d7ca5d7b5a9281",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/secrets.py": {
+    "mtime": 1787189340.4934025,
+    "ast_hash": "d826eb33967020d89ffe7ce121706953",
+    "semantic_hash": ""
+  },
+  "tests/test_secrets.py": {
+    "mtime": 1787189270.2510028,
+    "ast_hash": "32c56e24411eaf9fbe4a45952625d454",
     "semantic_hash": ""
   }
 }
