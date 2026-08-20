@@ -33,6 +33,8 @@ class VoiceSession:
     rag: RAGProvider | None = None
     event_sink: EventSink | None = None
     variables: dict[str, Any] = field(default_factory=dict)
+    ended: bool = field(default=False, init=False)
+    end_reason: str | None = field(default=None, init=False)
     history: list[dict[str, str]] = field(init=False)
     metrics: SessionMetrics = field(init=False)
     _speaking_task: asyncio.Task[list[bytes]] | None = field(default=None, init=False)
@@ -44,6 +46,29 @@ class VoiceSession:
         self.metrics = SessionMetrics()
         self._llm_breaker = CircuitBreaker()
         self._tts_breaker = CircuitBreaker()
+        if "set_variable" not in self.tools.handlers:
+            self.tools.register(
+                "set_variable",
+                {"type": "object", "properties": {"name": {"type": "string", "minLength": 1}, "value": {}}, "required": ["name", "value"], "additionalProperties": False},
+                self._set_variable,
+            )
+        if "end_call" not in self.tools.handlers:
+            self.tools.register(
+                "end_call",
+                {"type": "object", "properties": {"reason": {"type": "string"}, "farewell": {"type": "string"}}, "additionalProperties": False},
+                self._end_call,
+            )
+
+    async def _set_variable(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        self.variables[str(arguments["name"])] = arguments["value"]
+        await self.emit("variable.set", name=arguments["name"])
+        return {"status": "ok", "name": arguments["name"], "value": arguments["value"]}
+
+    async def _end_call(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        self.ended = True
+        self.end_reason = str(arguments.get("reason") or "agent_hangup")
+        await self.emit("call.ended", reason=self.end_reason)
+        return {"status": "ended", "reason": self.end_reason, "farewell": arguments.get("farewell") or "Obrigado pelo contato. Até logo!"}
 
     async def emit(self, event_type: str, **payload: Any) -> None:
         if self.event_sink:

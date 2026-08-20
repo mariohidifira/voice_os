@@ -112,6 +112,24 @@ async def test_session_executes_tool_and_continues() -> None:
 
 
 @pytest.mark.asyncio
+async def test_builtin_set_variable_and_end_call_tools() -> None:
+    events: list[VoiceEvent] = []
+
+    async def sink(event: VoiceEvent) -> None:
+        events.append(event)
+
+    registry = ToolRegistry()
+    session = VoiceSession(MockLLM(), MockLLM(), MockTTS(), MockTTS(), registry, prompt(), event_sink=sink)
+    variable = await registry.execute(ToolCall("1", "set_variable", {"name": "cpf", "value": "123"}))
+    ended = await registry.execute(ToolCall("2", "end_call", {"reason": "resolved"}))
+    assert variable == {"status": "ok", "name": "cpf", "value": "123"}
+    assert session.variables["cpf"] == "123"
+    assert ended["status"] == "ended"
+    assert session.ended is True and session.end_reason == "resolved"
+    assert [event.type for event in events] == ["variable.set", "call.ended"]
+
+
+@pytest.mark.asyncio
 async def test_session_injects_rag_as_untrusted_data() -> None:
     session = VoiceSession(MockLLM([LLMResponse(text="A loja abre às nove.")]), MockLLM(), MockTTS(), MockTTS(), ToolRegistry(), prompt(), rag=MockRAG(["Horário: 9h."]))
     await session.turn("Qual o horário?")

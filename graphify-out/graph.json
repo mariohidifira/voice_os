@@ -670,7 +670,7 @@
       "label": ".__post_init__()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L42",
+      "source_location": "L44",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_session_voicesession_post_init",
       "community": 0,
@@ -678,15 +678,15 @@
       "norm_label": ".__post_init__()"
     },
     {
-      "label": ".emit()",
+      "label": "._set_variable()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L48",
+      "source_location": "L62",
       "_origin": "ast",
-      "id": "apps_agent_worker_voiceos_voice_session_voicesession_emit",
+      "id": "apps_agent_worker_voiceos_voice_session_voicesession_set_variable",
       "community": 0,
       "community_name": "Voice Core Modules",
-      "norm_label": ".emit()"
+      "norm_label": "._set_variable()"
     },
     {
       "label": "Any",
@@ -700,10 +700,32 @@
       "norm_label": "any"
     },
     {
+      "label": "._end_call()",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/voiceos_voice/session.py",
+      "source_location": "L67",
+      "_origin": "ast",
+      "id": "apps_agent_worker_voiceos_voice_session_voicesession_end_call",
+      "community": 0,
+      "community_name": "Voice Core Modules",
+      "norm_label": "._end_call()"
+    },
+    {
+      "label": ".emit()",
+      "file_type": "code",
+      "source_file": "apps/agent-worker/voiceos_voice/session.py",
+      "source_location": "L73",
+      "_origin": "ast",
+      "id": "apps_agent_worker_voiceos_voice_session_voicesession_emit",
+      "community": 0,
+      "community_name": "Voice Core Modules",
+      "norm_label": ".emit()"
+    },
+    {
       "label": ".interrupt()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L52",
+      "source_location": "L77",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_session_voicesession_interrupt",
       "community": 0,
@@ -714,7 +736,7 @@
       "label": "._knowledge()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L62",
+      "source_location": "L87",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_session_voicesession_knowledge",
       "community": 0,
@@ -725,7 +747,7 @@
       "label": "._complete()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L74",
+      "source_location": "L99",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_session_voicesession_complete",
       "community": 0,
@@ -736,7 +758,7 @@
       "label": "._speak()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L84",
+      "source_location": "L109",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_session_voicesession_speak",
       "community": 0,
@@ -747,7 +769,7 @@
       "label": ".turn()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L97",
+      "source_location": "L122",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_session_voicesession_turn",
       "community": 0,
@@ -1124,8 +1146,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_auth",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 75,
+      "community_name": "auth.py",
       "norm_label": "auth.py"
     },
     {
@@ -1135,8 +1157,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_auth_principal",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 75,
+      "community_name": "auth.py",
       "norm_label": "principal"
     },
     {
@@ -1146,8 +1168,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "header",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 75,
+      "community_name": "auth.py",
       "norm_label": "header"
     },
     {
@@ -1157,8 +1179,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_auth_py_uuid",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 75,
+      "community_name": "auth.py",
       "norm_label": "uuid"
     },
     {
@@ -1168,8 +1190,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_auth_internal_token",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 75,
+      "community_name": "auth.py",
       "norm_label": "internal_token()"
     },
     {
@@ -1190,8 +1212,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_config_settings",
-      "community": 67,
-      "community_name": "test_health.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "settings"
     },
     {
@@ -1201,8 +1223,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "basesettings",
-      "community": 67,
-      "community_name": "test_health.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "basesettings"
     },
     {
@@ -1399,8 +1421,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_knowledge_chunk_text",
-      "community": 5,
-      "community_name": "API Schemas and Mock",
+      "community": 65,
+      "community_name": "knowledge.py",
       "norm_label": "chunk_text()"
     },
     {
@@ -1498,8 +1520,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_knowledge_cosine_similarity",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "cosine_similarity()"
     },
     {
@@ -1839,8 +1861,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "repository.py"
     },
     {
@@ -2191,8 +2213,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_delete_tool",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 63,
+      "community_name": "Any",
       "norm_label": ".delete_tool()"
     },
     {
@@ -2521,8 +2543,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_update_draft",
-      "community": 64,
-      "community_name": "PostgresRepository",
+      "community": 73,
+      "community_name": "auth.py",
       "norm_label": ".update_draft()"
     },
     {
@@ -2774,8 +2796,8 @@
       "source_location": "L404",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_get_runtime",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 64,
+      "community_name": "PostgresRepository",
       "norm_label": ".get_runtime()"
     },
     {
@@ -3027,8 +3049,8 @@
       "source_location": "L555",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_update_agent",
-      "community": 73,
-      "community_name": "auth.py",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".update_agent()"
     },
     {
@@ -3038,8 +3060,8 @@
       "source_location": "L563",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_delete_agent",
-      "community": 73,
-      "community_name": "auth.py",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".delete_agent()"
     },
     {
@@ -3071,8 +3093,8 @@
       "source_location": "L582",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_update_draft",
-      "community": 73,
-      "community_name": "auth.py",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".update_draft()"
     },
     {
@@ -3423,8 +3445,8 @@
       "source_location": "L810",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_query_chunks",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": ".query_chunks()"
     },
     {
@@ -3489,8 +3511,8 @@
       "source_location": "L844",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_get_repository",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "get_repository()"
     },
     {
@@ -7853,10 +7875,21 @@
       "norm_label": "test_session_executes_tool_and_continues()"
     },
     {
-      "label": "test_session_injects_rag_as_untrusted_data()",
+      "label": "test_builtin_set_variable_and_end_call_tools()",
       "file_type": "code",
       "source_file": "tests/test_voice_core.py",
       "source_location": "L115",
+      "_origin": "ast",
+      "id": "tests_test_voice_core_test_builtin_set_variable_and_end_call_tools",
+      "community": 0,
+      "community_name": "Voice Core Modules",
+      "norm_label": "test_builtin_set_variable_and_end_call_tools()"
+    },
+    {
+      "label": "test_session_injects_rag_as_untrusted_data()",
+      "file_type": "code",
+      "source_file": "tests/test_voice_core.py",
+      "source_location": "L133",
       "_origin": "ast",
       "id": "tests_test_voice_core_test_session_injects_rag_as_untrusted_data",
       "community": 0,
@@ -7867,7 +7900,7 @@
       "label": "test_session_rag_timeout_is_non_blocking()",
       "file_type": "code",
       "source_file": "tests/test_voice_core.py",
-      "source_location": "L124",
+      "source_location": "L142",
       "_origin": "ast",
       "id": "tests_test_voice_core_test_session_rag_timeout_is_non_blocking",
       "community": 0,
@@ -7878,7 +7911,7 @@
       "label": "test_backchannel_does_not_interrupt()",
       "file_type": "code",
       "source_file": "tests/test_voice_core.py",
-      "source_location": "L136",
+      "source_location": "L154",
       "_origin": "ast",
       "id": "tests_test_voice_core_test_backchannel_does_not_interrupt",
       "community": 0,
@@ -7889,7 +7922,7 @@
       "label": "test_barge_in_cancels_speech_and_emits_event()",
       "file_type": "code",
       "source_file": "tests/test_voice_core.py",
-      "source_location": "L144",
+      "source_location": "L162",
       "_origin": "ast",
       "id": "tests_test_voice_core_test_barge_in_cancels_speech_and_emits_event",
       "community": 0,
@@ -8530,9 +8563,9 @@
       "source_file": "apps/api/voiceos_api/repository.py",
       "source_location": "lines 14-22",
       "description": "Defines tenant-aware agent, call, tool, and runtime persistence operations used by routes.",
-      "community": 7,
+      "community": 64,
       "norm_label": "repository protocol",
-      "community_name": "Backend Design Rationale",
+      "community_name": "PostgresRepository",
       "id": "apps_api_voiceos_api_repository_contract"
     },
     {
@@ -8578,9 +8611,9 @@
       "source_file": "apps/api/voiceos_api/routes.py",
       "source_location": "lines 64-69",
       "description": "Returns the active agent runtime configuration to trusted internal consumers.",
-      "community": 7,
+      "community": 64,
       "norm_label": "internal agent runtime endpoint",
-      "community_name": "Backend Design Rationale",
+      "community_name": "PostgresRepository",
       "id": "runtime_endpoint"
     },
     {
@@ -11056,6 +11089,18 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_voice_core.py",
+      "source_location": "L123",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_voice_core_test_builtin_set_variable_and_end_call_tools",
+      "target": "apps_agent_worker_voiceos_voice_contracts_toolcall"
+    },
+    {
       "relation": "references",
       "context": "return_type",
       "confidence": "EXTRACTED",
@@ -11245,7 +11290,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L74",
+      "source_location": "L99",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession_complete",
@@ -11923,6 +11968,18 @@
       "target": "tests_test_voice_core_test_session_text_turn_with_audio"
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_voice_core.py",
+      "source_location": "L122",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_voice_core_test_builtin_set_variable_and_end_call_tools",
+      "target": "apps_agent_worker_voiceos_voice_providers_mockllm"
+    },
+    {
       "relation": "references",
       "context": "generic_arg",
       "confidence": "EXTRACTED",
@@ -12034,6 +12091,18 @@
       "weight": 1.0,
       "source": "apps_agent_worker_voiceos_voice_providers_mocktts",
       "target": "tests_test_voice_core_test_session_text_turn_with_audio"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_voice_core.py",
+      "source_location": "L122",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_voice_core_test_builtin_set_variable_and_end_call_tools",
+      "target": "apps_agent_worker_voiceos_voice_providers_mocktts"
     },
     {
       "relation": "method",
@@ -12529,7 +12598,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L74",
+      "source_location": "L99",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession",
@@ -12540,7 +12609,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L48",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession",
@@ -12551,7 +12620,18 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L52",
+      "source_location": "L67",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_session_voicesession",
+      "target": "apps_agent_worker_voiceos_voice_session_voicesession_end_call",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/session.py",
+      "source_location": "L77",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession",
@@ -12562,7 +12642,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L62",
+      "source_location": "L87",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession",
@@ -12573,7 +12653,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L42",
+      "source_location": "L44",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession",
@@ -12584,7 +12664,18 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L84",
+      "source_location": "L62",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_session_voicesession",
+      "target": "apps_agent_worker_voiceos_voice_session_voicesession_set_variable",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/session.py",
+      "source_location": "L109",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession",
@@ -12595,7 +12686,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L97",
+      "source_location": "L122",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession",
@@ -12680,15 +12771,75 @@
       "target": "tests_test_voice_core_test_session_text_turn_with_audio"
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_voice_core.py",
+      "source_location": "L122",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_voice_core_test_builtin_set_variable_and_end_call_tools",
+      "target": "apps_agent_worker_voiceos_voice_session_voicesession"
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/session.py",
+      "source_location": "L62",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_session_voicesession_set_variable",
+      "target": "apps_agent_worker_voiceos_voice_session_py_any",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/session.py",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_session_voicesession_set_variable",
+      "target": "apps_agent_worker_voiceos_voice_session_voicesession_emit",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "references",
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/session.py",
-      "source_location": "L48",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_session_voicesession_emit",
       "target": "apps_agent_worker_voiceos_voice_session_py_any",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/session.py",
+      "source_location": "L67",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_session_voicesession_end_call",
+      "target": "apps_agent_worker_voiceos_voice_session_py_any",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/agent-worker/voiceos_voice/session.py",
+      "source_location": "L70",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_agent_worker_voiceos_voice_session_voicesession_end_call",
+      "target": "apps_agent_worker_voiceos_voice_session_voicesession_emit",
       "confidence_score": 1.0
     },
     {
@@ -12965,6 +13116,18 @@
       "weight": 1.0,
       "source": "apps_agent_worker_voiceos_voice_tools_toolregistry",
       "target": "tests_test_voice_core_test_tool_registry_validates_and_executes"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_voice_core.py",
+      "source_location": "L121",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_voice_core_test_builtin_set_variable_and_end_call_tools",
+      "target": "apps_agent_worker_voiceos_voice_tools_toolregistry"
     },
     {
       "relation": "references",
@@ -29912,7 +30075,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_voice_core.py",
-      "source_location": "L136",
+      "source_location": "L154",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_voice_core",
@@ -29923,11 +30086,22 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_voice_core.py",
-      "source_location": "L144",
+      "source_location": "L162",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_voice_core",
       "target": "tests_test_voice_core_test_barge_in_cancels_speech_and_emits_event",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_voice_core.py",
+      "source_location": "L115",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_voice_core",
+      "target": "tests_test_voice_core_test_builtin_set_variable_and_end_call_tools",
       "confidence_score": 1.0
     },
     {
@@ -29989,7 +30163,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_voice_core.py",
-      "source_location": "L115",
+      "source_location": "L133",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_voice_core",
@@ -30000,7 +30174,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_voice_core.py",
-      "source_location": "L124",
+      "source_location": "L142",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_voice_core",
@@ -30116,6 +30290,18 @@
       "confidence_score": 1.0,
       "source": "tests_test_voice_core_prompt",
       "target": "tests_test_voice_core_test_session_text_turn_with_audio"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_voice_core.py",
+      "source_location": "L122",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_voice_core_test_builtin_set_variable_and_end_call_tools",
+      "target": "tests_test_voice_core_prompt",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -31532,5 +31718,5 @@
       "source_file": "PHASE-0-REPORT.md"
     }
   ],
-  "built_at_commit": "278dd3ed1220a68ca9710b42fe458e3b94a686ea"
+  "built_at_commit": "3716eac46b0a59376f49112be329dd3252c20516"
 }
