@@ -76,5 +76,6 @@
   "74": "test_agent_versions.py",
   "75": "auth.py",
   "76": "FakeEventBus",
-  "77": "repository.py"
+  "77": "repository.py",
+  "78": "Repository protocol"
 }

@@ -30,8 +30,8 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/session.py": {
-    "mtime": 1787217384.718495,
-    "ast_hash": "024c154734f90e5823a7c2953009532f",
+    "mtime": 1787251121.6213832,
+    "ast_hash": "d2686302b9740df0db54f137c6f88779",
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/tools.py": {
@@ -270,8 +270,8 @@
     "semantic_hash": ""
   },
   "tests/test_voice_core.py": {
-    "mtime": 1787217398.4778283,
-    "ast_hash": "e905b83fcae6f8f52336ac8281e13838",
+    "mtime": 1787251517.1875787,
+    "ast_hash": "2f7362cd018805160668de3b95ada183",
     "semantic_hash": ""
   },
   "tests/test_voice_worker.py": {
@@ -582,6 +582,26 @@
   "tests/test_native_integrations.py": {
     "mtime": 1787219989.8417368,
     "ast_hash": "bee516b8f3165dae3dc67c83916e084e",
+    "semantic_hash": ""
+  },
+  "apps/agent-worker/voiceos_voice/api_client.py": {
+    "mtime": 1787251119.4806085,
+    "ast_hash": "b485fc949721c80635ad8ff8025dff4e",
+    "semantic_hash": ""
+  },
+  "apps/agent-worker/voiceos_voice/runtime.py": {
+    "mtime": 1787251123.7234614,
+    "ast_hash": "d83902277a278aa4147861defe29573d",
+    "semantic_hash": ""
+  },
+  "tests/test_worker_api_client.py": {
+    "mtime": 1787251542.3395162,
+    "ast_hash": "dff9412b56e2a8e42334d2416161ea6f",
+    "semantic_hash": ""
+  },
+  "tests/test_worker_runtime.py": {
+    "mtime": 1787251519.9556923,
+    "ast_hash": "52e04c7c878651758e7af5d714d3719d",
     "semantic_hash": ""
   }
 }

@@ -97,9 +97,13 @@ class VoiceSession:
             return []
 
     async def _complete(self) -> LLMResponse:
+        tools = [
+            {"name": name, "parameters": schema}
+            for name, schema in self.tools.schemas.items()
+        ]
         result, fallback = await resilient_call(
-            lambda: self.primary_llm.complete(self.history, []),
-            lambda: self.fallback_llm.complete(self.history, []),
+            lambda: self.primary_llm.complete(self.history, tools),
+            lambda: self.fallback_llm.complete(self.history, tools),
             breaker=self._llm_breaker,
             timeout_s=8,
         )

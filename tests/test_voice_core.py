@@ -109,6 +109,31 @@ async def test_session_executes_tool_and_continues() -> None:
     assert text == "Obrigado, Mario."
     assert session.metrics.tool_calls == 1
     assert session.history[-2]["role"] == "tool"
+    assert llm.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_session_exposes_registered_tools_to_llm() -> None:
+    seen_tools: list[dict[str, object]] = []
+
+    class RecordingLLM:
+        name = "recording"
+
+        async def complete(
+            self, messages: list[dict[str, str]], tools: list[dict[str, object]]
+        ) -> LLMResponse:
+            seen_tools.extend(tools)
+            return LLMResponse(text="Pronto.")
+
+    registry = ToolRegistry()
+
+    async def handler(arguments: dict[str, object]) -> dict[str, object]:
+        return arguments
+
+    registry.register("lookup", {"type": "object", "properties": {}}, handler)
+    session = VoiceSession(RecordingLLM(), MockLLM(), MockTTS(), MockTTS(), registry, prompt())
+    await session.turn("Consulte")
+    assert {tool["name"] for tool in seen_tools} >= {"lookup", "set_variable", "end_call"}
 
 
 @pytest.mark.asyncio
