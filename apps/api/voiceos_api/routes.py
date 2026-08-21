@@ -14,6 +14,7 @@ from .config import get_settings
 from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_embeddings
 from .live import EventBus, encode_sse, get_event_bus
 from .native_integrations import NativeIntegrations, get_native_integrations
+from .postprocessing import Postprocessor, get_postprocessor
 from .repository import Repository, get_repository
 from .schemas import (
     AgentCreate,
@@ -51,6 +52,7 @@ Executor = Annotated[ToolExecutor, Depends(get_tool_executor)]
 Embedder = Annotated[Embeddings, Depends(get_embeddings)]
 Cipher = Annotated[SecretCipher, Depends(get_secret_cipher)]
 Native = Annotated[NativeIntegrations, Depends(get_native_integrations)]
+Processor = Annotated[Postprocessor, Depends(get_postprocessor)]
 
 
 def _egress_recording(event: livekit_api.WebhookEvent) -> tuple[UUID, dict[str, Any]] | None:
@@ -500,6 +502,25 @@ async def update_internal_call(call_id: UUID, body: CallPatch, repo: Repo) -> di
     if not call:
         raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
     return call
+
+
+async def _postprocess_call(call_id: UUID, call: dict[str, Any], repo: Repository, processor: Postprocessor) -> None:
+    try:
+        result = await processor.process(call)
+        await repo.update_internal_call(call_id, result)
+        await repo.append_call_events(call_id, [{"type": "call.postprocessed", "payload": {"model": get_settings().anthropic_postprocess_model}, "at": datetime.now(UTC)}])
+    except Exception as exc:
+        await repo.append_call_events(call_id, [{"type": "call.postprocess_failed", "payload": {"error": type(exc).__name__}, "at": datetime.now(UTC)}])
+
+
+@internal.post("/calls/{call_id}/postprocess", status_code=202)
+async def postprocess_call(call_id: UUID, background: BackgroundTasks, repo: Repo, processor: Processor) -> dict[str, bool]:
+    tenant_id = await repo.get_call_tenant(call_id)
+    call = await repo.get_call_detail(tenant_id, call_id) if tenant_id else None
+    if not call:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    background.add_task(_postprocess_call, call_id, call, repo, processor)
+    return {"queued": True}
 
 
 @internal.post("/calls/{call_id}/events")

@@ -90,6 +90,10 @@ class WorkerAPI:
     async def execute_tool(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", "/internal/tools/execute", json=payload)
 
+    async def postprocess_call(self, call_id: UUID) -> bool:
+        result = await self._request("POST", f"/internal/calls/{call_id}/postprocess")
+        return bool(result.get("queued"))
+
     async def query_knowledge(
         self, knowledge_base_id: UUID, query: str, *, top_k: int, min_score: float
     ) -> list[dict[str, Any]]:

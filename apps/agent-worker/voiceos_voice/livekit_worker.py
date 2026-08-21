@@ -26,6 +26,7 @@ from livekit.agents import (
 from livekit.agents.llm import Tool, Toolset
 from livekit.plugins import anthropic, cartesia, deepgram, elevenlabs, openai, silero
 
+from .accounting import CallAccounting
 from .api_client import RedisRuntimeCache, WorkerAPI
 from .prompting import build_system_prompt
 from .recording import start_room_recording
@@ -49,6 +50,8 @@ class LiveKitCallBridge:
     ordinal: int = 0
     end_reason: str = "completed"
     pending: set[asyncio.Task[None]] = field(default_factory=set)
+    accounting: CallAccounting = field(default_factory=CallAccounting)
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def spawn(self, coroutine: Any) -> None:
         task = asyncio.create_task(coroutine)
@@ -71,6 +74,7 @@ class LiveKitCallBridge:
             {"text": event.transcript, "is_final": event.is_final, "language": str(event.language or "")},
         )
         if event.is_final and event.transcript.strip():
+            self.accounting.turns += 1
             await self.api.append_turns(
                 self.call_id,
                 [{"ordinal": self.ordinal, "role": "user", "text": event.transcript, "started_at": datetime.now(UTC).isoformat()}],
@@ -89,26 +93,38 @@ class LiveKitCallBridge:
             [{"ordinal": self.ordinal, "role": "assistant", "text": text, "started_at": datetime.now(UTC).isoformat()}],
         )
         self.ordinal += 1
+        self.accounting.turns += 1
 
     async def metric(self, event: MetricsCollectedEvent) -> None:
+        self.accounting.observe_metric(event)
         await self.persist_event("pipeline.metric", {"metric": _jsonable(event.metrics)})
 
     async def usage(self, event: SessionUsageUpdatedEvent) -> None:
+        self.accounting.observe_usage(event)
         await self.persist_event("pipeline.usage", {"usage": _jsonable(event.usage)})
 
     async def close(self, event: CloseEvent | None = None) -> None:
         await self.drain()
         if event and event.error:
             self.end_reason = "provider_error"
+        duration_s = max(0, round((datetime.now(UTC) - self.started_at).total_seconds()))
         await self.api.update_call(
             self.call_id,
             {
                 "status": "failed" if self.end_reason == "provider_error" else "completed",
                 "end_reason": self.end_reason,
                 "ended_at": datetime.now(UTC).isoformat(),
+                "duration_s": duration_s,
+                "billable_seconds": duration_s,
+                "latency": self.accounting.latency(),
+                "cost": self.accounting.cost(duration_s),
                 "variables": self.variables,
             },
         )
+        try:
+            await self.api.postprocess_call(self.call_id)
+        except RuntimeError:
+            await self.persist_event("call.postprocess_enqueue_failed", {})
 
 
 @dataclass
