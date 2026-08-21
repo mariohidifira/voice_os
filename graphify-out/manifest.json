@@ -610,13 +610,13 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/livekit_worker.py": {
-    "mtime": 1787253940.111318,
-    "ast_hash": "50f37f0d0a57447169837d68780afa96",
+    "mtime": 1787263386.738028,
+    "ast_hash": "8c6e42c40806f0c03db521e92714814d",
     "semantic_hash": ""
   },
   "tests/test_livekit_worker.py": {
-    "mtime": 1787253943.5179935,
-    "ast_hash": "85f1093abc1d3ef8b0662ac077c6f9f8",
+    "mtime": 1787263494.9769452,
+    "ast_hash": "f9dcbd17007b3f8b937e7042a0675b29",
     "semantic_hash": ""
   }
 }

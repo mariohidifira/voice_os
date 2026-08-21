@@ -1,13 +1,203 @@
+import asyncio
 import json
 import os
+from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli, llm, stt, tts
+from livekit.agents import (
+    Agent,
+    AgentServer,
+    AgentSession,
+    CloseEvent,
+    ConversationItemAddedEvent,
+    JobContext,
+    MetricsCollectedEvent,
+    SessionUsageUpdatedEvent,
+    UserInputTranscribedEvent,
+    UserStateChangedEvent,
+    cli,
+    function_tool,
+    llm,
+    stt,
+    tts,
+)
+from livekit.agents.llm import Tool, Toolset
 from livekit.plugins import anthropic, cartesia, deepgram, elevenlabs, openai, silero
 
 from .api_client import RedisRuntimeCache, WorkerAPI
 from .prompting import build_system_prompt
+
+
+def _jsonable(value: Any) -> Any:
+    if is_dataclass(value) and not isinstance(value, type):
+        return asdict(value)
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    if hasattr(value, "__dict__"):
+        return {key: _jsonable(item) for key, item in vars(value).items() if not key.startswith("_")}
+    return value
+
+
+@dataclass
+class LiveKitCallBridge:
+    api: WorkerAPI
+    call_id: UUID
+    variables: dict[str, Any]
+    ordinal: int = 0
+    end_reason: str = "completed"
+    pending: set[asyncio.Task[None]] = field(default_factory=set)
+
+    def spawn(self, coroutine: Any) -> None:
+        task = asyncio.create_task(coroutine)
+        self.pending.add(task)
+        task.add_done_callback(self.pending.discard)
+
+    async def drain(self) -> None:
+        if self.pending:
+            await asyncio.gather(*tuple(self.pending), return_exceptions=True)
+
+    async def persist_event(self, event_type: str, payload: dict[str, Any]) -> None:
+        await self.api.append_events(
+            self.call_id,
+            [{"type": event_type, "payload": payload, "at": datetime.now(UTC).isoformat()}],
+        )
+
+    async def user_transcript(self, event: UserInputTranscribedEvent) -> None:
+        await self.persist_event(
+            "stt.final" if event.is_final else "stt.interim",
+            {"text": event.transcript, "is_final": event.is_final, "language": str(event.language or "")},
+        )
+        if event.is_final and event.transcript.strip():
+            await self.api.append_turns(
+                self.call_id,
+                [{"ordinal": self.ordinal, "role": "user", "text": event.transcript, "started_at": datetime.now(UTC).isoformat()}],
+            )
+            self.ordinal += 1
+
+    async def conversation_item(self, event: ConversationItemAddedEvent) -> None:
+        item = event.item
+        role = str(getattr(item, "role", ""))
+        content = getattr(item, "text_content", None) or getattr(item, "content", None)
+        if role != "assistant" or not content:
+            return
+        text = content if isinstance(content, str) else " ".join(str(part) for part in content)
+        await self.api.append_turns(
+            self.call_id,
+            [{"ordinal": self.ordinal, "role": "assistant", "text": text, "started_at": datetime.now(UTC).isoformat()}],
+        )
+        self.ordinal += 1
+
+    async def metric(self, event: MetricsCollectedEvent) -> None:
+        await self.persist_event("pipeline.metric", {"metric": _jsonable(event.metrics)})
+
+    async def usage(self, event: SessionUsageUpdatedEvent) -> None:
+        await self.persist_event("pipeline.usage", {"usage": _jsonable(event.usage)})
+
+    async def close(self, event: CloseEvent | None = None) -> None:
+        await self.drain()
+        if event and event.error:
+            self.end_reason = "provider_error"
+        await self.api.update_call(
+            self.call_id,
+            {
+                "status": "failed" if self.end_reason == "provider_error" else "completed",
+                "end_reason": self.end_reason,
+                "ended_at": datetime.now(UTC).isoformat(),
+                "variables": self.variables,
+            },
+        )
+
+
+@dataclass
+class SessionGuards:
+    session: AgentSession[Any]
+    bridge: LiveKitCallBridge
+    silence_prompt: str
+    max_duration_s: int
+    silence_count: int = 0
+    duration_task: asyncio.Task[None] | None = None
+
+    def start(self) -> None:
+        self.duration_task = asyncio.create_task(self.enforce_duration())
+
+    async def enforce_duration(self) -> None:
+        await asyncio.sleep(self.max_duration_s)
+        self.bridge.end_reason = "max_duration"
+        speech = self.session.say("Atingimos o tempo máximo desta conversa. Obrigado pelo contato.", allow_interruptions=False)
+        await speech.wait_for_playout()
+        self.session.shutdown(drain=True)
+
+    async def user_state(self, event: UserStateChangedEvent) -> None:
+        if event.new_state != "away":
+            return
+        self.silence_count += 1
+        await self.bridge.persist_event("silence.detected", {"count": self.silence_count})
+        if self.silence_count == 1:
+            await self.session.say(self.silence_prompt, allow_interruptions=True).wait_for_playout()
+        else:
+            self.bridge.end_reason = "silence"
+            await self.session.say("Vou encerrar por falta de resposta. Até logo!", allow_interruptions=False).wait_for_playout()
+            self.session.shutdown(drain=True)
+
+    def cancel(self) -> None:
+        if self.duration_task and not self.duration_task.done():
+            self.duration_task.cancel()
+
+
+def dynamic_tools(
+    api: WorkerAPI,
+    call_id: UUID,
+    tools: list[dict[str, Any]],
+    variables: dict[str, Any],
+    end_user: dict[str, Any],
+    session_ref: dict[str, AgentSession[Any]],
+    bridge: LiveKitCallBridge,
+) -> list[Tool | Toolset]:
+    result: list[Tool | Toolset] = []
+    for definition in tools:
+        tool_id = str(definition["id"])
+        name = str(definition["name"])
+
+        async def execute(
+            raw_arguments: dict[str, Any],
+            *,
+            remote_tool_id: str = tool_id,
+            tool_name: str = name,
+        ) -> dict[str, Any]:
+            if tool_name == "set_variable":
+                variables[str(raw_arguments["name"])] = raw_arguments.get("value")
+                await bridge.persist_event("variable.set", {"name": raw_arguments["name"]})
+                return {"status": "ok", "name": raw_arguments["name"], "value": raw_arguments.get("value")}
+            if tool_name == "end_call":
+                bridge.end_reason = str(raw_arguments.get("reason") or "agent_hangup")
+                farewell = str(raw_arguments.get("farewell") or "Obrigado pelo contato. Até logo!")
+
+                async def finish_after_farewell() -> None:
+                    speech = session_ref["session"].say(farewell, allow_interruptions=False)
+                    await speech.wait_for_playout()
+                    session_ref["session"].shutdown(drain=True)
+
+                asyncio.create_task(finish_after_farewell())
+                return {"status": "ending", "reason": bridge.end_reason}
+            return await api.execute_tool(
+                {
+                    "tool_id": remote_tool_id,
+                    "call_id": str(call_id),
+                    "arguments": raw_arguments,
+                    "session_variables": variables,
+                    "end_user": end_user,
+                }
+            )
+
+        schema = {
+            "name": name,
+            "description": str(definition.get("description") or name),
+            "parameters": dict(definition.get("parameters_schema") or {"type": "object"}),
+        }
+        result.append(function_tool(raw_schema=schema)(execute))
+    return result
 
 
 def room_metadata(raw: str | None) -> dict[str, Any]:
@@ -82,6 +272,24 @@ async def voiceos_agent(ctx: JobContext) -> None:
     )
     runtime = await api.runtime(UUID(str(metadata["agent_id"])), str(metadata.get("version") or "current"))
     variables = {**runtime.get("variables", {}), **dict(metadata.get("variables") or {})}
+    if metadata.get("call_id"):
+        call_id = UUID(str(metadata["call_id"]))
+        await api.update_call(call_id, {"status": "in_progress", "livekit_room": ctx.room.name, "answered_at": datetime.now(UTC).isoformat()})
+    else:
+        created = await api.create_call(
+            {
+                "tenant_id": runtime["tenant_id"],
+                "agent_id": runtime["agent_id"],
+                "agent_version_id": runtime["version_id"],
+                "channel": str(metadata.get("channel") or "web"),
+                "livekit_room": ctx.room.name,
+                "variables": variables,
+                "metadata": {"dispatch": metadata},
+            }
+        )
+        call_id = UUID(str(created["id"]))
+        await api.update_call(call_id, {"status": "in_progress", "answered_at": datetime.now(UTC).isoformat()})
+    bridge = LiveKitCallBridge(api, call_id, variables)
     prompt = build_system_prompt(
         {"id": runtime["tenant_id"]},
         runtime,
@@ -89,19 +297,43 @@ async def voiceos_agent(ctx: JobContext) -> None:
         variables=variables,
         end_user=metadata.get("end_user"),
         tools=list(runtime.get("tools", [])),
-        now=__import__("datetime").datetime.now(__import__("datetime").UTC),
+        now=datetime.now(UTC),
     )
     pipeline = provider_pipeline(runtime)
     turn = runtime.get("turn") or {}
+    behavior = runtime.get("behavior") or {}
+    session_ref: dict[str, AgentSession[Any]] = {}
+    tools = dynamic_tools(api, call_id, list(runtime.get("tools", [])), variables, dict(metadata.get("end_user") or {}), session_ref, bridge)
     session = AgentSession(
         **pipeline,
+        tools=tools,
         min_endpointing_delay=float(turn.get("min_endpointing_delay", 0.5)),
         max_endpointing_delay=float(turn.get("max_endpointing_delay", 3.0)),
         allow_interruptions=True,
         min_interruption_duration=float(turn.get("min_interruption_duration", 0.5)),
         min_interruption_words=int(turn.get("min_interruption_words", 1)),
+        user_away_timeout=float(behavior.get("silence_timeout_s", 8)),
     )
+    session_ref["session"] = session
+    guards = SessionGuards(
+        session,
+        bridge,
+        str(behavior.get("silence_prompt") or "Você ainda está aí?"),
+        int(behavior.get("max_call_duration_s", 900)),
+    )
+    session.on("user_input_transcribed", lambda event: bridge.spawn(bridge.user_transcript(event)))
+    session.on("conversation_item_added", lambda event: bridge.spawn(bridge.conversation_item(event)))
+    session.on("metrics_collected", lambda event: bridge.spawn(bridge.metric(event)))
+    session.on("session_usage_updated", lambda event: bridge.spawn(bridge.usage(event)))
+    session.on("user_state_changed", lambda event: bridge.spawn(guards.user_state(event)))
+
+    async def close_session(event: CloseEvent) -> None:
+        guards.cancel()
+        await bridge.close(event)
+
+    session.on("close", lambda event: asyncio.create_task(close_session(event)))
     await session.start(room=ctx.room, agent=Agent(instructions=prompt))
+    guards.start()
     await ctx.connect()
     greeting = str(runtime.get("greeting") or "Olá! Como posso ajudar?")
     await session.say(greeting, allow_interruptions=True)

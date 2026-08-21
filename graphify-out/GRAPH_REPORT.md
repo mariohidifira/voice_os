@@ -1,16 +1,16 @@
 # Graph Report - VOICE_OS  (2026-08-20)
 
 ## Corpus Check
-- 121 files · ~44,004 words
+- 121 files · ~45,038 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 976 nodes · 2138 edges · 79 communities (51 shown, 28 thin omitted)
-- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 230 edges (avg confidence: 0.7)
+- 1005 nodes · 2214 edges · 79 communities (52 shown, 27 thin omitted)
+- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 248 edges (avg confidence: 0.7)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `627d116d`
+- Built from commit: `a217cae2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -91,9 +91,9 @@
 5. `Settings` - 30 edges
 6. `get_settings()` - 30 edges
 7. `ToolRegistry` - 28 edges
-8. `LLMResponse` - 26 edges
-9. `WorkerAPI` - 20 edges
-10. `MockLLM` - 19 edges
+8. `WorkerAPI` - 26 edges
+9. `LLMResponse` - 26 edges
+10. `voiceos_agent()` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `test_postgres_agent_and_call_lifecycle()` --calls--> `PostgresRepository`  [INFERRED]
@@ -115,15 +115,15 @@
 - **Tenant Agent Version Management Flow** — apps_api_voiceos_api_routes_agent_version_lifecycle, apps_api_voiceos_api_repository_postgres_rls, apps_api_voiceos_api_schemas_api_contracts, scripts_test_agent_versions_acceptance [INFERRED 0.95]
 - **Phase 0 Local Acceptance Stack** — compose_local_platform, phase_0_local_acceptance, scripts_test_auth_flow_acceptance, scripts_test_rls_acceptance, scripts_smoke_local_stack [EXTRACTED 1.00]
 
-## Communities (79 total, 28 thin omitted)
+## Communities (79 total, 27 thin omitted)
 
 ### Community 0 - "Voice Core Modules"
 Cohesion: 0.06
 Nodes (62): BaseModel, simulate(), SimulationRequest, SimulationResponse, WorkerState, LLMProvider, LLMResponse, Any (+54 more)
 
 ### Community 1 - "API Authentication Routes"
-Cohesion: 0.16
-Nodes (16): VoiceOS FastAPI application, AsyncSession, session(), health(), http_error(), Any, Request, ready() (+8 more)
+Cohesion: 0.15
+Nodes (17): VoiceOS FastAPI application, AsyncSession, session(), get_health_checker(), health(), http_error(), Any, Request (+9 more)
 
 ### Community 3 - "VoiceOS Platform Architecture"
 Cohesion: 0.06
@@ -134,8 +134,8 @@ Cohesion: 0.05
 Nodes (39): dependencies, @auth/core, @auth/pg-adapter, next, next-auth, pg, react, react-dom (+31 more)
 
 ### Community 5 - "API Schemas and Mock"
-Cohesion: 0.08
-Nodes (94): alias, chunk_text(), append_call_events(), append_call_tool_call(), append_call_turns(), calls(), create_agent(), create_document() (+86 more)
+Cohesion: 0.07
+Nodes (98): alias, chunk_text(), extract_bytes(), extract_url(), append_call_events(), append_call_tool_call(), append_call_turns(), calls() (+90 more)
 
 ### Community 6 - "Health Checks"
 Cohesion: 0.08
@@ -234,59 +234,63 @@ Cohesion: 0.50
 Nodes (3): compat, config, directory
 
 ### Community 63 - "Any"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (3): Any, Protocol, Repository
 
 ### Community 64 - "PostgresRepository"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (3): immutable agent publish flow, PostgresRepository, tenant_session()
 
 ### Community 65 - "knowledge.py"
-Cohesion: 0.16
-Nodes (10): cosine_similarity(), Embeddings, extract_bytes(), extract_url(), get_embeddings(), AsyncBaseTransport, _TextExtractor, HTMLParser (+2 more)
+Cohesion: 0.24
+Nodes (5): Embeddings, get_embeddings(), AsyncBaseTransport, _TextExtractor, HTMLParser
 
 ### Community 66 - "get_settings"
-Cohesion: 0.16
-Nodes (17): internal_token(), Principal, UUID, get_settings(), Header, headers(), HealthyChecker, test_agent_draft_versions_and_rollback() (+9 more)
+Cohesion: 0.14
+Nodes (18): internal_token(), Principal, UUID, get_settings(), AsyncBaseTransport, Header, headers(), HealthyChecker (+10 more)
 
 ### Community 67 - "test_health.py"
 Cohesion: 0.15
-Nodes (13): Settings, get_health_checker(), HealthChecker, Any, BaseSettings, MonkeyPatch, FakeConnection, FakeConnectionContext (+5 more)
+Nodes (12): Settings, HealthChecker, Any, BaseSettings, MonkeyPatch, FakeConnection, FakeConnectionContext, FakeEngine (+4 more)
 
 ### Community 68 - "tool_execution.py"
-Cohesion: 0.25
-Nodes (11): get_tool_executor(), _json_path(), _lookup(), Any, AsyncBaseTransport, _render(), _safe_url(), ToolExecutor (+3 more)
+Cohesion: 0.31
+Nodes (10): get_tool_executor(), _json_path(), _lookup(), Any, _render(), _safe_url(), ToolExecutor, test_webhook_bearer_secret_is_applied() (+2 more)
 
 ### Community 69 - "HealthChecker"
 Cohesion: 0.24
 Nodes (7): get_native_integrations(), NativeIntegrations, Any, AsyncBaseTransport, UUID, Protocol, SecretCipher
 
 ### Community 71 - "MemoryStore"
-Cohesion: 0.14
-Nodes (8): EnvelopeCipher, get_secret_cipher(), MemoryStore, Any, UUID, Deterministic dev adapter. Production endpoints use the same contract with Postg, test_google_oauth_refresh_calendar_and_resend(), test_local_envelope_cipher_roundtrip()
+Cohesion: 0.27
+Nodes (4): EnvelopeCipher, get_secret_cipher(), test_google_oauth_refresh_calendar_and_resend(), test_local_envelope_cipher_roundtrip()
 
 ### Community 72 - ".get_call"
-Cohesion: 0.09
-Nodes (17): MemoryRuntimeCache, Any, AsyncBaseTransport, Protocol, UUID, RedisRuntimeCache, RuntimeCache, WorkerAPI (+9 more)
+Cohesion: 0.06
+Nodes (34): AgentSession, MemoryRuntimeCache, Any, AsyncBaseTransport, Protocol, UUID, RedisRuntimeCache, RuntimeCache (+26 more)
 
 ### Community 74 - "test_agent_versions.py"
 Cohesion: 0.50
 Nodes (4): internal_request(), Any, Exercise agent draft, publish, version history and rollback against PostgreSQL., request()
 
+### Community 77 - "repository.py"
+Cohesion: 0.22
+Nodes (6): cosine_similarity(), get_repository(), MemoryStore, Any, UUID, Deterministic dev adapter. Production endpoints use the same contract with Postg
+
 ## Knowledge Gaps
 - **167 isolated node(s):** `databaseUrl`, `stats`, `emailProvider`, `providers`, `secureCookies` (+162 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **27 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Repository` connect `Any` to `Voice Core Modules`, `Memory Repository Operations`, `HealthChecker`, `API Schemas and Mock`, `MemoryStore`, `repository.py`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **Why does `PostgresRepository` connect `PostgresRepository` to `Voice Core Modules`, `Memory Repository Operations`, `._internal_session`, `Backend Design Rationale`, `MemoryStore`, `auth.py`, `repository.py`, `Repository protocol`?**
+- **Why does `Repository` connect `Any` to `Voice Core Modules`, `Memory Repository Operations`, `API Schemas and Mock`, `HealthChecker`, `repository.py`?**
+  _High betweenness centrality (0.053) - this node is a cross-community bridge._
+- **Why does `MemoryRepository` connect `Memory Repository Operations` to `PostgresRepository`, `get_settings`, `Backend Design Rationale`, `MemoryStore`, `auth.py`, `FakeEventBus`, `repository.py`, `Repository protocol`?**
+  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+- **Why does `PostgresRepository` connect `PostgresRepository` to `Voice Core Modules`, `Memory Repository Operations`, `._internal_session`, `Backend Design Rationale`, `auth.py`, `repository.py`, `Repository protocol`?**
   _High betweenness centrality (0.045) - this node is a cross-community bridge._
-- **Why does `MemoryRepository` connect `Memory Repository Operations` to `PostgresRepository`, `get_settings`, `MemoryStore`, `Backend Design Rationale`, `auth.py`, `FakeEventBus`, `repository.py`, `Repository protocol`?**
-  _High betweenness centrality (0.039) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `Repository` (e.g. with `NativeIntegrations` and `MemoryStore`) actually correct?**
   _`Repository` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 3 inferred relationships involving `PostgresRepository` (e.g. with `MemoryRepository` and `MemoryStore`) actually correct?**
