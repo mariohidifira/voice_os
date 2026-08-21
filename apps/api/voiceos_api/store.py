@@ -14,6 +14,7 @@ class MemoryStore:
         self.call_events: dict[UUID, list[dict[str, Any]]] = {}
         self.call_turns: dict[UUID, list[dict[str, Any]]] = {}
         self.call_tool_calls: dict[UUID, list[dict[str, Any]]] = {}
+        self.call_recordings: dict[UUID, dict[str, Any]] = {}
         self.tools: dict[UUID, dict[str, Any]] = {}
         self.agent_tools: dict[UUID, set[UUID]] = {}
         self.knowledge_bases: dict[UUID, dict[str, Any]] = {}

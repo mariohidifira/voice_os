@@ -35,6 +35,7 @@ class Repository(Protocol):
     async def append_call_turns(self, call_id: UUID, turns: list[dict[str, Any]]) -> int: ...
     async def append_call_tool_call(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
     async def get_call_tenant(self, call_id: UUID) -> UUID | None: ...
+    async def upsert_call_recording(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
     async def list_tools(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
     async def get_tool(self, tenant_id: UUID, tool_id: UUID) -> dict[str, Any] | None: ...
@@ -322,6 +323,22 @@ class PostgresRepository:
         async with self._internal_session() as db:
             return await self._call_tenant(db, call_id)
 
+    async def upsert_call_recording(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        async with self._internal_session() as db:
+            tenant_id = await self._call_tenant(db, call_id)
+            if not tenant_id:
+                return None
+            row = await db.execute(
+                text(
+                    "INSERT INTO call_recordings(id,tenant_id,call_id,s3_key,format,duration_s,size_bytes,status) "
+                    "VALUES(:id,:tenant,:call,:s3_key,:format,:duration_s,:size_bytes,:status) "
+                    "ON CONFLICT(call_id) DO UPDATE SET s3_key=excluded.s3_key,format=excluded.format,duration_s=excluded.duration_s,"
+                    "size_bytes=excluded.size_bytes,status=excluded.status,updated_at=now() RETURNING *"
+                ),
+                {"id": uuid4(), "tenant": tenant_id, "call": call_id, "s3_key": data["s3_key"], "format": data.get("format", "ogg"), "duration_s": data.get("duration_s"), "size_bytes": data.get("size_bytes"), "status": data["status"]},
+            )
+            return dict(row.mappings().one())
+
     async def append_call_events(self, call_id: UUID, events: list[dict[str, Any]]) -> int:
         async with self._internal_session() as db:
             tenant_id = await self._call_tenant(db, call_id)
@@ -418,10 +435,10 @@ class PostgresRepository:
                 return None
             row = await db.execute(
                 text(
-                    "SELECT a.id agent_id,a.tenant_id,a.name,v.id version_id,v.system_prompt,"
+                    "SELECT a.id agent_id,a.tenant_id,a.name,t.settings tenant_settings,v.id version_id,v.system_prompt,"
                     "v.greeting,v.language,v.extra_languages,v.llm,v.stt,v.tts,v.turn_config,"
                     "v.behavior,v.knowledge_base_id,v.rag,v.variables "
-                    "FROM agents a JOIN agent_versions v "
+                    "FROM agents a JOIN tenants t ON t.id=a.tenant_id JOIN agent_versions v "
                     "ON v.agent_id=a.id "
                     "WHERE a.id=:id AND v.id=:version AND a.deleted_at IS NULL"
                 ),
@@ -669,7 +686,7 @@ class MemoryRepository:
         call = await self.get_call(tenant_id, call_id)
         if not call:
             return None
-        return {**call, "turns": self.memory.call_turns.get(call_id, []), "tool_calls": self.memory.call_tool_calls.get(call_id, []), "events": self.memory.call_events.get(call_id, []), "recording": None, "qa": None}
+        return {**call, "turns": self.memory.call_turns.get(call_id, []), "tool_calls": self.memory.call_tool_calls.get(call_id, []), "events": self.memory.call_events.get(call_id, []), "recording": self.memory.call_recordings.get(call_id), "qa": None}
 
     async def update_call(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
         call = await self.get_call(tenant_id, call_id)
@@ -709,6 +726,15 @@ class MemoryRepository:
     async def get_call_tenant(self, call_id: UUID) -> UUID | None:
         call = self.memory.calls.get(call_id)
         return call["tenant_id"] if call else None
+
+    async def upsert_call_recording(self, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        call = self.memory.calls.get(call_id)
+        if not call:
+            return None
+        now = datetime.now(UTC)
+        item = {"id": self.memory.call_recordings.get(call_id, {}).get("id", uuid4()), "tenant_id": call["tenant_id"], "call_id": call_id, **data, "updated_at": now}
+        self.memory.call_recordings[call_id] = item
+        return item
 
     async def create_tool(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
         tool_id = uuid4()
@@ -761,7 +787,7 @@ class MemoryRepository:
         if not selected or selected["agent_id"] != agent_id:
             return None
         tools = [self.memory.tools[tool_id] for tool_id in self.memory.agent_tools.get(version_id, set()) if tool_id in self.memory.tools]
-        return {**agent, **selected, "version_id": selected["id"], "tools": sorted(tools, key=lambda tool: tool["name"])}
+        return {**agent, **selected, "version_id": selected["id"], "tenant_settings": {}, "tools": sorted(tools, key=lambda tool: tool["name"])}
 
     async def list_knowledge_bases(self, tenant_id: UUID) -> list[dict[str, Any]]:
         return [kb for kb in self.memory.knowledge_bases.values() if kb["tenant_id"] == tenant_id]

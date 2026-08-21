@@ -28,6 +28,7 @@ from livekit.plugins import anthropic, cartesia, deepgram, elevenlabs, openai, s
 
 from .api_client import RedisRuntimeCache, WorkerAPI
 from .prompting import build_system_prompt
+from .recording import start_room_recording
 
 
 def _jsonable(value: Any) -> Any:
@@ -336,6 +337,22 @@ async def voiceos_agent(ctx: JobContext) -> None:
     guards.start()
     await ctx.connect()
     greeting = str(runtime.get("greeting") or "Olá! Como posso ajudar?")
+    tenant_settings = dict(runtime.get("tenant_settings") or {})
+    if tenant_settings.get("recording_enabled"):
+        try:
+            egress_id, key = await start_room_recording(
+                room_name=ctx.room.name,
+                tenant_id=UUID(str(runtime["tenant_id"])),
+                call_id=call_id,
+                bucket=os.getenv("S3_BUCKET_RECORDINGS", "voiceos-recordings"),
+                region=os.getenv("AWS_REGION", "sa-east-1"),
+            )
+            await bridge.persist_event("recording.started", {"egress_id": egress_id, "s3_key": key})
+        except Exception as exc:
+            await bridge.persist_event("recording.failed", {"error": type(exc).__name__})
+        if tenant_settings.get("recording_notice"):
+            notice = str(tenant_settings.get("recording_notice_text") or "Esta ligação pode ser gravada.")
+            greeting = f"{notice} {greeting}"
     await session.say(greeting, allow_interruptions=True)
 
 

@@ -7,6 +7,7 @@ import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from jsonschema import ValidationError, validate
+from livekit import api as livekit_api
 
 from .auth import Principal, internal_token, principal
 from .config import get_settings
@@ -42,6 +43,7 @@ from .tool_execution import ToolExecutor, get_tool_executor
 
 v1 = APIRouter(prefix="/v1")
 internal = APIRouter(prefix="/internal", dependencies=[Depends(internal_token)])
+webhooks = APIRouter(prefix="/webhooks")
 Auth = Annotated[Principal, Depends(principal)]
 Repo = Annotated[Repository, Depends(get_repository)]
 Bus = Annotated[EventBus, Depends(get_event_bus)]
@@ -49,6 +51,45 @@ Executor = Annotated[ToolExecutor, Depends(get_tool_executor)]
 Embedder = Annotated[Embeddings, Depends(get_embeddings)]
 Cipher = Annotated[SecretCipher, Depends(get_secret_cipher)]
 Native = Annotated[NativeIntegrations, Depends(get_native_integrations)]
+
+
+def _egress_recording(event: livekit_api.WebhookEvent) -> tuple[UUID, dict[str, Any]] | None:
+    info = event.egress_info
+    if not info:
+        return None
+    file_info = info.file_results[0] if info.file_results else None
+    candidate = file_info.filename if file_info else ""
+    if not candidate and info.room_composite.file_outputs:
+        candidate = info.room_composite.file_outputs[0].filepath
+    try:
+        call_id = UUID(candidate.rsplit("/", 1)[-1].rsplit(".", 1)[0])
+    except (ValueError, IndexError):
+        return None
+    status = "ready" if event.event == "egress_ended" and not info.error else "failed" if info.error else "processing"
+    return call_id, {
+        "s3_key": candidate,
+        "format": candidate.rsplit(".", 1)[-1] if "." in candidate else "ogg",
+        "duration_s": round(file_info.duration / 1_000_000_000) if file_info and file_info.duration else None,
+        "size_bytes": file_info.size if file_info else None,
+        "status": status,
+        "metadata": {"egress_id": info.egress_id, "location": file_info.location if file_info else None, "error": info.error or None},
+    }
+
+
+@webhooks.post("/livekit")
+async def livekit_webhook(request: Request, repo: Repo) -> dict[str, bool]:
+    raw = (await request.body()).decode()
+    authorization = request.headers.get("Authorization", "")
+    settings = get_settings()
+    try:
+        event = livekit_api.WebhookReceiver(
+            livekit_api.TokenVerifier(settings.livekit_api_key, settings.livekit_api_secret)
+        ).receive(raw, authorization)
+    except Exception as exc:
+        raise HTTPException(401, detail={"code": "invalid_livekit_signature", "message": "Invalid LiveKit signature"}) from exc
+    if event.event in {"egress_started", "egress_updated", "egress_ended"} and (recording := _egress_recording(event)):
+        await repo.upsert_call_recording(*recording)
+    return {"ok": True}
 
 
 async def _resolve_tool_secret(repo: Repository, cipher: SecretCipher, tenant_id: UUID, tool: dict[str, Any]) -> str | None:
@@ -445,7 +486,7 @@ async def runtime(agent_id: UUID, repo: Repo, version: str = "current") -> dict[
     agent = await repo.get_runtime(agent_id, version)
     if not agent:
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
-    return {"tenant_id": agent["tenant_id"], "agent_id": agent_id, "version_id": agent["version_id"], "system_prompt": agent["system_prompt"], "greeting": agent["greeting"], "language": agent["language"], "llm": agent["llm"], "stt": agent["stt"], "tts": agent["tts"], "turn": agent["turn_config"], "behavior": agent["behavior"], "knowledge_base_id": agent["knowledge_base_id"], "rag": agent["rag"], "variables": agent["variables"], "tools": agent["tools"]}
+    return {"tenant_id": agent["tenant_id"], "tenant_settings": agent.get("tenant_settings") or {}, "agent_id": agent_id, "version_id": agent["version_id"], "system_prompt": agent["system_prompt"], "greeting": agent["greeting"], "language": agent["language"], "llm": agent["llm"], "stt": agent["stt"], "tts": agent["tts"], "turn": agent["turn_config"], "behavior": agent["behavior"], "knowledge_base_id": agent["knowledge_base_id"], "rag": agent["rag"], "variables": agent["variables"], "tools": agent["tools"]}
 
 
 @internal.post("/calls", status_code=201)
