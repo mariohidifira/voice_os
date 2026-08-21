@@ -81,5 +81,11 @@
   "79": "postprocessing.py",
   "80": "MemoryRuntimeCache",
   "81": "Settings",
-  "82": "SessionGuards"
+  "82": "SessionGuards",
+  "83": "DELETE",
+  "84": "GET",
+  "85": "PATCH",
+  "86": "POST",
+  "87": "PUT",
+  "88": "page.tsx"
 }

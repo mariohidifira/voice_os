@@ -180,13 +180,13 @@
     "semantic_hash": ""
   },
   "apps/web/app/api/token/route.ts": {
-    "mtime": 1787087562.8927655,
-    "ast_hash": "3fa76ba8b1424b4c6b6f37e6d2cac988",
+    "mtime": 1787336411.8350651,
+    "ast_hash": "6b2a4f7c22ea78597c79fd5031b7f594",
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/page.tsx": {
-    "mtime": 1786990541.7920945,
-    "ast_hash": "9a607fbe78f4dc6483a16d1803fb4f31",
+    "mtime": 1787336416.3173807,
+    "ast_hash": "aed2afb53879450a2f36f681d5d65095",
     "semantic_hash": ""
   },
   "apps/web/app/login/page.tsx": {
@@ -647,6 +647,21 @@
   "tests/test_postprocessing.py": {
     "mtime": 1787325199.5836415,
     "ast_hash": "db4772fa8ae5274788e85a78110ef7fe",
+    "semantic_hash": ""
+  },
+  "apps/web/app/api/voiceos/[...path]/route.ts": {
+    "mtime": 1787336413.733252,
+    "ast_hash": "8de2159db0f626e416969283bb97d00a",
+    "semantic_hash": ""
+  },
+  "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
+    "mtime": 1787336417.3638823,
+    "ast_hash": "9dd8e6a30b4525ba7a57a14485224a1b",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/api-token.ts": {
+    "mtime": 1787336410.7426522,
+    "ast_hash": "c6a3e5cc4878b1678122d840f0a73e9b",
     "semantic_hash": ""
   }
 }
