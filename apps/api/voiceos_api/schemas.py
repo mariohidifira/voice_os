@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class AgentCreate(BaseModel):
@@ -129,6 +129,46 @@ class InternalRagQuery(KnowledgeQuery):
 class SecretCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     value: str = Field(min_length=1, max_length=16_384)
+
+
+class MemberCreate(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    role: str = "viewer"
+
+    @field_validator("role")
+    @classmethod
+    def valid_role(cls, value: str) -> str:
+        if value not in {"owner", "admin", "developer", "operator", "viewer"}:
+            raise ValueError("invalid member role")
+        return value
+
+
+class MemberPatch(BaseModel):
+    role: str
+
+    @field_validator("role")
+    @classmethod
+    def valid_role(cls, value: str) -> str:
+        return MemberCreate.valid_role(value)
+
+
+class ApiKeyCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    scope: str = "secret"
+    allowed_origins: list[str] = Field(default_factory=list, max_length=100)
+
+    @field_validator("scope")
+    @classmethod
+    def valid_scope(cls, value: str) -> str:
+        if value not in {"public", "secret"}:
+            raise ValueError("scope must be public or secret")
+        return value
+
+    @model_validator(mode="after")
+    def public_key_requires_origins(self) -> "ApiKeyCreate":
+        if self.scope == "public" and not self.allowed_origins:
+            raise ValueError("public keys require at least one allowed origin")
+        return self
 
 
 class CallEvent(BaseModel):

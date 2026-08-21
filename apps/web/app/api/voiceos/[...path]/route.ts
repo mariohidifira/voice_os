@@ -12,6 +12,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   const target = new URL(`/v1/${path.join("/")}${request.nextUrl.search}`, apiBase);
   const headers = new Headers(request.headers);
   headers.set("authorization", `Bearer ${issued.token}`);
+  headers.set("x-tenant-id", headers.get("x-tenant-id") ?? issued.tenants[0].id);
   headers.delete("host");
   headers.delete("cookie");
   const hasBody = !["GET", "HEAD"].includes(request.method);

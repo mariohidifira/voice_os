@@ -50,6 +50,45 @@ def test_health_and_error_contract() -> None:
     assert set(response.json()["error"]) == {"code", "message", "details", "request_id"}
 
 
+def test_members_and_api_keys_are_tenant_scoped_and_admin_only() -> None:
+    store.memberships.clear()
+    store.users.clear()
+    store.api_keys.clear()
+    tenant_a, tenant_b = str(uuid4()), str(uuid4())
+    owner = headers(tenant_a)
+    viewer = headers(tenant_a, "viewer")
+
+    created = client.post(
+        f"/v1/tenants/{tenant_a}/members",
+        json={"email": "DEV@EXAMPLE.COM", "role": "developer"},
+        headers=owner,
+    )
+    assert created.status_code == 201
+    member = created.json()
+    assert member["email"] == "dev@example.com" and member["role"] == "developer"
+    assert client.get(f"/v1/tenants/{tenant_a}/members", headers=owner).json()["data"][0]["id"] == member["id"]
+    assert client.get(f"/v1/tenants/{tenant_b}/members", headers=owner).status_code == 404
+    assert client.post(f"/v1/tenants/{tenant_a}/members", json={"email": "x@y.dev"}, headers=viewer).status_code == 403
+    changed = client.patch(f"/v1/tenants/{tenant_a}/members/{member['id']}", json={"role": "operator"}, headers=owner)
+    assert changed.json()["role"] == "operator"
+
+    public_without_origin = client.post("/v1/api-keys", json={"name": "widget", "scope": "public"}, headers=owner)
+    assert public_without_origin.status_code == 422
+    key_response = client.post(
+        "/v1/api-keys",
+        json={"name": "widget", "scope": "public", "allowed_origins": ["https://app.example.com"]},
+        headers=owner,
+    )
+    assert key_response.status_code == 201
+    key = key_response.json()
+    assert key["key"].startswith("vos_pk_") and "hash" not in key
+    listed = client.get("/v1/api-keys", headers=owner).json()["data"]
+    assert listed[0]["prefix"] == key["prefix"] and "key" not in listed[0] and "hash" not in listed[0]
+    assert client.get("/v1/api-keys", headers=viewer).status_code == 403
+    assert client.delete(f"/v1/api-keys/{key['id']}", headers=owner).status_code == 204
+    assert client.delete(f"/v1/tenants/{tenant_a}/members/{member['id']}", headers=owner).status_code == 204
+
+
 def test_agent_publish_session_and_isolation() -> None:
     store.agents.clear()
     store.agent_versions.clear()

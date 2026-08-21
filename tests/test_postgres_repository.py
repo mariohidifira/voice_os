@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import text
@@ -10,7 +10,33 @@ TENANT = UUID("00000000-0000-0000-0000-000000000001")
 USER = UUID("00000000-0000-0000-0000-000000000002")
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="module")
+async def test_postgres_members_and_api_keys_lifecycle() -> None:
+    repo = PostgresRepository()
+    marker = uuid4().hex
+    email = f"member-{marker}@example.com"
+    member = await repo.create_member(TENANT, email, "developer")
+    key = await repo.create_api_key(TENANT, {"name": f"key-{marker}", "prefix": "vos_sk_test", "hash": marker, "scope": "secret", "allowed_origins": []})
+    try:
+        assert any(item["id"] == member["id"] for item in await repo.list_members(TENANT))
+        updated = await repo.update_member(TENANT, member["id"], "operator")
+        assert updated and updated["role"] == "operator"
+        listed_keys = await repo.list_api_keys(TENANT)
+        assert any(item["id"] == key["id"] for item in listed_keys)
+        assert all("hash" not in item for item in listed_keys)
+        assert await repo.revoke_api_key(TENANT, key["id"])
+        assert not await repo.revoke_api_key(TENANT, key["id"])
+        assert await repo.delete_member(TENANT, member["id"])
+        assert not await repo.delete_member(TENANT, member["id"])
+    finally:
+        async with SessionFactory() as db, db.begin():
+            await db.execute(text("SET LOCAL row_security = off"))
+            await db.execute(text("DELETE FROM api_keys WHERE id=:id"), {"id": key["id"]})
+            await db.execute(text("DELETE FROM memberships WHERE user_id=:id"), {"id": member["id"]})
+            await db.execute(text("DELETE FROM users WHERE id=:id"), {"id": member["id"]})
+
+
+@pytest.mark.asyncio(loop_scope="module")
 async def test_postgres_agent_and_call_lifecycle() -> None:
     repo = PostgresRepository()
     agent = await repo.create_agent(TENANT, "Repository coverage", str(USER))

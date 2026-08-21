@@ -12,6 +12,13 @@ from .store import MemoryStore, store
 
 
 class Repository(Protocol):
+    async def list_members(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def create_member(self, tenant_id: UUID, email: str, role: str) -> dict[str, Any]: ...
+    async def update_member(self, tenant_id: UUID, user_id: UUID, role: str) -> dict[str, Any] | None: ...
+    async def delete_member(self, tenant_id: UUID, user_id: UUID) -> bool: ...
+    async def list_api_keys(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def create_api_key(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def revoke_api_key(self, tenant_id: UUID, key_id: UUID) -> bool: ...
     async def list_agents(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
     async def create_agent(self, tenant_id: UUID, name: str, user_id: str) -> dict[str, Any]: ...
     async def publish_agent(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None: ...
@@ -72,6 +79,46 @@ class PostgresRepository:
                 {"tenant_id": str(tenant_id)},
             )
             yield db
+
+    async def list_members(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT u.id,u.email,u.name,u.avatar_url,m.role,m.created_at FROM memberships m JOIN users u ON u.id=m.user_id ORDER BY m.created_at"))
+            return [dict(row) for row in rows.mappings()]
+
+    async def create_member(self, tenant_id: UUID, email: str, role: str) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            user_id = (await db.execute(text("INSERT INTO users(email) VALUES(:email) ON CONFLICT(email) DO UPDATE SET email=excluded.email RETURNING id"), {"email": email.casefold()})).scalar_one()
+            await db.execute(text("INSERT INTO memberships(tenant_id,user_id,role) VALUES(:tenant,:user,:role) ON CONFLICT(user_id,tenant_id) DO UPDATE SET role=excluded.role,updated_at=now()"), {"tenant": tenant_id, "user": user_id, "role": role})
+            row = await db.execute(text("SELECT u.id,u.email,u.name,u.avatar_url,m.role,m.created_at FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.user_id=:user"), {"user": user_id})
+            return dict(row.mappings().one())
+
+    async def update_member(self, tenant_id: UUID, user_id: UUID, role: str) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            changed = await db.execute(text("UPDATE memberships SET role=:role,updated_at=now() WHERE user_id=:user RETURNING user_id"), {"user": user_id, "role": role})
+            if changed.scalar_one_or_none() is None:
+                return None
+            row = await db.execute(text("SELECT u.id,u.email,u.name,u.avatar_url,m.role,m.created_at FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.user_id=:user"), {"user": user_id})
+            return dict(row.mappings().one())
+
+    async def delete_member(self, tenant_id: UUID, user_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(text("DELETE FROM memberships WHERE user_id=:user RETURNING user_id"), {"user": user_id})
+            return result.scalar_one_or_none() is not None
+
+    async def list_api_keys(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT id,tenant_id,name,prefix,scope,allowed_origins,last_used_at,revoked_at,created_at FROM api_keys ORDER BY created_at DESC"))
+            return [dict(row) for row in rows.mappings()]
+
+    async def create_api_key(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("INSERT INTO api_keys(id,tenant_id,name,prefix,hash,scope,allowed_origins) VALUES(:id,:tenant,:name,:prefix,:hash,:scope,:origins) RETURNING id,tenant_id,name,prefix,scope,allowed_origins,last_used_at,revoked_at,created_at"), {"id": uuid4(), "tenant": tenant_id, **data, "origins": data["allowed_origins"]})
+            return dict(row.mappings().one())
+
+    async def revoke_api_key(self, tenant_id: UUID, key_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(text("UPDATE api_keys SET revoked_at=now(),updated_at=now() WHERE id=:id AND revoked_at IS NULL RETURNING id"), {"id": key_id})
+            return result.scalar_one_or_none() is not None
 
     async def list_agents(self, tenant_id: UUID) -> list[dict[str, Any]]:
         async with self.tenant_session(tenant_id) as db:
@@ -565,6 +612,44 @@ class PostgresRepository:
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
         self.memory = memory
+
+    async def list_members(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return [{**self.memory.users[user_id], **membership} for (member_tenant, user_id), membership in self.memory.memberships.items() if member_tenant == tenant_id]
+
+    async def create_member(self, tenant_id: UUID, email: str, role: str) -> dict[str, Any]:
+        user = next((item for item in self.memory.users.values() if item["email"] == email.casefold()), None)
+        if user is None:
+            user = {"id": uuid4(), "email": email.casefold(), "name": None, "avatar_url": None}
+            self.memory.users[user["id"]] = user
+        membership = {"tenant_id": tenant_id, "user_id": user["id"], "role": role, "created_at": datetime.now(UTC)}
+        self.memory.memberships[(tenant_id, user["id"])] = membership
+        return {**user, **membership, "id": user["id"]}
+
+    async def update_member(self, tenant_id: UUID, user_id: UUID, role: str) -> dict[str, Any] | None:
+        membership = self.memory.memberships.get((tenant_id, user_id))
+        if not membership:
+            return None
+        membership["role"] = role
+        return {**self.memory.users[user_id], **membership, "id": user_id}
+
+    async def delete_member(self, tenant_id: UUID, user_id: UUID) -> bool:
+        return self.memory.memberships.pop((tenant_id, user_id), None) is not None
+
+    async def list_api_keys(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return [{key: value for key, value in item.items() if key != "hash"} for item in self.memory.api_keys.values() if item["tenant_id"] == tenant_id]
+
+    async def create_api_key(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        item = {"id": uuid4(), "tenant_id": tenant_id, **data, "last_used_at": None, "revoked_at": None, "created_at": now}
+        self.memory.api_keys[item["id"]] = item
+        return {key: value for key, value in item.items() if key != "hash"}
+
+    async def revoke_api_key(self, tenant_id: UUID, key_id: UUID) -> bool:
+        item = self.memory.api_keys.get(key_id)
+        if not item or item["tenant_id"] != tenant_id or item["revoked_at"] is not None:
+            return False
+        item["revoked_at"] = datetime.now(UTC)
+        return True
 
     async def list_agents(self, tenant_id: UUID) -> list[dict[str, Any]]:
         return [a for a in self.memory.agents.values() if a["tenant_id"] == tenant_id]

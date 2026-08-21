@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
@@ -22,6 +24,7 @@ from .schemas import (
     AgentPatch,
     AgentRollback,
     AgentToolsSet,
+    ApiKeyCreate,
     CallEventBatch,
     CallPatch,
     CallToolCallCreate,
@@ -33,6 +36,8 @@ from .schemas import (
     KnowledgeBaseCreate,
     KnowledgeBasePatch,
     KnowledgeQuery,
+    MemberCreate,
+    MemberPatch,
     SecretCreate,
     SessionCreate,
     ToolCreate,
@@ -53,6 +58,11 @@ Embedder = Annotated[Embeddings, Depends(get_embeddings)]
 Cipher = Annotated[SecretCipher, Depends(get_secret_cipher)]
 Native = Annotated[NativeIntegrations, Depends(get_native_integrations)]
 Processor = Annotated[Postprocessor, Depends(get_postprocessor)]
+
+
+def _require_admin(auth: Principal) -> None:
+    if auth.role not in {"owner", "admin"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
 
 
 def _egress_recording(event: livekit_api.WebhookEvent) -> tuple[UUID, dict[str, Any]] | None:
@@ -121,6 +131,58 @@ async def _ingest_document(repo: Repository, embeddings: Embeddings, tenant_id: 
 @v1.get("/me")
 async def me(auth: Auth) -> dict[str, Any]:
     return {"id": auth.user_id, "tenant_id": auth.tenant_id, "role": auth.role}
+
+
+@v1.get("/tenants/{tenant_id}/members")
+async def list_members(tenant_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if tenant_id != auth.tenant_id:
+        raise HTTPException(404, detail={"code": "tenant_not_found", "message": "Tenant not found"})
+    return {"data": await repo.list_members(auth.tenant_id), "next_cursor": None}
+
+
+@v1.post("/tenants/{tenant_id}/members", status_code=201)
+async def create_member(tenant_id: UUID, body: MemberCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    if tenant_id != auth.tenant_id:
+        raise HTTPException(404, detail={"code": "tenant_not_found", "message": "Tenant not found"})
+    return await repo.create_member(auth.tenant_id, body.email, body.role)
+
+
+@v1.patch("/tenants/{tenant_id}/members/{user_id}")
+async def update_member(tenant_id: UUID, user_id: UUID, body: MemberPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    if tenant_id != auth.tenant_id or not (member := await repo.update_member(auth.tenant_id, user_id, body.role)):
+        raise HTTPException(404, detail={"code": "member_not_found", "message": "Member not found"})
+    return member
+
+
+@v1.delete("/tenants/{tenant_id}/members/{user_id}", status_code=204)
+async def delete_member(tenant_id: UUID, user_id: UUID, auth: Auth, repo: Repo) -> None:
+    _require_admin(auth)
+    if tenant_id != auth.tenant_id or not await repo.delete_member(auth.tenant_id, user_id):
+        raise HTTPException(404, detail={"code": "member_not_found", "message": "Member not found"})
+
+
+@v1.get("/api-keys")
+async def list_api_keys(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    return {"data": await repo.list_api_keys(auth.tenant_id), "next_cursor": None}
+
+
+@v1.post("/api-keys", status_code=201)
+async def create_api_key(body: ApiKeyCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    raw = f"vos_{'pk' if body.scope == 'public' else 'sk'}_{secrets.token_urlsafe(32)}"
+    prefix = raw[:14]
+    item = await repo.create_api_key(auth.tenant_id, {"name": body.name, "prefix": prefix, "hash": hashlib.sha256(raw.encode()).hexdigest(), "scope": body.scope, "allowed_origins": body.allowed_origins})
+    return {**item, "key": raw}
+
+
+@v1.delete("/api-keys/{key_id}", status_code=204)
+async def delete_api_key(key_id: UUID, auth: Auth, repo: Repo) -> None:
+    _require_admin(auth)
+    if not await repo.revoke_api_key(auth.tenant_id, key_id):
+        raise HTTPException(404, detail={"code": "api_key_not_found", "message": "API key not found"})
 
 
 @v1.get("/agents")
