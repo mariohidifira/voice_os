@@ -12,6 +12,7 @@ Status: **local acceptance complete; real AWS staging deployment pending credent
 - FastAPI JWT/tenant/internal authentication, standard errors, OpenAPI 3.1, request IDs, `/health` and `/ready`.
 - Next.js 15 dashboard and Auth.js with Resend magic link, optional Google login, PostgreSQL adapter, cryptographically validated middleware and a five-minute API JWT exchange backed by real memberships.
 - CI gates for migrations, Ruff, strict mypy, pytest coverage, ESLint, TypeScript and production builds.
+- Vitest integrado ao gate `make test`, com testes unitários do slug de onboarding e da seleção segura do contexto multi-tenant.
 - Terraform for VPC, public/private subnets, NAT, KMS, RDS, ElastiCache, S3, ECR, ECS/Fargate, ALB, logs and secrets.
 - Two-stage deployment workflow using GitHub OIDC: base infrastructure, runtime secrets, ECR images, ECS services, migrations and ALB smoke checks.
 
@@ -33,7 +34,7 @@ Status: **local acceptance complete; real AWS staging deployment pending credent
 - Auth.js magic-link login passes through the local provider mock; a real membership JWT reaches `/v1/me`, while a forged session cookie is redirected to login.
 - Terraform `fmt` and `validate` pass with AWS provider 5.100.0.
 - Ruff and strict mypy pass.
-- Backend suite has 12 passing tests and 82.53% coverage.
+- Backend suite remains above the required 80% coverage; the dashboard unit suite has 6 passing Vitest cases and runs in CI.
 - ESLint, TypeScript and Next.js production build pass.
 - GitHub repository `mariohidifira/voice_os` is connected; CI run `32203264679` passed every gate, including real PostgreSQL migrations/seed/RLS and all Docker image builds.
 - GitHub environment `staging` exists and is ready for environment-scoped secrets.

@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "PHASE-0-REPORT.md": {
-    "mtime": 1787101375.7949114,
-    "ast_hash": "5d1dd9eb09461ecf00a0676c94d99880",
+    "mtime": 1787372110.641095,
+    "ast_hash": "e366624cdb7cd87114b553de33641aaf",
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "apps/web/package.json": {
-    "mtime": 1787366126.0845802,
-    "ast_hash": "f2c2f0b0813dc418f4b85e779a2234f1",
+    "mtime": 1787372046.9829824,
+    "ast_hash": "363d2293cdc196fc2eeb7d65ded4e5e6",
     "semantic_hash": ""
   },
   "apps/web/tsconfig.json": {
@@ -480,7 +480,7 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1786993728.9331784,
+    "mtime": 1787372109.0593226,
     "ast_hash": "dad0640824e69b4acdd5acc6fbf71fe5",
     "semantic_hash": ""
   },
@@ -650,8 +650,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/api/voiceos/[...path]/route.ts": {
-    "mtime": 1787370589.3754532,
-    "ast_hash": "40a9fbdbc3a5a07a8c827b792e06e40f",
+    "mtime": 1787371951.636795,
+    "ast_hash": "3ff74c7d2f2a394df227b2f3697bb187",
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
@@ -750,8 +750,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/onboarding/actions.ts": {
-    "mtime": 1787370562.7296882,
-    "ast_hash": "a89b7c87a08fd2d36e845e2468854709",
+    "mtime": 1787371950.5761013,
+    "ast_hash": "8bfc10480dfbb5dbc96fffab5ef9157a",
     "semantic_hash": ""
   },
   "apps/web/app/onboarding/page.tsx": {
@@ -762,6 +762,31 @@
   "apps/web/app/onboarding/wizard.tsx": {
     "mtime": 1787370476.1628096,
     "ast_hash": "f92f2060a9242e178f1ec34851c2de24",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/onboarding.test.ts": {
+    "mtime": 1787371948.1918666,
+    "ast_hash": "487125c1406889b4780c35a9acc3694b",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/onboarding.ts": {
+    "mtime": 1787371945.9450593,
+    "ast_hash": "51a5ea1ffbaee88911d68e16701309e0",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/tenant-context.test.ts": {
+    "mtime": 1787371949.338478,
+    "ast_hash": "9694b54c10eabc8b7baa01829dd32d8d",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/tenant-context.ts": {
+    "mtime": 1787371947.0493672,
+    "ast_hash": "92b5c300cad3d4a240649826923bd0c6",
+    "semantic_hash": ""
+  },
+  "apps/web/vitest.config.ts": {
+    "mtime": 1787372045.6964054,
+    "ast_hash": "edaf896759f7863afb02b8bfddfd2ed7",
     "semantic_hash": ""
   }
 }

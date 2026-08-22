@@ -5,13 +5,10 @@ import { redirect } from "next/navigation";
 import { Pool } from "pg";
 import { auth } from "../../auth";
 import { issueApiToken } from "../../lib/api-token";
+import { availableWorkspaceSlug } from "../../lib/onboarding";
 
 const databaseUrl = process.env.DATABASE_URL?.replace("postgresql+asyncpg://", "postgresql://");
 const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : undefined;
-
-function slugify(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "workspace";
-}
 
 export async function createWorkspace(formData: FormData) {
   const session = await auth();
@@ -24,11 +21,9 @@ export async function createWorkspace(formData: FormData) {
   const voiceId = String(formData.get("voice_id") ?? "").trim();
   if (!name || !agentName) throw new Error("Empresa e agente são obrigatórios");
   const tenantId = randomUUID();
-  const baseSlug = slugify(name);
+  const baseSlug = availableWorkspaceSlug(name, []);
   const existing = await pool.query<{ slug: string }>("SELECT slug FROM tenants WHERE slug LIKE $1", [`${baseSlug}%`]);
-  const occupied = new Set(existing.rows.map((row) => row.slug));
-  let slug = baseSlug;
-  for (let suffix = 2; occupied.has(slug); suffix += 1) slug = `${baseSlug}-${suffix}`;
+  const slug = availableWorkspaceSlug(name, existing.rows.map((row) => row.slug));
   const client = await pool.connect();
   let agentId = "";
   try {

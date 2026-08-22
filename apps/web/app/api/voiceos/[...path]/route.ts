@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "../../../../auth";
 import { issueApiToken } from "../../../../lib/api-token";
+import { selectTenant } from "../../../../lib/tenant-context";
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const session = await auth();
@@ -11,9 +12,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   const apiBase = process.env.API_INTERNAL_URL ?? "http://api:8000";
   const target = new URL(`/v1/${path.join("/")}${request.nextUrl.search}`, apiBase);
   const headers = new Headers(request.headers);
-  const referer = request.headers.get("referer") ?? "";
-  const tenantSlug = /\/app\/([^/?#]+)/.exec(referer)?.[1];
-  const selectedTenant = issued.tenants.find((tenant) => tenant.slug === tenantSlug) ?? issued.tenants[0];
+  const selectedTenant = selectTenant(issued.tenants, request.headers.get("referer") ?? "");
   headers.set("authorization", `Bearer ${issued.token}`);
   headers.set("x-tenant-id", headers.get("x-tenant-id") ?? selectedTenant.id);
   headers.delete("host");
