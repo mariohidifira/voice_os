@@ -42,6 +42,8 @@ from .schemas import (
     KnowledgeQuery,
     MemberCreate,
     MemberPatch,
+    PhoneNumberPatch,
+    PhoneNumberPurchase,
     PromptImproveRequest,
     SecretCreate,
     SessionCreate,
@@ -53,6 +55,7 @@ from .schemas import (
 )
 from .secrets import SecretCipher, get_secret_cipher
 from .storage import RecordingStorage, get_recording_storage
+from .telephony import Telephony, TelephonyProviderError, get_telephony
 from .tool_execution import ToolExecutor, get_tool_executor
 from .voice_preview import VoicePreview, get_voice_preview
 
@@ -71,6 +74,7 @@ Improver = Annotated[PromptImprover, Depends(get_prompt_improver)]
 Rtc = Annotated[LiveKitSessions, Depends(get_livekit_sessions)]
 Storage = Annotated[RecordingStorage, Depends(get_recording_storage)]
 Voice = Annotated[VoicePreview, Depends(get_voice_preview)]
+Phone = Annotated[Telephony, Depends(get_telephony)]
 
 
 def _require_admin(auth: Principal) -> None:
@@ -491,6 +495,174 @@ async def rollback_agent(
             404, detail={"code": "version_not_found", "message": "Published version not found"}
         )
     return agent
+
+
+def _telephony_error(exc: TelephonyProviderError) -> HTTPException:
+    return HTTPException(
+        502,
+        detail={"code": "telephony_provider_error", "message": str(exc)},
+    )
+
+
+@v1.get("/phone-numbers")
+async def phone_numbers(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    return {"data": await repo.list_phone_numbers(auth.tenant_id)}
+
+
+@v1.get("/phone-numbers/available")
+async def available_phone_numbers(
+    auth: Auth,
+    phone: Phone,
+    country: str = Query(default="BR", pattern=r"^[A-Z]{2}$"),
+    area_code: str = Query(pattern=r"^\d{2,3}$"),
+) -> dict[str, Any]:
+    _require_admin(auth)
+    try:
+        return {"data": await phone.numbers.available(country, area_code)}
+    except TelephonyProviderError as exc:
+        raise _telephony_error(exc) from exc
+
+
+@v1.post("/phone-numbers", status_code=201)
+async def purchase_phone_number(
+    body: PhoneNumberPurchase, auth: Auth, repo: Repo, phone: Phone
+) -> dict[str, Any]:
+    _require_admin(auth)
+    if body.agent_id:
+        agent = await repo.get_agent(auth.tenant_id, body.agent_id)
+        if not agent:
+            raise HTTPException(
+                404, detail={"code": "agent_not_found", "message": "Agent not found"}
+            )
+        if agent["status"] != "active":
+            raise HTTPException(
+                409,
+                detail={"code": "agent_not_active", "message": "Publish the agent first"},
+            )
+    existing = await repo.list_phone_numbers(auth.tenant_id)
+    if any(item["e164"] == body.e164 and item["status"] == "active" for item in existing):
+        raise HTTPException(
+            409,
+            detail={"code": "phone_number_exists", "message": "Phone number already exists"},
+        )
+    purchased = None
+    rule_id = None
+    try:
+        purchased = await phone.numbers.purchase(body.e164)
+        if body.agent_id:
+            rule_id = await phone.dispatch.create(
+                auth.tenant_id, body.agent_id, purchased.e164
+            )
+        return await repo.create_phone_number(
+            auth.tenant_id,
+            {
+                "agent_id": body.agent_id,
+                "e164": purchased.e164,
+                "provider": "twilio",
+                "provider_sid": purchased.provider_sid,
+                "capabilities": purchased.capabilities,
+                "livekit_dispatch_rule_id": rule_id,
+            },
+        )
+    except Exception as exc:
+        if rule_id:
+            try:
+                await phone.dispatch.delete(rule_id)
+            except TelephonyProviderError:
+                pass
+        if purchased:
+            try:
+                await phone.numbers.release(purchased.provider_sid)
+            except TelephonyProviderError:
+                pass
+        if isinstance(exc, TelephonyProviderError):
+            raise _telephony_error(exc) from exc
+        if isinstance(exc, ValueError):
+            raise HTTPException(
+                409,
+                detail={
+                    "code": "phone_number_exists",
+                    "message": "Phone number already exists",
+                },
+            ) from exc
+        raise
+
+
+@v1.patch("/phone-numbers/{number_id}")
+async def assign_phone_number(
+    number_id: UUID,
+    body: PhoneNumberPatch,
+    auth: Auth,
+    repo: Repo,
+    phone: Phone,
+) -> dict[str, Any]:
+    _require_admin(auth)
+    item = await repo.get_phone_number(auth.tenant_id, number_id)
+    if not item or item["status"] != "active":
+        raise HTTPException(
+            404,
+            detail={"code": "phone_number_not_found", "message": "Phone number not found"},
+        )
+    if body.agent_id:
+        agent = await repo.get_agent(auth.tenant_id, body.agent_id)
+        if not agent:
+            raise HTTPException(
+                404, detail={"code": "agent_not_found", "message": "Agent not found"}
+            )
+        if agent["status"] != "active":
+            raise HTTPException(
+                409,
+                detail={"code": "agent_not_active", "message": "Publish the agent first"},
+            )
+    old_rule = item.get("livekit_dispatch_rule_id")
+    new_rule = None
+    try:
+        if body.agent_id:
+            new_rule = await phone.dispatch.create(
+                auth.tenant_id, body.agent_id, str(item["e164"])
+            )
+        updated = await repo.update_phone_number(
+            auth.tenant_id,
+            number_id,
+            {"agent_id": body.agent_id, "livekit_dispatch_rule_id": new_rule},
+        )
+        if old_rule:
+            await phone.dispatch.delete(str(old_rule))
+        assert updated is not None
+        return updated
+    except TelephonyProviderError as exc:
+        if new_rule:
+            try:
+                await phone.dispatch.delete(new_rule)
+            except TelephonyProviderError:
+                pass
+        raise _telephony_error(exc) from exc
+
+
+@v1.delete("/phone-numbers/{number_id}", status_code=204)
+async def release_phone_number(
+    number_id: UUID, auth: Auth, repo: Repo, phone: Phone
+) -> Response:
+    _require_admin(auth)
+    item = await repo.get_phone_number(auth.tenant_id, number_id)
+    if not item or item["status"] != "active":
+        raise HTTPException(
+            404,
+            detail={"code": "phone_number_not_found", "message": "Phone number not found"},
+        )
+    try:
+        if item.get("livekit_dispatch_rule_id"):
+            await phone.dispatch.delete(str(item["livekit_dispatch_rule_id"]))
+        await phone.numbers.release(str(item["provider_sid"]))
+    except TelephonyProviderError as exc:
+        raise _telephony_error(exc) from exc
+    await repo.update_phone_number(
+        auth.tenant_id,
+        number_id,
+        {"agent_id": None, "status": "released", "livekit_dispatch_rule_id": None},
+    )
+    return Response(status_code=204)
 
 
 @v1.post("/sessions", status_code=201)

@@ -1,6 +1,6 @@
 # Phase 1 Report
 
-Status: **implementação local completa; aceite de mídia real em staging pendente de credenciais externas**.
+Status: **implementação local completa; aceite de mídia real em staging pendente de credenciais externas (não bloqueante para a continuidade da implementação)**.
 
 ## Entregáveis implementados
 
@@ -87,4 +87,4 @@ npm run test:e2e --workspace=@voiceos/dashboard
 
 ## Decisão de gate
 
-A implementação verificável sem fornecedores está aprovada. A Fase 1 permanece aberta até o workflow de staging produzir evidência dos RNF-01/02/03, Egress e custo real. Não avançar o gate formal para a Fase 2 antes dessas medições.
+A implementação verificável sem fornecedores está aprovada. A Fase 1 permanece formalmente aberta até o workflow de staging produzir evidência dos RNF-01/02/03, Egress e custo real. Por decisão operacional registrada em 2026-08-22, o desenvolvimento das fases seguintes pode prosseguir enquanto as contas são adquiridas, sem converter nenhum critério externo pendente em aprovado e sem omiti-lo da validação final.

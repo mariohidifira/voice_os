@@ -126,6 +126,16 @@ class Repository(Protocol):
     async def upsert_integration(
         self, tenant_id: UUID, provider: str, data: dict[str, Any]
     ) -> dict[str, Any]: ...
+    async def list_phone_numbers(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def get_phone_number(
+        self, tenant_id: UUID, number_id: UUID
+    ) -> dict[str, Any] | None: ...
+    async def create_phone_number(
+        self, tenant_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any]: ...
+    async def update_phone_number(
+        self, tenant_id: UUID, number_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None: ...
 
 
 class PostgresRepository:
@@ -203,6 +213,63 @@ class PostgresRepository:
                 {"user": user_id},
             )
             return dict(row.mappings().one())
+
+    async def list_phone_numbers(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(
+                text("SELECT * FROM phone_numbers ORDER BY created_at DESC")
+            )
+            return [dict(row) for row in rows.mappings()]
+
+    async def get_phone_number(
+        self, tenant_id: UUID, number_id: UUID
+    ) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text("SELECT * FROM phone_numbers WHERE id=:id"), {"id": number_id}
+            )
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
+
+    async def create_phone_number(
+        self, tenant_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(
+                    "INSERT INTO phone_numbers(id,tenant_id,agent_id,e164,provider,provider_sid,capabilities,status,livekit_dispatch_rule_id) "
+                    "VALUES(:id,:tenant,:agent_id,:e164,:provider,:provider_sid,CAST(:capabilities AS jsonb),'active',:rule_id) RETURNING *"
+                ),
+                {
+                    "id": uuid4(),
+                    "tenant": tenant_id,
+                    "agent_id": data.get("agent_id"),
+                    "e164": data["e164"],
+                    "provider": data.get("provider", "twilio"),
+                    "provider_sid": data.get("provider_sid"),
+                    "capabilities": json.dumps(data.get("capabilities", {})),
+                    "rule_id": data.get("livekit_dispatch_rule_id"),
+                },
+            )
+            return dict(row.mappings().one())
+
+    async def update_phone_number(
+        self, tenant_id: UUID, number_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        allowed = {"agent_id", "status", "livekit_dispatch_rule_id"}
+        assignments = [f"{key}=:{key}" for key in data if key in allowed]
+        if not assignments:
+            return await self.get_phone_number(tenant_id, number_id)
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(
+                    f"UPDATE phone_numbers SET {', '.join(assignments)},updated_at=now() "
+                    "WHERE id=:id RETURNING *"
+                ),
+                {"id": number_id, **{key: value for key, value in data.items() if key in allowed}},
+            )
+            mapping = row.mappings().first()
+            return dict(mapping) if mapping else None
 
     async def update_member(
         self, tenant_id: UUID, user_id: UUID, role: str
@@ -1924,6 +1991,53 @@ class MemoryRepository:
             "updated_at": now,
         }
         self.memory.integrations[item["id"]] = item
+        return item
+
+    async def list_phone_numbers(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return sorted(
+            [
+                item
+                for item in self.memory.phone_numbers.values()
+                if item["tenant_id"] == tenant_id
+            ],
+            key=lambda item: item["created_at"],
+            reverse=True,
+        )
+
+    async def get_phone_number(
+        self, tenant_id: UUID, number_id: UUID
+    ) -> dict[str, Any] | None:
+        item = self.memory.phone_numbers.get(number_id)
+        return item if item and item["tenant_id"] == tenant_id else None
+
+    async def create_phone_number(
+        self, tenant_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        if any(
+            item["e164"] == data["e164"] and item["status"] == "active"
+            for item in self.memory.phone_numbers.values()
+        ):
+            raise ValueError("phone number already exists")
+        now = datetime.now(UTC)
+        item = {
+            "id": uuid4(),
+            "tenant_id": tenant_id,
+            **data,
+            "status": "active",
+            "created_at": now,
+            "updated_at": now,
+        }
+        self.memory.phone_numbers[item["id"]] = item
+        return item
+
+    async def update_phone_number(
+        self, tenant_id: UUID, number_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        item = await self.get_phone_number(tenant_id, number_id)
+        if not item:
+            return None
+        item.update(data)
+        item["updated_at"] = datetime.now(UTC)
         return item
 
 

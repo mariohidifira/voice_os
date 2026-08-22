@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -68,6 +69,52 @@ async def test_postgres_serializes_last_owner_protection() -> None:
             async with SessionFactory() as db, db.begin():
                 await db.execute(text("SET LOCAL row_security = off"))
                 await db.execute(text("DELETE FROM users WHERE id=:id"), {"id": temporary_owner_id})
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_postgres_phone_numbers_are_tenant_scoped_and_persist_assignment() -> None:
+    repo = PostgresRepository()
+    agent = await repo.create_agent(TENANT, "Phone repository", str(USER))
+    number: dict[str, Any] | None = None
+    try:
+        number = await repo.create_phone_number(
+            TENANT,
+            {
+                "agent_id": None,
+                "e164": f"+5511{uuid4().int % 10_000_000_000:010d}",
+                "provider": "twilio",
+                "provider_sid": f"PN{uuid4().hex}",
+                "capabilities": {"voice": True, "sms": True},
+                "livekit_dispatch_rule_id": None,
+            },
+        )
+        updated = await repo.update_phone_number(
+            TENANT,
+            number["id"],
+            {"agent_id": agent["id"], "livekit_dispatch_rule_id": "SDR_test"},
+        )
+        assert updated and updated["agent_id"] == agent["id"]
+        assert updated["capabilities"] == {"voice": True, "sms": True}
+        assert await repo.get_phone_number(uuid4(), number["id"]) is None
+        listed = await repo.list_phone_numbers(TENANT)
+        assert any(item["id"] == number["id"] for item in listed)
+        released = await repo.update_phone_number(
+            TENANT,
+            number["id"],
+            {"status": "released", "agent_id": None, "livekit_dispatch_rule_id": None},
+        )
+        assert released and released["status"] == "released"
+    finally:
+        async with SessionFactory() as db, db.begin():
+            await db.execute(text("SET LOCAL row_security = off"))
+            if number:
+                await db.execute(
+                    text("DELETE FROM phone_numbers WHERE id=:id"), {"id": number["id"]}
+                )
+            await db.execute(
+                text("DELETE FROM agent_versions WHERE agent_id=:id"), {"id": agent["id"]}
+            )
+            await db.execute(text("DELETE FROM agents WHERE id=:id"), {"id": agent["id"]})
 
 
 @pytest.mark.asyncio(loop_scope="module")

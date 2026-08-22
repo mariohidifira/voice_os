@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/config.py": {
-    "mtime": 1787374989.333996,
-    "ast_hash": "f000b54c6d90ca5f6e833d7ed148eb5b",
+    "mtime": 1787385887.546165,
+    "ast_hash": "ec9029a65c27b8e4e54e524383c88b96",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/db.py": {
@@ -100,23 +100,23 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/repository.py": {
-    "mtime": 1787381106.7620966,
-    "ast_hash": "d360af092f3604c713f7576663cc21b0",
+    "mtime": 1787386077.4011045,
+    "ast_hash": "3c1feafe6762d57927f632df9b56035f",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787379867.47089,
-    "ast_hash": "d444022ddb35bdbee90d1d6c81201a7b",
+    "mtime": 1787386098.949257,
+    "ast_hash": "decb001280685f6e95ccad42ef9c64a9",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
-    "mtime": 1787376728.9770684,
-    "ast_hash": "01dfb4666bb8a6941e8c117fb32c4a24",
+    "mtime": 1787385222.9835732,
+    "ast_hash": "5e74e2b852c011eee52317e4446cf85a",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/store.py": {
-    "mtime": 1787376954.456051,
-    "ast_hash": "5e56eeea394eb542f8f1865be08abc8e",
+    "mtime": 1787385198.9223752,
+    "ast_hash": "71064b1b26762aca7aeee35fdcfd1131",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/__init__.py": {
@@ -290,18 +290,18 @@
     "semantic_hash": ""
   },
   "PHASE-0-REPORT.md": {
-    "mtime": 1787372110.641095,
-    "ast_hash": "e366624cdb7cd87114b553de33641aaf",
+    "mtime": 1787384858.5301347,
+    "ast_hash": "8f7acd095590d6f8cb4d60d1950a0135",
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1787383917.044889,
-    "ast_hash": "5b5c708873a8874c46c7a27ad917c290",
+    "mtime": 1787384860.3313854,
+    "ast_hash": "6b5a97f48e2c15134e1e477a7fdf2ec3",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
-    "mtime": 1786990617.5275075,
-    "ast_hash": "f9adfba951b9c76f00a3b7604679de8c",
+    "mtime": 1787387079.5707533,
+    "ast_hash": "8fe546288377d3adfef515cbc550df73",
     "semantic_hash": ""
   },
   "PHASE-3-REPORT.md": {
@@ -465,8 +465,8 @@
     "semantic_hash": ""
   },
   "infra/terraform/main.tf": {
-    "mtime": 1787088822.4814575,
-    "ast_hash": "e62f2220e08a11be8f0cc75dd7661135",
+    "mtime": 1787386075.374437,
+    "ast_hash": "248df758bbc80df09f39e912cd7f492c",
     "semantic_hash": ""
   },
   "infra/terraform/outputs.tf": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "tests/test_postgres_repository.py": {
-    "mtime": 1787380976.8089697,
-    "ast_hash": "50c6d064928b1bdb63fedaf0ed8cf38e",
+    "mtime": 1787385550.601303,
+    "ast_hash": "1a6a7f898abd2d16f7653400e8e5b851",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
@@ -535,8 +535,8 @@
     "semantic_hash": ""
   },
   ".github/workflows/deploy-staging.yml": {
-    "mtime": 1787383376.6089203,
-    "ast_hash": "f35ed7a72b6711c5db90f52d05057672",
+    "mtime": 1787385946.118946,
+    "ast_hash": "fd65d454b8f6da071bd4adb828d794c4",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/knowledge.py": {
@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787380832.9431553,
-    "ast_hash": "059b8f1a546539c8ab76fb6313d590b4",
+    "mtime": 1787385755.0469098,
+    "ast_hash": "8fd935fe623b042d54b362853c267086",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
@@ -680,13 +680,13 @@
     "semantic_hash": ""
   },
   "apps/web/e2e/essential-flow.spec.ts": {
-    "mtime": 1787382070.2887678,
-    "ast_hash": "409cef12592d91ec3a05e7cbd0d18ed5",
+    "mtime": 1787387272.3561666,
+    "ast_hash": "80ab721ae97f79abf86856c21d8e9351",
     "semantic_hash": ""
   },
   "apps/web/playwright.config.ts": {
-    "mtime": 1787378950.708057,
-    "ast_hash": "92b0799f46e68ffbb069d2310c87bd59",
+    "mtime": 1787387272.3931663,
+    "ast_hash": "10246e7de1cdf0bc5a390dc52855370a",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/agent_templates.py": {
@@ -822,6 +822,21 @@
   "tests/test_voice_preview.py": {
     "mtime": 1787375172.120921,
     "ast_hash": "3b7d0313d3acf8d13c8b8ee7c94fcf52",
+    "semantic_hash": ""
+  },
+  "apps/api/alembic/versions/0006_phone_number_lifecycle.py": {
+    "mtime": 1787386100.0557353,
+    "ast_hash": "405664ed2552e1c2b3dab72b1c7a54aa",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/telephony.py": {
+    "mtime": 1787385888.5843358,
+    "ast_hash": "f833cbf657a6025005c521d334419473",
+    "semantic_hash": ""
+  },
+  "tests/test_phone_numbers.py": {
+    "mtime": 1787385732.6926243,
+    "ast_hash": "275cf122e786a3a7864b433421907367",
     "semantic_hash": ""
   }
 }

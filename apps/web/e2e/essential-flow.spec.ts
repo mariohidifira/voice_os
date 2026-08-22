@@ -285,3 +285,24 @@ test("onboarding cria tenant, agente por template e abre teste", async ({
   await page.getByRole("tab", { name: "Voz" }).click();
   await expect(page.getByLabel("Voice ID")).toHaveValue(onboardingVoiceId);
 });
+
+test("compra, atribui e libera número no mock de telefonia", async ({
+  page,
+  request,
+}) => {
+  await magicLogin(page, request);
+  await page.goto("/app/demo");
+  await page.getByRole("button", { name: "Números", exact: true }).click();
+  await page.getByLabel("DDD").fill("11");
+  await page.getByRole("button", { name: "Buscar no Twilio" }).click();
+  await expect(page.getByRole("status")).toContainText("disponível");
+  await page.getByRole("button", { name: "Comprar" }).first().click();
+  await expect(page.getByRole("status")).toContainText("comprado");
+  const assignment = page.getByLabel(/^Agente de \+55/).first();
+  await assignment.selectOption({ label: "Recepcionista" });
+  await expect(page.getByRole("status")).toContainText(
+    "dispatch SIP atualizado",
+  );
+  await page.getByRole("button", { name: "Liberar" }).first().click();
+  await expect(page.getByRole("status")).toContainText("Número liberado");
+});

@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     livekit_url: str = "wss://example.invalid"
     livekit_api_key: str = "dev"
     livekit_api_secret: str = "dev"
+    livekit_sip_trunk_id_inbound: str = ""
+    livekit_sip_trunk_id_outbound: str = ""
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
     elevenlabs_api_key: str | None = None

@@ -66,6 +66,15 @@ class SessionCreate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class PhoneNumberPurchase(BaseModel):
+    e164: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
+    agent_id: UUID | None = None
+
+
+class PhoneNumberPatch(BaseModel):
+    agent_id: UUID | None
+
+
 class ToolCreate(BaseModel):
     name: str
     description: str = Field(max_length=300)

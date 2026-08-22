@@ -46,12 +46,20 @@ type AgentTemplate = Item & {
   description?: string;
   suggested_tools?: string[];
 };
+type AvailableNumber = {
+  e164: string;
+  friendly_name?: string;
+  locality?: string;
+  region?: string;
+  capabilities?: Record<string, boolean>;
+};
 type Section =
   | "overview"
   | "agents"
   | "calls"
   | "knowledge"
   | "tools"
+  | "numbers"
   | "members"
   | "settings";
 type AgentTab =
@@ -72,6 +80,7 @@ const sections: Array<[Section, string]> = [
   ["calls", "Chamadas"],
   ["knowledge", "Conhecimento"],
   ["tools", "Ferramentas"],
+  ["numbers", "Números"],
   ["members", "Membros"],
   ["settings", "Configurações"],
 ];
@@ -86,6 +95,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const detail =
       data?.detail?.message ??
       data?.detail?.details?.errors?.join(" · ") ??
+      data?.error?.message ??
       data?.error ??
       `HTTP ${response.status}`;
     throw new Error(detail);
@@ -503,6 +513,10 @@ export default function Dashboard({
   >([]);
   const [tools, setTools] = useState<Item[]>([]);
   const [secrets, setSecrets] = useState<Item[]>([]);
+  const [phoneNumbers, setPhoneNumbers] = useState<Item[]>([]);
+  const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>(
+    [],
+  );
   const [members, setMembers] = useState<Item[]>([]);
   const [apiKeys, setApiKeys] = useState<Item[]>([]);
   const [tenant, setTenant] = useState<Item | null>(null);
@@ -547,23 +561,26 @@ export default function Dashboard({
         api<Item>(`tenants/${me.tenant_id}`),
       ]);
       const canConfigure = ["owner", "admin"].includes(me.role);
-      const [k, t, keys, memberResult, voiceResult, secretResult] = canConfigure
-        ? await Promise.all([
-            api<{ data: Item[] }>("knowledge-bases"),
-            api<{ data: Item[] }>("tools"),
-            api<{ data: Item[] }>("api-keys"),
-            api<{ data: Item[] }>(`tenants/${me.tenant_id}/members`),
-            api<{ data: Item[]; configured: boolean }>("voices"),
-            api<{ data: Item[] }>("secrets"),
-          ])
-        : [
-            { data: [] },
-            { data: [] },
-            { data: [] },
-            { data: [] },
-            { data: [], configured: false },
-            { data: [] },
-          ];
+      const [k, t, keys, memberResult, voiceResult, secretResult, phoneResult] =
+        canConfigure
+          ? await Promise.all([
+              api<{ data: Item[] }>("knowledge-bases"),
+              api<{ data: Item[] }>("tools"),
+              api<{ data: Item[] }>("api-keys"),
+              api<{ data: Item[] }>(`tenants/${me.tenant_id}/members`),
+              api<{ data: Item[]; configured: boolean }>("voices"),
+              api<{ data: Item[] }>("secrets"),
+              api<{ data: Item[] }>("phone-numbers"),
+            ])
+          : [
+              { data: [] },
+              { data: [] },
+              { data: [] },
+              { data: [] },
+              { data: [], configured: false },
+              { data: [] },
+              { data: [] },
+            ];
       setTenantId(me.tenant_id);
       setTenant(tenantResult);
       setRole(me.role);
@@ -575,6 +592,7 @@ export default function Dashboard({
       setKnowledge(k.data);
       setTools(t.data);
       setSecrets(secretResult.data);
+      setPhoneNumbers(phoneResult.data);
       setVoices(voiceResult.data);
       setVoiceProviderConfigured(voiceResult.configured);
       setNotice("");
@@ -741,7 +759,9 @@ export default function Dashboard({
       });
       await refresh();
       await openAgent(selectedAgent.id, agentTab);
-      setNotice("Rollback aplicado em um novo rascunho. Revise antes de publicar.");
+      setNotice(
+        "Rollback aplicado em um novo rascunho. Revise antes de publicar.",
+      );
     } catch (error) {
       setNotice(String(error));
     }
@@ -866,11 +886,15 @@ export default function Dashboard({
     const content = (call.turns ?? [])
       .map((turn) => {
         const totalSeconds = Math.floor((turn.audio_offset_ms ?? 0) / 1000);
-        const timestamp = new Date(totalSeconds * 1000).toISOString().slice(11, 19);
+        const timestamp = new Date(totalSeconds * 1000)
+          .toISOString()
+          .slice(11, 19);
         return `[${timestamp}] ${turn.role === "user" ? "Pessoa" : "Agente"}: ${turn.text}`;
       })
       .join("\n");
-    const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+    const url = URL.createObjectURL(
+      new Blob([content], { type: "text/plain;charset=utf-8" }),
+    );
     const link = document.createElement("a");
     link.href = url;
     link.download = `voiceos-${call.id}-transcript.txt`;
@@ -998,9 +1022,10 @@ export default function Dashboard({
       const parametersSchema = JSON.parse(
         String(form.get("parameters_schema") || "{}"),
       ) as Record<string, unknown>;
-      const headers = JSON.parse(
-        String(form.get("headers") || "{}"),
-      ) as Record<string, unknown>;
+      const headers = JSON.parse(String(form.get("headers") || "{}")) as Record<
+        string,
+        unknown
+      >;
       const bodyTemplate = JSON.parse(
         String(form.get("body_template") || "{}"),
       ) as Record<string, unknown>;
@@ -1184,6 +1209,70 @@ export default function Dashboard({
       setNotice(
         `Copie agora; esta chave não será mostrada novamente: ${result.key}`,
       );
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function searchPhoneNumbers(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const areaCode = String(form.get("area_code") ?? "").trim();
+    try {
+      const result = await api<{ data: AvailableNumber[] }>(
+        `phone-numbers/available?country=BR&area_code=${encodeURIComponent(areaCode)}`,
+      );
+      setAvailableNumbers(result.data);
+      setNotice(
+        result.data.length
+          ? `${result.data.length} número(s) disponível(is).`
+          : "Nenhum número disponível para este DDD.",
+      );
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function purchasePhoneNumber(e164: string) {
+    try {
+      await api("phone-numbers", {
+        method: "POST",
+        body: JSON.stringify({ e164 }),
+      });
+      setAvailableNumbers((items) =>
+        items.filter((item) => item.e164 !== e164),
+      );
+      await refresh();
+      setNotice(
+        `${e164} comprado. Atribua-o a um agente para receber chamadas.`,
+      );
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function assignPhoneNumber(numberId: string, agentId: string) {
+    try {
+      await api(`phone-numbers/${numberId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ agent_id: agentId || null }),
+      });
+      await refresh();
+      setNotice(
+        agentId
+          ? "Número atribuído e dispatch SIP atualizado."
+          : "Número desvinculado.",
+      );
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function releasePhoneNumber(numberId: string) {
+    try {
+      await api(`phone-numbers/${numberId}`, { method: "DELETE" });
+      await refresh();
+      setNotice("Número liberado no provedor e dispatch SIP removido.");
     } catch (error) {
       setNotice(String(error));
     }
@@ -2012,12 +2101,13 @@ export default function Dashboard({
                             onSubmit={(event) => {
                               event.preventDefault();
                               const form = new FormData(event.currentTarget);
-                              const properties = (((tool.parameters_schema as
-                                | Record<string, unknown>
-                                | undefined)?.properties ?? {}) as Record<
+                              const properties = ((
+                                tool.parameters_schema as
+                                  Record<string, unknown> | undefined
+                              )?.properties ?? {}) as Record<
                                 string,
                                 Record<string, unknown>
-                              >);
+                              >;
                               const arguments_ = Object.fromEntries(
                                 Object.entries(properties).map(
                                   ([name, schema]) => {
@@ -2037,12 +2127,13 @@ export default function Dashboard({
                             }}
                           >
                             {Object.entries(
-                              (((tool.parameters_schema as
-                                | Record<string, unknown>
-                                | undefined)?.properties ?? {}) as Record<
+                              ((
+                                tool.parameters_schema as
+                                  Record<string, unknown> | undefined
+                              )?.properties ?? {}) as Record<
                                 string,
                                 Record<string, unknown>
-                              >),
+                              >,
                             ).map(([name, schema]) => (
                               <Field
                                 key={name}
@@ -2063,16 +2154,20 @@ export default function Dashboard({
                                         : "text"
                                     }
                                     required={(
-                                      ((tool.parameters_schema as Record<
-                                        string,
-                                        unknown
-                                      >)?.required ?? []) as string[]
+                                      ((
+                                        tool.parameters_schema as Record<
+                                          string,
+                                          unknown
+                                        >
+                                      )?.required ?? []) as string[]
                                     ).includes(name)}
                                   />
                                 )}
                               </Field>
                             ))}
-                            <button className="secondary compact">Testar</button>
+                            <button className="secondary compact">
+                              Testar
+                            </button>
                           </form>
                         </details>{" "}
                         <span
@@ -2186,6 +2281,107 @@ export default function Dashboard({
                     </label>
                     <button>Criar ferramenta</button>
                   </form>
+                </article>
+              </section>
+            )}
+            {section === "numbers" && (
+              <section className="split">
+                <article className="card">
+                  <h2>Números da operação</h2>
+                  {phoneNumbers.map((number) => (
+                    <div className="row static" key={number.id}>
+                      <span>
+                        <strong>{String(number.e164)}</strong>
+                        <small>
+                          {String(number.status)} · voz{" "}
+                          {String(
+                            Boolean(
+                              (
+                                number.capabilities as
+                                  Record<string, unknown> | undefined
+                              )?.voice,
+                            ),
+                          )}{" "}
+                          · SMS{" "}
+                          {String(
+                            Boolean(
+                              (
+                                number.capabilities as
+                                  Record<string, unknown> | undefined
+                              )?.sms,
+                            ),
+                          )}
+                        </small>
+                      </span>
+                      {number.status === "active" && (
+                        <span className="actions">
+                          <select
+                            aria-label={`Agente de ${String(number.e164)}`}
+                            value={String(number.agent_id ?? "")}
+                            onChange={(event) =>
+                              void assignPhoneNumber(
+                                number.id,
+                                event.target.value,
+                              )
+                            }
+                          >
+                            <option value="">Sem agente</option>
+                            {agents
+                              .filter((agent) => agent.status === "active")
+                              .map((agent) => (
+                                <option key={agent.id} value={agent.id}>
+                                  {agent.name}
+                                </option>
+                              ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="danger compact"
+                            onClick={() => void releasePhoneNumber(number.id)}
+                          >
+                            Liberar
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {!phoneNumbers.length && (
+                    <Empty>Nenhum número comprado neste workspace.</Empty>
+                  )}
+                </article>
+                <article className="card">
+                  <h2>Comprar número BR</h2>
+                  <form className="formGrid" onSubmit={searchPhoneNumbers}>
+                    <Field label="DDD">
+                      <input
+                        name="area_code"
+                        inputMode="numeric"
+                        pattern="[0-9]{2,3}"
+                        defaultValue="11"
+                        required
+                      />
+                    </Field>
+                    <button>Buscar no Twilio</button>
+                  </form>
+                  {availableNumbers.map((number) => (
+                    <div className="row static" key={number.e164}>
+                      <span>
+                        <strong>{number.friendly_name ?? number.e164}</strong>
+                        <small>
+                          {[number.locality, number.region]
+                            .filter(Boolean)
+                            .join(" · ") || "Brasil"}
+                        </small>
+                      </span>
+                      <button
+                        type="button"
+                        className="compact"
+                        onClick={() => void purchasePhoneNumber(number.e164)}
+                      >
+                        Comprar
+                      </button>
+                    </div>
+                  ))}
                 </article>
               </section>
             )}

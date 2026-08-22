@@ -268,7 +268,11 @@ locals {
     { name = "ANTHROPIC_API_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:ANTHROPIC_API_KEY::" },
     { name = "OPENAI_API_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:OPENAI_API_KEY::" },
     { name = "ELEVENLABS_API_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:ELEVENLABS_API_KEY::" },
-    { name = "RESEND_API_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:RESEND_API_KEY::" }
+    { name = "RESEND_API_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:RESEND_API_KEY::" },
+    { name = "TWILIO_ACCOUNT_SID", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:TWILIO_ACCOUNT_SID::" },
+    { name = "TWILIO_AUTH_TOKEN", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:TWILIO_AUTH_TOKEN::" },
+    { name = "LIVEKIT_SIP_TRUNK_ID_INBOUND", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:LIVEKIT_SIP_TRUNK_ID_INBOUND::" },
+    { name = "LIVEKIT_SIP_TRUNK_ID_OUTBOUND", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:LIVEKIT_SIP_TRUNK_ID_OUTBOUND::" }
   ]
 }
 

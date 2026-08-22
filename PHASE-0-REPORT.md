@@ -1,6 +1,6 @@
 # Phase 0 Report
 
-Status: **local acceptance complete; real AWS staging deployment pending credentials**.
+Status: **local acceptance complete; real AWS staging deployment pending credentials (não bloqueante para a continuidade da implementação)**.
 
 ## Implemented
 
