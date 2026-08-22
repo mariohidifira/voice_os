@@ -50,6 +50,11 @@ test("criar agente, publicar, testar e ver chamada", async ({
   await expect(page.getByRole("status")).toContainText(
     "Rascunho e ferramentas salvos",
   );
+  await page.getByRole("tab", { name: "Voz" }).click();
+  await expect(page.getByLabel("Idioma")).toBeVisible();
+  await page.getByRole("tab", { name: "Conversa" }).click();
+  await expect(page.getByLabel("Duração máxima (s)")).toBeVisible();
+  await page.getByRole("tab", { name: "Avançado" }).click();
   await page.getByLabel("Velocidade").fill("1.1");
   await page.getByLabel("Keywords STT (vírgulas)").fill("VoiceOS, agendamento");
   await page
@@ -85,7 +90,10 @@ test("criar agente, publicar, testar e ver chamada", async ({
       .first(),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "completed · web 120s · Chamada demo 1", exact: true })
+    .getByRole("button", {
+      name: "completed · web 120s · Chamada demo 1",
+      exact: true,
+    })
     .click();
   const synchronizedTurn = page.getByRole("button", {
     name: /Ir para 0 segundos: Olá, quero agendar/,

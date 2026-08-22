@@ -57,8 +57,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_agent_worker_livekit_main",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "livekit_main.py"
     },
     {
@@ -794,8 +794,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "livekit_worker.py"
     },
     {
@@ -1102,8 +1102,8 @@
       "source_location": "L220",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_room_metadata",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 80,
+      "community_name": "MemoryRuntimeCache",
       "norm_label": "room_metadata()"
     },
     {
@@ -1146,8 +1146,8 @@
       "source_location": "L375",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_run",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "run()"
     },
     {
@@ -1157,8 +1157,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_prompting",
-      "community": 0,
-      "community_name": "Voice Core Modules",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "prompting.py"
     },
     {
@@ -1168,8 +1168,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_prompting_build_system_prompt",
-      "community": 0,
-      "community_name": "Voice Core Modules",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "build_system_prompt()"
     },
     {
@@ -1179,8 +1179,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_prompting_py_any",
-      "community": 0,
-      "community_name": "Voice Core Modules",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "any"
     },
     {
@@ -1190,8 +1190,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "datetime",
-      "community": 0,
-      "community_name": "Voice Core Modules",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "datetime"
     },
     {
@@ -2301,8 +2301,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_config_settings",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 67,
+      "community_name": "test_health.py",
       "norm_label": "settings"
     },
     {
@@ -2312,8 +2312,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "basesettings",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 67,
+      "community_name": "test_health.py",
       "norm_label": "basesettings"
     },
     {
@@ -2444,8 +2444,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_health_get_health_checker",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 1,
+      "community_name": "API Authentication Routes",
       "norm_label": "get_health_checker()"
     },
     {
@@ -2972,8 +2972,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_native_integrations",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "native_integrations.py"
     },
     {
@@ -3082,8 +3082,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_native_integrations_get_native_integrations",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "get_native_integrations()"
     },
     {
@@ -3148,8 +3148,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "postprocessing.py"
     },
     {
@@ -3159,8 +3159,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_postprocessor",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "postprocessor"
     },
     {
@@ -3170,8 +3170,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_py_protocol",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "protocol"
     },
     {
@@ -3181,8 +3181,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_postprocessor_process",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": ".process()"
     },
     {
@@ -3192,8 +3192,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_py_any",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "any"
     },
     {
@@ -3203,8 +3203,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_anthropicpostprocessor",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "anthropicpostprocessor"
     },
     {
@@ -3214,8 +3214,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_anthropicpostprocessor_init",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": ".__init__()"
     },
     {
@@ -3225,8 +3225,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_py_asyncbasetransport",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "asyncbasetransport"
     },
     {
@@ -3236,8 +3236,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_anthropicpostprocessor_process",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": ".process()"
     },
     {
@@ -3247,8 +3247,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_postprocessing_get_postprocessor",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "get_postprocessor()"
     },
     {
@@ -4127,8 +4127,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_update_draft",
-      "community": 64,
-      "community_name": "PostgresRepository",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".update_draft()"
     },
     {
@@ -4204,8 +4204,8 @@
       "source_location": "L307",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_get_call_detail",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 82,
+      "community_name": "livekit_sessions.py",
       "norm_label": ".get_call_detail()"
     },
     {
@@ -4215,8 +4215,8 @@
       "source_location": "L326",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_update_call",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 82,
+      "community_name": "livekit_sessions.py",
       "norm_label": ".update_call()"
     },
     {
@@ -4611,8 +4611,8 @@
       "source_location": "L614",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_init",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": ".__init__()"
     },
     {
@@ -4853,8 +4853,8 @@
       "source_location": "L767",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_call",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 82,
+      "community_name": "livekit_sessions.py",
       "norm_label": ".get_call()"
     },
     {
@@ -4864,8 +4864,8 @@
       "source_location": "L771",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_call_detail",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 82,
+      "community_name": "livekit_sessions.py",
       "norm_label": ".get_call_detail()"
     },
     {
@@ -6580,8 +6580,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "secrets.py"
     },
     {
@@ -6635,8 +6635,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "envelopecipher"
     },
     {
@@ -6646,8 +6646,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher_init",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": ".__init__()"
     },
     {
@@ -6668,8 +6668,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher_decrypt",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": ".decrypt()"
     },
     {
@@ -6679,8 +6679,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_get_secret_cipher",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "get_secret_cipher()"
     },
     {
@@ -6690,8 +6690,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_storage",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "storage.py"
     },
     {
@@ -6701,8 +6701,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_storage_recordingstorage",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "recordingstorage"
     },
     {
@@ -6712,8 +6712,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_storage_recordingstorage_init",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": ".__init__()"
     },
     {
@@ -6723,8 +6723,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_storage_py_any",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "any"
     },
     {
@@ -6734,8 +6734,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_storage_recordingstorage_playback_url",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": ".playback_url()"
     },
     {
@@ -6745,8 +6745,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_storage_get_recording_storage",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "get_recording_storage()"
     },
     {
@@ -6756,8 +6756,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_store",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "store.py"
     },
     {
@@ -6767,8 +6767,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_store_memorystore",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "memorystore"
     },
     {
@@ -6778,8 +6778,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_store_memorystore_init",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": ".__init__()"
     },
     {
@@ -6789,8 +6789,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_store_memorystore_create_agent",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": ".create_agent()"
     },
     {
@@ -6800,8 +6800,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_store_py_uuid",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "uuid"
     },
     {
@@ -6811,8 +6811,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_store_py_any",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "any"
     },
     {
@@ -6822,8 +6822,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_store_rationale_7",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "deterministic dev adapter. production endpoints use the same contract with postg"
     },
     {
@@ -7157,10 +7157,32 @@
       "norm_label": "section"
     },
     {
+      "label": "AgentTab",
+      "file_type": "code",
+      "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
+      "source_location": "L56",
+      "_origin": "ast",
+      "id": "apps_web_app_app_tenantslug_dashboard_agenttab",
+      "community": 32,
+      "community_name": "Dashboard Page",
+      "norm_label": "agenttab"
+    },
+    {
+      "label": "agentTabs",
+      "file_type": "code",
+      "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "apps_web_app_app_tenantslug_dashboard_agenttabs",
+      "community": 32,
+      "community_name": "Dashboard Page",
+      "norm_label": "agenttabs"
+    },
+    {
       "label": "sections",
       "file_type": "code",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L57",
+      "source_location": "L73",
       "_origin": "ast",
       "id": "apps_web_app_app_tenantslug_dashboard_sections",
       "community": 32,
@@ -7171,7 +7193,7 @@
       "label": "api()",
       "file_type": "code",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L67",
+      "source_location": "L83",
       "_origin": "ast",
       "id": "apps_web_app_app_tenantslug_dashboard_api",
       "community": 32,
@@ -7182,7 +7204,7 @@
       "label": "Field()",
       "file_type": "code",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L85",
+      "source_location": "L101",
       "_origin": "ast",
       "id": "apps_web_app_app_tenantslug_dashboard_field",
       "community": 32,
@@ -7193,7 +7215,7 @@
       "label": "Empty()",
       "file_type": "code",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L99",
+      "source_location": "L115",
       "_origin": "ast",
       "id": "apps_web_app_app_tenantslug_dashboard_empty",
       "community": 32,
@@ -7204,7 +7226,7 @@
       "label": "CallEvidence()",
       "file_type": "code",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L102",
+      "source_location": "L118",
       "_origin": "ast",
       "id": "apps_web_app_app_tenantslug_dashboard_callevidence",
       "community": 32,
@@ -7215,7 +7237,7 @@
       "label": "AgentAdvancedPanel()",
       "file_type": "code",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L176",
+      "source_location": "L192",
       "_origin": "ast",
       "id": "apps_web_app_app_tenantslug_dashboard_agentadvancedpanel",
       "community": 32,
@@ -7226,7 +7248,7 @@
       "label": "Dashboard()",
       "file_type": "code",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L411",
+      "source_location": "L427",
       "_origin": "ast",
       "id": "apps_web_app_app_tenantslug_dashboard_dashboard",
       "community": 32,
@@ -9751,8 +9773,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_test_agent_versions",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_agent_versions.py"
     },
     {
@@ -9762,8 +9784,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "scripts_test_agent_versions_request",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "request()"
     },
     {
@@ -9773,8 +9795,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "scripts_test_agent_versions_py_any",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "any"
     },
     {
@@ -9784,8 +9806,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "scripts_test_agent_versions_internal_request",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "internal_request()"
     },
     {
@@ -9795,8 +9817,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_test_agent_versions_rationale_1",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "exercise agent draft, publish, version history and rollback against postgresql."
     },
     {
@@ -10290,8 +10312,8 @@
       "source_location": "L516",
       "_origin": "ast",
       "id": "tests_test_api_test_invalid_token_and_wrong_tenant",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "test_invalid_token_and_wrong_tenant()"
     },
     {
@@ -10708,8 +10730,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_native_integrations",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_native_integrations.py"
     },
     {
@@ -10719,8 +10741,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_test_native_integrations_test_google_oauth_refresh_calendar_and_resend",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_google_oauth_refresh_calendar_and_resend()"
     },
     {
@@ -10763,8 +10785,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_postgres_repository",
-      "community": 64,
-      "community_name": "PostgresRepository",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "test_postgres_repository.py"
     },
     {
@@ -10774,8 +10796,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_test_postgres_repository_test_postgres_members_and_api_keys_lifecycle",
-      "community": 64,
-      "community_name": "PostgresRepository",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "test_postgres_members_and_api_keys_lifecycle()"
     },
     {
@@ -10785,8 +10807,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "tests_test_postgres_repository_test_postgres_agent_and_call_lifecycle",
-      "community": 64,
-      "community_name": "PostgresRepository",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "test_postgres_agent_and_call_lifecycle()"
     },
     {
@@ -10796,8 +10818,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_postprocessing",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_postprocessing.py"
     },
     {
@@ -10807,8 +10829,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "tests_test_postprocessing_test_postprocessor_sends_transcript_and_validates_structured_result",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_postprocessor_sends_transcript_and_validates_structured_result()"
     },
     {
@@ -10818,8 +10840,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "tests_test_postprocessing_test_postprocessor_retries_invalid_provider_response",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_postprocessor_retries_invalid_provider_response()"
     },
     {
@@ -10829,8 +10851,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_recording",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "test_recording.py"
     },
     {
@@ -10840,8 +10862,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "tests_test_recording_test_start_egress_uses_audio_only_ogg_and_tenant_scoped_s3_key",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "test_start_egress_uses_audio_only_ogg_and_tenant_scoped_s3_key()"
     },
     {
@@ -10851,8 +10873,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "tests_test_recording_test_egress_webhook_maps_completed_file_to_recording",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "test_egress_webhook_maps_completed_file_to_recording()"
     },
     {
@@ -10862,8 +10884,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "tests_test_recording_test_memory_repository_upserts_recording_into_call_detail",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "test_memory_repository_upserts_recording_into_call_detail()"
     },
     {
@@ -10873,8 +10895,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "tests_test_recording_test_recording_storage_generates_short_lived_tenant_object_url",
-      "community": 81,
-      "community_name": "RuntimeCache",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "test_recording_storage_generates_short_lived_tenant_object_url()"
     },
     {
@@ -10906,8 +10928,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_secrets",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_secrets.py"
     },
     {
@@ -10917,8 +10939,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "tests_test_secrets_test_local_envelope_cipher_roundtrip",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_local_envelope_cipher_roundtrip()"
     },
     {
@@ -11005,8 +11027,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "tests_test_voice_core_test_prompt_rejects_tenant_prompt_over_limit",
-      "community": 0,
-      "community_name": "Voice Core Modules",
+      "community": 79,
+      "community_name": "postprocessing.py",
       "norm_label": "test_prompt_rejects_tenant_prompt_over_limit()"
     },
     {
@@ -11214,8 +11236,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_worker_runtime",
-      "community": 0,
-      "community_name": "Voice Core Modules",
+      "community": 80,
+      "community_name": "MemoryRuntimeCache",
       "norm_label": "test_worker_runtime.py"
     },
     {
@@ -11225,8 +11247,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "tests_test_worker_runtime_test_runtime_session_loads_versioned_config_persists_turns_and_finishes",
-      "community": 0,
-      "community_name": "Voice Core Modules",
+      "community": 80,
+      "community_name": "MemoryRuntimeCache",
       "norm_label": "test_runtime_session_loads_versioned_config_persists_turns_and_finishes()"
     },
     {
@@ -38100,11 +38122,33 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L176",
+      "source_location": "L192",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_app_tenantslug_dashboard",
       "target": "apps_web_app_app_tenantslug_dashboard_agentadvancedpanel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
+      "source_location": "L56",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_web_app_app_tenantslug_dashboard",
+      "target": "apps_web_app_app_tenantslug_dashboard_agenttab",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "apps_web_app_app_tenantslug_dashboard",
+      "target": "apps_web_app_app_tenantslug_dashboard_agenttabs",
       "confidence_score": 1.0
     },
     {
@@ -38122,7 +38166,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L67",
+      "source_location": "L83",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_app_tenantslug_dashboard",
@@ -38144,7 +38188,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L102",
+      "source_location": "L118",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_app_tenantslug_dashboard",
@@ -38155,7 +38199,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L411",
+      "source_location": "L427",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_app_tenantslug_dashboard",
@@ -38177,7 +38221,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L99",
+      "source_location": "L115",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_app_tenantslug_dashboard",
@@ -38188,7 +38232,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L85",
+      "source_location": "L101",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_app_tenantslug_dashboard",
@@ -38221,7 +38265,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L57",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_app_tenantslug_dashboard",
@@ -38269,7 +38313,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/app/[tenantSlug]/dashboard.tsx",
-      "source_location": "L456",
+      "source_location": "L473",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_app_tenantslug_dashboard_dashboard",
@@ -44140,5 +44184,5 @@
       "source_file": "PHASE-0-REPORT.md"
     }
   ],
-  "built_at_commit": "3278dee4887313b915f0bd5b715beefab7c63250"
+  "built_at_commit": "678ed76412a7d4e5e7a58fbfafe2f4fc04a4e646"
 }

@@ -53,6 +53,22 @@ type Section =
   | "tools"
   | "members"
   | "settings";
+type AgentTab =
+  | "prompt"
+  | "voice"
+  | "conversation"
+  | "knowledge"
+  | "tools"
+  | "advanced";
+
+const agentTabs: Array<[AgentTab, string]> = [
+  ["prompt", "Prompt"],
+  ["voice", "Voz"],
+  ["conversation", "Conversa"],
+  ["knowledge", "Conhecimento"],
+  ["tools", "Tools"],
+  ["advanced", "Avançado"],
+];
 
 const sections: Array<[Section, string]> = [
   ["overview", "Visão geral"],
@@ -435,6 +451,7 @@ export default function Dashboard({
     initialTestAgentId ?? null,
   );
   const [selectedAgent, setSelectedAgent] = useState<Item | null>(null);
+  const [agentTab, setAgentTab] = useState<AgentTab>("prompt");
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [toolTestResult, setToolTestResult] = useState("");
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
@@ -522,13 +539,14 @@ export default function Dashboard({
       setNotice(String(error));
     }
   }
-  async function openAgent(id: string) {
+  async function openAgent(id: string, nextTab: AgentTab = "prompt") {
     const [detail, linked] = await Promise.all([
       api<Item>(`agents/${id}`),
       api<{ data: Item[] }>(`agents/${id}/draft/tools`),
     ]);
     setSelectedAgent(detail);
     setSelectedToolIds(linked.data.map((tool) => tool.id));
+    setAgentTab(nextTab);
     setSection("agents");
   }
   async function saveAgent(event: FormEvent<HTMLFormElement>) {
@@ -565,7 +583,7 @@ export default function Dashboard({
           body: JSON.stringify({ tool_ids: selectedToolIds }),
         }),
       ]);
-      await openAgent(selectedAgent.id);
+      await openAgent(selectedAgent.id, agentTab);
       setNotice("Rascunho e ferramentas salvos.");
     } catch (error) {
       setNotice(String(error));
@@ -579,7 +597,7 @@ export default function Dashboard({
         body: "{}",
       });
       await refresh();
-      await openAgent(selectedAgent.id);
+      await openAgent(selectedAgent.id, agentTab);
       setNotice("Versão publicada.");
     } catch (error) {
       setNotice(String(error));
@@ -592,7 +610,7 @@ export default function Dashboard({
         method: "PATCH",
         body: JSON.stringify(patch),
       });
-      await openAgent(selectedAgent.id);
+      await openAgent(selectedAgent.id, "advanced");
       setNotice("Configuração avançada salva.");
     } catch (error) {
       setNotice(String(error));
@@ -606,7 +624,7 @@ export default function Dashboard({
         body: JSON.stringify({ status }),
       });
       await refresh();
-      await openAgent(selectedAgent.id);
+      await openAgent(selectedAgent.id, "advanced");
       setNotice(status === "paused" ? "Agente pausado." : "Agente reativado.");
     } catch (error) {
       setNotice(String(error));
@@ -989,131 +1007,179 @@ export default function Dashboard({
                           </button>
                         </div>
                       </div>
-                      <div className="tabs">
-                        <span>Prompt</span>
-                        <span>Voz</span>
-                        <span>Conversa</span>
-                        <span>Conhecimento</span>
-                        <span>Tools</span>
-                        <span>Avançado</span>
-                      </div>
-                      <form className="formGrid" onSubmit={saveAgent}>
-                        <Field label="Prompt do sistema">
-                          <textarea
-                            name="system_prompt"
-                            defaultValue={String(draft.system_prompt ?? "")}
-                            rows={8}
-                          />
-                        </Field>
-                        <Field label="Saudação">
-                          <textarea
-                            name="greeting"
-                            defaultValue={String(draft.greeting ?? "")}
-                            rows={3}
-                          />
-                        </Field>
-                        <div className="two">
-                          <Field label="Idioma">
-                            <input
-                              name="language"
-                              defaultValue={String(draft.language ?? "pt-BR")}
-                            />
-                          </Field>
-                          <Field label="Voice ID">
-                            <input
-                              name="voice_id"
-                              defaultValue={String(
-                                (
-                                  draft.tts as
-                                    | Record<string, unknown>
-                                    | undefined
-                                )?.voice_id ?? "",
-                              )}
-                            />
-                          </Field>
-                        </div>
-                        <div className="two">
-                          <Field label="Duração máxima (s)">
-                            <input
-                              name="max_duration"
-                              type="number"
-                              min="30"
-                              defaultValue={String(
-                                (
-                                  draft.behavior as
-                                    | Record<string, unknown>
-                                    | undefined
-                                )?.max_call_duration_s ?? 900,
-                              )}
-                            />
-                          </Field>
-                          <Field label="Silêncio (s)">
-                            <input
-                              name="silence_timeout"
-                              type="number"
-                              min="5"
-                              defaultValue={String(
-                                (
-                                  draft.behavior as
-                                    | Record<string, unknown>
-                                    | undefined
-                                )?.silence_timeout_s ?? 20,
-                              )}
-                            />
-                          </Field>
-                        </div>
-                        <Field label="Base de conhecimento">
-                          <select
-                            name="knowledge_base_id"
-                            defaultValue={String(draft.knowledge_base_id ?? "")}
+                      <div
+                        className="tabs"
+                        role="tablist"
+                        aria-label="Editor do agente"
+                      >
+                        {agentTabs.map(([id, label]) => (
+                          <button
+                            type="button"
+                            role="tab"
+                            aria-selected={agentTab === id}
+                            className={agentTab === id ? "active" : ""}
+                            key={id}
+                            onClick={() => setAgentTab(id)}
                           >
-                            <option value="">Sem base</option>
-                            {knowledge.map((kb) => (
-                              <option value={kb.id} key={kb.id}>
-                                {kb.name}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                        <fieldset className="toolPicker">
-                          <legend>Tools do rascunho</legend>
-                          {tools.map((tool) => (
-                            <label className="check" key={tool.id}>
-                              <input
-                                type="checkbox"
-                                checked={selectedToolIds.includes(tool.id)}
-                                onChange={(event) =>
-                                  setSelectedToolIds((current) =>
-                                    event.target.checked
-                                      ? [...current, tool.id]
-                                      : current.filter((id) => id !== tool.id),
-                                  )
-                                }
-                              />{" "}
-                              {tool.name}{" "}
-                              <small>{String(tool.description ?? "")}</small>
-                            </label>
-                          ))}
-                          {!tools.length && (
-                            <small>
-                              Crie ferramentas na seção Ferramentas.
-                            </small>
-                          )}
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <form
+                        className="formGrid"
+                        onSubmit={saveAgent}
+                        hidden={agentTab === "advanced"}
+                      >
+                        <fieldset
+                          className="tabPanel"
+                          hidden={agentTab !== "prompt"}
+                        >
+                          <Field label="Prompt do sistema">
+                            <textarea
+                              name="system_prompt"
+                              defaultValue={String(draft.system_prompt ?? "")}
+                              rows={8}
+                            />
+                          </Field>
+                          <Field label="Saudação">
+                            <textarea
+                              name="greeting"
+                              defaultValue={String(draft.greeting ?? "")}
+                              rows={3}
+                            />
+                          </Field>
                         </fieldset>
-                        <label className="check">
-                          <input
-                            type="checkbox"
-                            name="allow_interruptions"
-                            defaultChecked={
-                              (
-                                draft.turn_config as
-                                  | Record<string, unknown>
-                                  | undefined
-                              )?.allow_interruptions !== false
-                            }
-                          />{" "}
-                          Permitir interrupções (barge-in)
-                        </label>
+                        <fieldset
+                          className="tabPanel"
+                          hidden={agentTab !== "voice"}
+                        >
+                          <div className="two">
+                            <Field label="Idioma">
+                              <input
+                                name="language"
+                                defaultValue={String(draft.language ?? "pt-BR")}
+                              />
+                            </Field>
+                            <Field label="Voice ID">
+                              <input
+                                name="voice_id"
+                                defaultValue={String(
+                                  (
+                                    draft.tts as
+                                      | Record<string, unknown>
+                                      | undefined
+                                  )?.voice_id ?? "",
+                                )}
+                              />
+                            </Field>
+                          </div>
+                        </fieldset>
+                        <fieldset
+                          className="tabPanel"
+                          hidden={agentTab !== "conversation"}
+                        >
+                          <div className="two">
+                            <Field label="Duração máxima (s)">
+                              <input
+                                name="max_duration"
+                                type="number"
+                                min="30"
+                                defaultValue={String(
+                                  (
+                                    draft.behavior as
+                                      | Record<string, unknown>
+                                      | undefined
+                                  )?.max_call_duration_s ?? 900,
+                                )}
+                              />
+                            </Field>
+                            <Field label="Silêncio (s)">
+                              <input
+                                name="silence_timeout"
+                                type="number"
+                                min="5"
+                                defaultValue={String(
+                                  (
+                                    draft.behavior as
+                                      | Record<string, unknown>
+                                      | undefined
+                                  )?.silence_timeout_s ?? 20,
+                                )}
+                              />
+                            </Field>
+                          </div>
+                        </fieldset>
+                        <fieldset
+                          className="tabPanel"
+                          hidden={agentTab !== "knowledge"}
+                        >
+                          <Field label="Base de conhecimento">
+                            <select
+                              name="knowledge_base_id"
+                              defaultValue={String(
+                                draft.knowledge_base_id ?? "",
+                              )}
+                            >
+                              <option value="">Sem base</option>
+                              {knowledge.map((kb) => (
+                                <option value={kb.id} key={kb.id}>
+                                  {kb.name}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                        </fieldset>
+                        <fieldset
+                          className="tabPanel"
+                          hidden={agentTab !== "tools"}
+                        >
+                          <fieldset className="toolPicker">
+                            <legend>Tools do rascunho</legend>
+                            {tools.map((tool) => (
+                              <label className="check" key={tool.id}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedToolIds.includes(tool.id)}
+                                  onChange={(event) =>
+                                    setSelectedToolIds((current) =>
+                                      event.target.checked
+                                        ? [...current, tool.id]
+                                        : current.filter(
+                                            (id) => id !== tool.id,
+                                          ),
+                                    )
+                                  }
+                                />{" "}
+                                {tool.name}{" "}
+                                <small>{String(tool.description ?? "")}</small>
+                              </label>
+                            ))}
+                            {!tools.length && (
+                              <small>
+                                Crie ferramentas na seção Ferramentas.
+                              </small>
+                            )}
+                          </fieldset>
+                        </fieldset>
+                        <fieldset
+                          className="tabPanel"
+                          hidden={agentTab !== "conversation"}
+                        >
+                          <label className="check">
+                            <input
+                              type="checkbox"
+                              name="allow_interruptions"
+                              defaultChecked={
+                                (
+                                  draft.turn_config as
+                                    | Record<string, unknown>
+                                    | undefined
+                                )?.allow_interruptions !== false
+                              }
+                            />{" "}
+                            Permitir interrupções (barge-in)
+                          </label>
+                        </fieldset>
                         <button className="save">Salvar rascunho</button>
                       </form>
                     </>
@@ -1462,16 +1528,19 @@ export default function Dashboard({
                 </article>
               </section>
             )}
-            {section === "agents" && selectedAgent && canConfigure && (
-              <AgentAdvancedPanel
-                key={String(draft.id ?? selectedAgent.id)}
-                agent={selectedAgent}
-                draft={draft}
-                onSave={saveAdvanced}
-                onStatus={setAgentStatus}
-                onDelete={deleteSelectedAgent}
-              />
-            )}
+            {section === "agents" &&
+              selectedAgent &&
+              canConfigure &&
+              agentTab === "advanced" && (
+                <AgentAdvancedPanel
+                  key={String(draft.id ?? selectedAgent.id)}
+                  agent={selectedAgent}
+                  draft={draft}
+                  onSave={saveAdvanced}
+                  onStatus={setAgentStatus}
+                  onDelete={deleteSelectedAgent}
+                />
+              )}
             {section === "calls" && selectedCall && (
               <CallEvidence call={selectedCall} />
             )}

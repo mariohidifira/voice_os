@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1787373280.9596472,
-    "ast_hash": "5b644e7c025e5f94213edc7f1b3f036b",
+    "mtime": 1787373863.63089,
+    "ast_hash": "012da22b1e5acfa7388b045f006570ab",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787373297.30323,
-    "ast_hash": "8f478869db0fadc32c00356f498c224f",
+    "mtime": 1787373800.8166852,
+    "ast_hash": "252e99ce01c32737b12894e27b6f70bd",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "apps/web/e2e/essential-flow.spec.ts": {
-    "mtime": 1787373516.8574624,
-    "ast_hash": "48ef6356a3c9593f17f4eab3dff3cf64",
+    "mtime": 1787373800.9351544,
+    "ast_hash": "d424d391cead38c997a050bb0a64352d",
     "semantic_hash": ""
   },
   "apps/web/playwright.config.ts": {
