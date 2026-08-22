@@ -74,6 +74,7 @@ class PostgresRepository:
     @asynccontextmanager
     async def tenant_session(self, tenant_id: UUID) -> AsyncIterator[AsyncSession]:
         async with SessionFactory() as db, db.begin():
+            await db.execute(text("SET LOCAL ROLE voiceos_app"))
             await db.execute(
                 text("SELECT set_config('app.tenant_id', :tenant_id, true)"),
                 {"tenant_id": str(tenant_id)},

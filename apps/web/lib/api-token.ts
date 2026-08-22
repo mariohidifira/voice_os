@@ -10,8 +10,8 @@ function base64url(value: object) {
 
 export async function issueApiToken(userId: string) {
   if (!pool || !process.env.AUTH_SECRET) return null;
-  const result = await pool.query<{ id: string; role: string }>(
-    'SELECT tenant_id::text AS id, role FROM memberships WHERE "user_id"=$1 ORDER BY created_at',
+  const result = await pool.query<{ id: string; role: string; slug: string }>(
+    'SELECT m.tenant_id::text AS id, m.role, t.slug FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m."user_id"=$1 AND t.deleted_at IS NULL ORDER BY m.created_at',
     [userId],
   );
   if (result.rows.length === 0) return null;

@@ -9,6 +9,7 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 - Extração PDF, DOCX, HTML, URL e texto, chunking, embeddings OpenAI, pgvector e consulta isolada por tenant.
 - Tools nativas `end_call`, `set_variable`, `send_email`, `google_calendar_check` e `google_calendar_book`; webhooks com schema, templates, SSRF guard, teste, timeout e erro recuperável.
 - Painel essencial para agentes, templates, edição, tools vinculadas, teste WebRTC, chamadas, áudio/transcrição, conhecimento, membros, integrações, settings e API keys.
+- Onboarding autenticado em duas etapas para criar tenant, owner, agente inicial por template e abrir imediatamente o teste de voz.
 - Templates obrigatórios 1, 2 e 4: Recepcionista/FAQ, Agendamento e Suporte/Consulta de pedido.
 - Playwright do fluxo login por magic link → criar agente → editar → publicar → testar → ver chamada.
 
@@ -18,7 +19,8 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 - MyPy strict: aprovado em 33 arquivos.
 - `pytest -q`: 69 testes aprovados.
 - TypeScript, ESLint e build de produção Next.js: aprovados.
-- Playwright essencial: 1 cenário aprovado contra PostgreSQL, mock HTTP e API em `localhost:8005`.
+- Playwright essencial: 2 cenários aprovados contra PostgreSQL, mock HTTP e API em `localhost:8005`, cobrindo o fluxo administrativo e o onboarding completo.
+- Isolamento PostgreSQL reforçado: toda sessão de tenant assume o papel `voiceos_app` (`NOSUPERUSER`/`NOBYPASSRLS`) antes de definir `app.tenant_id`; o E2E confirma que o novo tenant não enxerga agentes do tenant demo.
 - RBAC de configuração: operator/viewer recebem 403 em KB, tools, secrets, integrações e membros; o painel carrega somente os recursos permitidos ao papel.
 - Detalhe de chamada: player/download, custo, TTFB, reação ao barge-in, tools, eventos, resultado e variáveis coletadas.
 - Editor avançado: modelo/temperatura/tokens, voz/velocidade/estabilidade, presets de turno, interrupções, backchannels, keywords STT, filler, transferência, variáveis e JSON read-only; persistência coberta no E2E.

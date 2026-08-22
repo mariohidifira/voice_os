@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("criar agente, publicar, testar e ver chamada", async ({ page, request }) => {
+async function magicLogin(page: import("@playwright/test").Page, request: import("@playwright/test").APIRequestContext) {
   const previousEmail = await request.get("http://127.0.0.1:9000/email/last");
   const previousUrl = previousEmail.ok()
     ? ((await previousEmail.json()) as { url?: string }).url ?? ""
@@ -22,6 +22,10 @@ test("criar agente, publicar, testar e ver chamada", async ({ page, request }) =
   await page.goto(magicLink);
   await expect(page).toHaveURL(/\/app\/demo/);
   await expect(page.getByText("VoiceOS", { exact: false }).first()).toBeVisible();
+}
+
+test("criar agente, publicar, testar e ver chamada", async ({ page, request }) => {
+  await magicLogin(page, request);
 
   await page.getByRole("button", { name: "Agentes", exact: true }).click();
   const agentName = `E2E ${Date.now()}`;
@@ -47,4 +51,19 @@ test("criar agente, publicar, testar e ver chamada", async ({ page, request }) =
 
   await page.getByRole("button", { name: "Chamadas", exact: true }).click();
   await expect(page.getByText("test_session", { exact: false }).or(page.getByText("cancelled", { exact: false })).first()).toBeVisible();
+});
+
+test("onboarding cria tenant, agente por template e abre teste", async ({ page, request }) => {
+  await magicLogin(page, request);
+  await page.goto("/onboarding");
+  const company = `Operação E2E ${Date.now()}`;
+  await page.getByPlaceholder("Clínica Exemplo").fill(company);
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByLabel("Template").selectOption("scheduling");
+  await page.getByPlaceholder("Ana").fill("Agenda E2E");
+  await page.getByRole("button", { name: "Criar e testar" }).click();
+  await expect(page).toHaveURL(/\/app\/operacao-e2e-/);
+  await expect(page.getByRole("dialog", { name: "Teste de voz" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Agenda E2E draft/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Recepcionista active/ })).toHaveCount(0);
 });

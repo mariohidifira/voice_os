@@ -100,8 +100,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/repository.py": {
-    "mtime": 1787337407.684943,
-    "ast_hash": "903e42fbf3d54f9705cdd2fec744b351",
+    "mtime": 1787370814.3991575,
+    "ast_hash": "ae954744ace51f91a941af6716977ed3",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "apps/web/middleware.ts": {
-    "mtime": 1787087302.286301,
-    "ast_hash": "197127f117b32e28154d5371190d359d",
+    "mtime": 1787370480.6562388,
+    "ast_hash": "142e19b115b52664292bdc1105ee9418",
     "semantic_hash": ""
   },
   "apps/web/next-env.d.ts": {
@@ -185,8 +185,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/page.tsx": {
-    "mtime": 1787336416.3173807,
-    "ast_hash": "aed2afb53879450a2f36f681d5d65095",
+    "mtime": 1787370478.3811872,
+    "ast_hash": "add97e272f579e899bed7724db6705f7",
     "semantic_hash": ""
   },
   "apps/web/app/login/page.tsx": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1787370243.8656688,
-    "ast_hash": "9ca9cf4f80d6972ac191262c7c7e7611",
+    "mtime": 1787371231.1270595,
+    "ast_hash": "247aab23696f18209ada4ec7cf50a8aa",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
@@ -650,18 +650,18 @@
     "semantic_hash": ""
   },
   "apps/web/app/api/voiceos/[...path]/route.ts": {
-    "mtime": 1787340914.7571313,
-    "ast_hash": "6860ccd6b72063a4f227f2b7d21e3fa5",
+    "mtime": 1787370589.3754532,
+    "ast_hash": "40a9fbdbc3a5a07a8c827b792e06e40f",
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787369959.685607,
-    "ast_hash": "fab29ecc213cca8856da9fcd91fc425f",
+    "mtime": 1787370479.5343153,
+    "ast_hash": "5098aa7baed28f4b8a7ebb42b082b025",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
-    "mtime": 1787336410.7426522,
-    "ast_hash": "c6a3e5cc4878b1678122d840f0a73e9b",
+    "mtime": 1787370588.2075217,
+    "ast_hash": "84dce32ac595deb157a3bd3e5794ab41",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/livekit_sessions.py": {
@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "apps/web/e2e/essential-flow.spec.ts": {
-    "mtime": 1787370028.4687066,
-    "ast_hash": "2915144f59e1d3c41d570a4dc4eb142c",
+    "mtime": 1787371127.4876184,
+    "ast_hash": "8bfd4bc294b805037491fa01a2f722ec",
     "semantic_hash": ""
   },
   "apps/web/playwright.config.ts": {
@@ -747,6 +747,21 @@
   ".github/workflows/phase1-staging-acceptance.yml": {
     "mtime": 1787369182.7884624,
     "ast_hash": "44ddf5eb0b365233b6007b9a81498abe",
+    "semantic_hash": ""
+  },
+  "apps/web/app/onboarding/actions.ts": {
+    "mtime": 1787370562.7296882,
+    "ast_hash": "a89b7c87a08fd2d36e845e2468854709",
+    "semantic_hash": ""
+  },
+  "apps/web/app/onboarding/page.tsx": {
+    "mtime": 1787370477.2329817,
+    "ast_hash": "e8fb2d06e12a82a90e62b31de9da701a",
+    "semantic_hash": ""
+  },
+  "apps/web/app/onboarding/wizard.tsx": {
+    "mtime": 1787370476.1628096,
+    "ast_hash": "f92f2060a9242e178f1ec34851c2de24",
     "semantic_hash": ""
   }
 }
