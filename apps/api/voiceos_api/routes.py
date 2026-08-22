@@ -7,7 +7,7 @@ from uuid import UUID
 import httpx
 import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from jsonschema import ValidationError, validate
 from livekit import api as livekit_api
 from pydantic import ValidationError as PydanticValidationError
@@ -48,10 +48,12 @@ from .schemas import (
     ToolCreate,
     ToolPatch,
     ToolTestRequest,
+    VoicePreviewRequest,
 )
 from .secrets import SecretCipher, get_secret_cipher
 from .storage import RecordingStorage, get_recording_storage
 from .tool_execution import ToolExecutor, get_tool_executor
+from .voice_preview import VoicePreview, get_voice_preview
 
 v1 = APIRouter(prefix="/v1")
 internal = APIRouter(prefix="/internal", dependencies=[Depends(internal_token)])
@@ -67,6 +69,7 @@ Processor = Annotated[Postprocessor, Depends(get_postprocessor)]
 Improver = Annotated[PromptImprover, Depends(get_prompt_improver)]
 Rtc = Annotated[LiveKitSessions, Depends(get_livekit_sessions)]
 Storage = Annotated[RecordingStorage, Depends(get_recording_storage)]
+Voice = Annotated[VoicePreview, Depends(get_voice_preview)]
 
 
 def _require_admin(auth: Principal) -> None:
@@ -359,6 +362,35 @@ async def improve_agent_prompt(
     except RuntimeError as exc:
         raise HTTPException(
             503, detail={"code": "prompt_improvement_unavailable", "message": str(exc)}
+        ) from exc
+
+
+@v1.get("/voices")
+async def list_voices(auth: Auth, voice: Voice) -> dict[str, Any]:
+    _require_admin(auth)
+    try:
+        return {"data": await voice.list_voices(), "configured": voice.configured}
+    except RuntimeError as exc:
+        raise HTTPException(
+            503, detail={"code": "voice_provider_unavailable", "message": str(exc)}
+        ) from exc
+
+
+@v1.post("/voices/{voice_id}/preview")
+async def preview_voice(
+    voice_id: str, body: VoicePreviewRequest, auth: Auth, voice: Voice
+) -> Response:
+    _require_admin(auth)
+    try:
+        audio = await voice.synthesize(voice_id, body.text, body.speed)
+        return Response(
+            audio,
+            media_type="audio/mpeg",
+            headers={"Cache-Control": "private, max-age=300"},
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            503, detail={"code": "voice_preview_unavailable", "message": str(exc)}
         ) from exc
 
 

@@ -26,6 +26,7 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 - Editor avançado: modelo/temperatura/tokens, voz/velocidade/estabilidade, presets de turno, interrupções, backchannels, keywords STT, filler, transferência, variáveis e JSON read-only; persistência coberta no E2E.
 - Editor organizado em seis abas acessíveis e funcionais (Prompt, Voz, Conversa, Conhecimento, Tools e Avançado), com navegação e persistência cobertas no E2E.
 - Aba Prompt com limite/contador de 6.000 caracteres, detecção de variáveis Jinja e preview “Melhorar com IA”; o serviço Anthropic preserva variáveis, aplica timeout/retry e só persiste após revisão e salvamento explícito.
+- Aba Voz com catálogo ElevenLabs, Voice ID manual como fallback, velocidade, estabilidade e preview da saudação em áudio; a chave do provedor permanece exclusivamente na API e ausência de configuração é exibida sem quebrar o painel.
 - Ciclo administrativo do agente: pausar, reativar e excluir pelo painel.
 - Conversas determinísticas: 40 casos texto + 10 casos áudio sintético, 100% aprovados.
 - Barge-in determinístico: 4/4 casos aprovados; backchannels isolados também cobertos.

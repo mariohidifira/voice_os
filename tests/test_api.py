@@ -10,6 +10,7 @@ from voiceos_api.prompt_improvement import get_prompt_improver
 from voiceos_api.repository import MemoryRepository, get_repository
 from voiceos_api.storage import get_recording_storage
 from voiceos_api.store import store
+from voiceos_api.voice_preview import get_voice_preview
 
 client = TestClient(app)
 app.dependency_overrides[get_repository] = lambda: MemoryRepository(store)
@@ -58,6 +59,20 @@ class FakePromptImprover:
 
 
 app.dependency_overrides[get_prompt_improver] = FakePromptImprover
+
+
+class FakeVoicePreview:
+    configured = True
+
+    async def list_voices(self) -> list[dict[str, object]]:
+        return [{"id": "voice-1", "name": "Ana", "labels": {"language": "pt"}}]
+
+    async def synthesize(self, voice_id: str, text: str, speed: float) -> bytes:
+        assert voice_id == "voice-1" and text == "Olá!" and speed == 1.1
+        return b"ID3audio"
+
+
+app.dependency_overrides[get_voice_preview] = FakeVoicePreview
 
 
 def headers(tenant: str, role: str = "owner") -> dict[str, str]:
@@ -434,6 +449,22 @@ def test_publish_rejects_untested_webhook_tool() -> None:
     rejected = client.post(f"/v1/agents/{agent['id']}/publish", headers=auth)
     assert rejected.status_code == 422
     assert "must pass a test" in rejected.json()["error"]["details"]["errors"][0]
+
+
+def test_voice_catalog_and_preview_are_admin_scoped() -> None:
+    tenant = str(uuid4())
+    owner = headers(tenant)
+    catalog = client.get("/v1/voices", headers=owner)
+    assert catalog.json() == {
+        "data": [{"id": "voice-1", "name": "Ana", "labels": {"language": "pt"}}],
+        "configured": True,
+    }
+    preview = client.post(
+        "/v1/voices/voice-1/preview", json={"text": "Olá!", "speed": 1.1}, headers=owner
+    )
+    assert preview.status_code == 200 and preview.headers["content-type"] == "audio/mpeg"
+    assert preview.content == b"ID3audio"
+    assert client.get("/v1/voices", headers=headers(tenant, "viewer")).status_code == 403
 
 
 def test_prompt_improvement_is_preview_only_and_admin_scoped() -> None:

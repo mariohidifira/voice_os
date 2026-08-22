@@ -38,6 +38,11 @@ class PromptImproveRequest(BaseModel):
     prompt: str = Field(min_length=20, max_length=6000)
 
 
+class VoicePreviewRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+    speed: float = Field(default=1.0, ge=0.7, le=1.2)
+
+
 class AgentToolsSet(BaseModel):
     tool_ids: list[UUID]
 

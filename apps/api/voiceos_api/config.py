@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     livekit_api_secret: str = "dev"
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
+    elevenlabs_api_key: str | None = None
     anthropic_postprocess_model: str = "claude-haiku-4-5"
     aws_kms_key_id: str | None = None
     aws_region: str = "sa-east-1"

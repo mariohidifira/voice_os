@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/config.py": {
-    "mtime": 1787373082.6420739,
-    "ast_hash": "60f2c7ff67f35c1fb92bf6dc2e0d9199",
+    "mtime": 1787374989.333996,
+    "ast_hash": "f000b54c6d90ca5f6e833d7ed148eb5b",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/db.py": {
@@ -105,13 +105,13 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787374574.7409642,
-    "ast_hash": "b4383ac3f770c94ac34a774d7e66f2d2",
+    "mtime": 1787375015.0794222,
+    "ast_hash": "4657fc999466b243ab40f895e03bef74",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
-    "mtime": 1787374437.6984475,
-    "ast_hash": "80cb61e389d2a1e9166863f9d9e8f375",
+    "mtime": 1787374990.4238143,
+    "ast_hash": "6da8ee05e0edb69990345ff4e7f95b63",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/store.py": {
@@ -250,8 +250,8 @@
     "semantic_hash": ""
   },
   "tests/test_api.py": {
-    "mtime": 1787374574.7419612,
-    "ast_hash": "09c96d9654467888a5af40cedda78aac",
+    "mtime": 1787375206.3295877,
+    "ast_hash": "b454ae756157c52724c729663f3fe243",
     "semantic_hash": ""
   },
   "tests/test_health.py": {
@@ -280,8 +280,8 @@
     "semantic_hash": ""
   },
   "DECISIONS.md": {
-    "mtime": 1786990321.931443,
-    "ast_hash": "51cdd422fb2896fc25a432faed0f2e4d",
+    "mtime": 1787375551.040678,
+    "ast_hash": "1b1d8d12e19c57faaea83f5e75e77663",
     "semantic_hash": ""
   },
   "docker-compose.yml": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1787374748.0878456,
-    "ast_hash": "f39dc3149de6bdeddaf69e79374897d2",
+    "mtime": 1787375552.2453218,
+    "ast_hash": "11b3948b972abf702a76aa643f0b940a",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
@@ -485,8 +485,8 @@
     "semantic_hash": ""
   },
   "packages/shared-ts/openapi.json": {
-    "mtime": 1787374579.771861,
-    "ast_hash": "4f9b66c5384ded766487533536798059",
+    "mtime": 1787375176.703226,
+    "ast_hash": "e661893feba4f2b868b0b69a659d301a",
     "semantic_hash": ""
   },
   "packages/shared-ts/package.json": {
@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787374576.8330631,
-    "ast_hash": "8c2590683659cef7b67946f33a373b28",
+    "mtime": 1787375174.1130295,
+    "ast_hash": "670b335bbd49f153a016f200fdfddca8",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "apps/web/e2e/essential-flow.spec.ts": {
-    "mtime": 1787374677.4872997,
-    "ast_hash": "1890a0b0cef6f43f1c6624cf15c9a23f",
+    "mtime": 1787375479.9852376,
+    "ast_hash": "12107b558a1a8a4a770e38ea7d346fe9",
     "semantic_hash": ""
   },
   "apps/web/playwright.config.ts": {
@@ -812,6 +812,16 @@
   "tests/test_prompt_improvement.py": {
     "mtime": 1787374574.7419612,
     "ast_hash": "a7a71d467423cb8c734fa8f712211f7c",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/voice_preview.py": {
+    "mtime": 1787375172.1516612,
+    "ast_hash": "00cbe315cacabc5e65e94000c2c9750e",
+    "semantic_hash": ""
+  },
+  "tests/test_voice_preview.py": {
+    "mtime": 1787375172.120921,
+    "ast_hash": "3b7d0313d3acf8d13c8b8ee7c94fcf52",
     "semantic_hash": ""
   }
 }

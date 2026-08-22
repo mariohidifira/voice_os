@@ -36,6 +36,25 @@ test("criar agente, publicar, testar e ver chamada", async ({
   page,
   request,
 }) => {
+  await page.route("**/api/voiceos/voices", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [
+          { id: "voice-e2e", name: "Ana E2E", labels: { language: "pt" } },
+        ],
+        configured: true,
+      }),
+    });
+  });
+  await page.route("**/api/voiceos/voices/voice-e2e/preview", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "audio/mpeg",
+      body: "ID3preview",
+    });
+  });
   await magicLogin(page, request);
 
   await page.getByRole("button", { name: "Agentes", exact: true }).click();
@@ -73,10 +92,16 @@ test("criar agente, publicar, testar e ver chamada", async ({
   );
   await page.getByRole("tab", { name: "Voz" }).click();
   await expect(page.getByLabel("Idioma")).toBeVisible();
+  await page.getByLabel("Voice ID").fill("voice-e2e");
+  await page.getByRole("button", { name: "▶ Ouvir saudação" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Preview de voz sintetizado",
+  );
+  await expect(page.locator(".voicePreview audio")).toBeVisible();
   await page.getByRole("tab", { name: "Conversa" }).click();
   await expect(page.getByLabel("Duração máxima (s)")).toBeVisible();
   await page.getByRole("tab", { name: "Avançado" }).click();
-  await page.getByLabel("Velocidade").fill("1.1");
+  await page.getByLabel("Velocidade", { exact: true }).fill("1.1");
   await page.getByLabel("Keywords STT (vírgulas)").fill("VoiceOS, agendamento");
   await page
     .getByRole("button", { name: "Salvar configuração avançada" })

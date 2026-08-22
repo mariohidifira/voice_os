@@ -455,6 +455,12 @@ export default function Dashboard({
   const [agentTab, setAgentTab] = useState<AgentTab>("prompt");
   const [promptValue, setPromptValue] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
+  const [voices, setVoices] = useState<Item[]>([]);
+  const [voiceProviderConfigured, setVoiceProviderConfigured] = useState(false);
+  const [voiceId, setVoiceId] = useState("");
+  const [greetingValue, setGreetingValue] = useState("");
+  const [voicePreviewUrl, setVoicePreviewUrl] = useState("");
+  const [previewingVoice, setPreviewingVoice] = useState(false);
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [toolTestResult, setToolTestResult] = useState("");
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
@@ -478,14 +484,21 @@ export default function Dashboard({
         api<{ data: Call[] }>("calls"),
       ]);
       const canConfigure = ["owner", "admin"].includes(me.role);
-      const [k, t, keys, memberResult] = canConfigure
+      const [k, t, keys, memberResult, voiceResult] = canConfigure
         ? await Promise.all([
             api<{ data: Item[] }>("knowledge-bases"),
             api<{ data: Item[] }>("tools"),
             api<{ data: Item[] }>("api-keys"),
             api<{ data: Item[] }>(`tenants/${me.tenant_id}/members`),
+            api<{ data: Item[]; configured: boolean }>("voices"),
           ])
-        : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+        : [
+            { data: [] },
+            { data: [] },
+            { data: [] },
+            { data: [] },
+            { data: [], configured: false },
+          ];
       setTenantId(me.tenant_id);
       setRole(me.role);
       setMembers(memberResult.data);
@@ -495,6 +508,8 @@ export default function Dashboard({
       setCalls(c.data);
       setKnowledge(k.data);
       setTools(t.data);
+      setVoices(voiceResult.data);
+      setVoiceProviderConfigured(voiceResult.configured);
       setNotice("");
     } catch (error) {
       setNotice(
@@ -555,6 +570,21 @@ export default function Dashboard({
           "",
       ),
     );
+    setGreetingValue(
+      String(
+        (detail.draft as Record<string, unknown> | undefined)?.greeting ?? "",
+      ),
+    );
+    setVoiceId(
+      String(
+        (
+          (detail.draft as Record<string, unknown> | undefined)?.tts as
+            | Record<string, unknown>
+            | undefined
+        )?.voice_id ?? "",
+      ),
+    );
+    setVoicePreviewUrl("");
     setAgentTab(nextTab);
     setSection("agents");
   }
@@ -562,14 +592,20 @@ export default function Dashboard({
     event.preventDefault();
     if (!selectedAgent) return;
     const form = new FormData(event.currentTarget);
+    const existingTts = ((
+      selectedAgent.draft as Record<string, unknown> | undefined
+    )?.tts ?? {}) as Record<string, unknown>;
     const body = {
       system_prompt: String(form.get("system_prompt")),
       greeting: String(form.get("greeting")),
       language: String(form.get("language")),
       tts: {
+        ...existingTts,
         provider: "elevenlabs",
         model: "eleven_flash_v2_5",
         voice_id: String(form.get("voice_id")),
+        speed: Number(form.get("voice_speed")),
+        stability: Number(form.get("voice_stability")),
       },
       turn_config: {
         allow_interruptions: form.get("allow_interruptions") === "on",
@@ -626,6 +662,31 @@ export default function Dashboard({
       setNotice(String(error));
     } finally {
       setImprovingPrompt(false);
+    }
+  }
+  async function previewVoice() {
+    if (!voiceId || !greetingValue.trim()) return;
+    setPreviewingVoice(true);
+    try {
+      const response = await fetch(
+        `/api/voiceos/voices/${encodeURIComponent(voiceId)}/preview`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text: greetingValue, speed: 1 }),
+        },
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error?.message ?? `HTTP ${response.status}`);
+      }
+      if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+      setVoicePreviewUrl(URL.createObjectURL(await response.blob()));
+      setNotice("Preview de voz sintetizado.");
+    } catch (error) {
+      setNotice(String(error));
+    } finally {
+      setPreviewingVoice(false);
     }
   }
   async function saveAdvanced(patch: Record<string, unknown>) {
@@ -1109,7 +1170,10 @@ export default function Dashboard({
                           <Field label="Saudação">
                             <textarea
                               name="greeting"
-                              defaultValue={String(draft.greeting ?? "")}
+                              value={greetingValue}
+                              onChange={(event) =>
+                                setGreetingValue(event.target.value)
+                              }
                               rows={3}
                             />
                           </Field>
@@ -1128,15 +1192,80 @@ export default function Dashboard({
                             <Field label="Voice ID">
                               <input
                                 name="voice_id"
+                                value={voiceId}
+                                onChange={(event) =>
+                                  setVoiceId(event.target.value)
+                                }
+                                list="voice-catalog"
+                              />
+                              <datalist id="voice-catalog">
+                                {voices.map((voice) => (
+                                  <option value={voice.id} key={voice.id}>
+                                    {voice.name}
+                                  </option>
+                                ))}
+                              </datalist>
+                            </Field>
+                          </div>
+                          <div className="two">
+                            <Field label="Velocidade da voz">
+                              <input
+                                name="voice_speed"
+                                type="number"
+                                min="0.7"
+                                max="1.2"
+                                step="0.05"
                                 defaultValue={String(
                                   (
                                     draft.tts as
                                       | Record<string, unknown>
                                       | undefined
-                                  )?.voice_id ?? "",
+                                  )?.speed ?? 1,
                                 )}
                               />
                             </Field>
+                            <Field label="Estabilidade">
+                              <input
+                                name="voice_stability"
+                                type="number"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                defaultValue={String(
+                                  (
+                                    draft.tts as
+                                      | Record<string, unknown>
+                                      | undefined
+                                  )?.stability ?? 0.5,
+                                )}
+                              />
+                            </Field>
+                          </div>
+                          <div className="voicePreview">
+                            <button
+                              type="button"
+                              className="secondary"
+                              disabled={
+                                !voiceProviderConfigured ||
+                                !voiceId ||
+                                !greetingValue.trim() ||
+                                previewingVoice
+                              }
+                              onClick={() => void previewVoice()}
+                            >
+                              {previewingVoice
+                                ? "Sintetizando…"
+                                : "▶ Ouvir saudação"}
+                            </button>
+                            {!voiceProviderConfigured && (
+                              <small>
+                                Configure ELEVENLABS_API_KEY para habilitar
+                                catálogo e preview.
+                              </small>
+                            )}
+                            {voicePreviewUrl && (
+                              <audio controls autoPlay src={voicePreviewUrl} />
+                            )}
                           </div>
                         </fieldset>
                         <fieldset

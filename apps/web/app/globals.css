@@ -279,6 +279,14 @@ small {
   border-radius: 9px;
   background: #0b1017;
 }
+.voicePreview {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+.voicePreview audio {
+  width: min(100%, 520px);
+}
 .formGrid {
   display: grid;
   gap: 15px;
