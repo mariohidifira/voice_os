@@ -17,6 +17,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from .agent_templates import get_agent_template, list_agent_templates
 from .auth import Principal, internal_token, principal
+from .billing import StripeGateway, get_stripe_gateway, stripe_event, stripe_signature_valid
 from .campaigns import dialing_allowed, transition_status
 from .config import get_settings
 from .idempotency import IdempotencyStore, get_idempotency_store
@@ -34,6 +35,7 @@ from .schemas import (
     AgentRollback,
     AgentToolsSet,
     ApiKeyCreate,
+    BillingCheckoutRequest,
     CallEventBatch,
     CallPatch,
     CallTakeoverRequest,
@@ -88,11 +90,83 @@ Storage = Annotated[RecordingStorage, Depends(get_recording_storage)]
 Voice = Annotated[VoicePreview, Depends(get_voice_preview)]
 Phone = Annotated[Telephony, Depends(get_telephony)]
 Idempotency = Annotated[IdempotencyStore, Depends(get_idempotency_store)]
+Stripe = Annotated[StripeGateway, Depends(get_stripe_gateway)]
 
 
 def _require_admin(auth: Principal) -> None:
     if auth.role not in {"owner", "admin"}:
         raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
+
+
+def _stripe_datetime(value: Any) -> datetime | None:
+    return datetime.fromtimestamp(int(str(value)), UTC) if value else None
+
+
+async def _enforce_call_limit(auth: Principal, repo: Repository, channel: str) -> None:
+    plan = await repo.get_billing_plan(auth.tenant_id)
+    if not plan:
+        return
+    if plan.get("tenant_status") == "suspended":
+        raise HTTPException(
+            402,
+            detail={
+                "code": "plan_limit",
+                "message": "Tenant is suspended",
+                "details": {"reason": "suspended"},
+            },
+        )
+    features = dict(plan.get("features") or {})
+    if channel.startswith("phone") and not (features.get("phone") or features.get("all")):
+        raise HTTPException(
+            402,
+            detail={
+                "code": "plan_limit",
+                "message": "Phone channel is not included",
+                "details": {"feature": "phone", "plan": plan["code"]},
+            },
+        )
+    period = datetime.now(UTC).date().replace(day=1)
+    usage = await repo.get_billing_usage(auth.tenant_id, period)
+    if plan["code"] == "trial":
+        created_at = plan.get("tenant_created_at")
+        expired = bool(created_at and datetime.now(UTC) >= created_at + timedelta(days=14))
+        if expired or int(usage["minutes"]) >= int(plan["included_minutes"]):
+            raise HTTPException(
+                402,
+                detail={
+                    "code": "plan_limit",
+                    "message": "Trial is exhausted",
+                    "details": {"reason": "trial_exhausted", "usage": usage},
+                },
+            )
+    active = sum(
+        call.get("status") in {"queued", "ringing", "in_progress"}
+        for call in await repo.list_calls(auth.tenant_id)
+    )
+    maximum = plan.get("max_concurrent_calls")
+    if maximum is not None and active >= int(maximum):
+        raise HTTPException(
+            402,
+            detail={
+                "code": "plan_limit",
+                "message": "Concurrent call limit reached",
+                "details": {"limit": maximum, "active": active},
+            },
+        )
+
+
+async def _enforce_agent_limit(auth: Principal, repo: Repository) -> None:
+    plan = await repo.get_billing_plan(auth.tenant_id)
+    maximum = (plan or {}).get("max_agents")
+    if maximum is not None and len(await repo.list_agents(auth.tenant_id)) >= int(maximum):
+        raise HTTPException(
+            402,
+            detail={
+                "code": "plan_limit",
+                "message": "Agent limit reached",
+                "details": {"limit": maximum},
+            },
+        )
 
 
 def _egress_recording(event: livekit_api.WebhookEvent) -> tuple[UUID, dict[str, Any]] | None:
@@ -128,6 +202,111 @@ def _egress_recording(event: livekit_api.WebhookEvent) -> tuple[UUID, dict[str, 
             "error": info.error or None,
         },
     }
+
+
+@webhooks.post("/stripe")
+async def stripe_webhook(
+    request: Request,
+    repo: Repo,
+    stripe_signature: Annotated[str | None, Header(alias="Stripe-Signature")] = None,
+) -> dict[str, bool]:
+    payload = await request.body()
+    settings = get_settings()
+    if settings.stripe_webhook_secret and (
+        not stripe_signature
+        or not stripe_signature_valid(payload, stripe_signature, settings.stripe_webhook_secret)
+    ):
+        raise HTTPException(
+            400, detail={"code": "invalid_signature", "message": "Invalid Stripe signature"}
+        )
+    event = stripe_event(payload)
+    event_type = str(event.get("type", ""))
+    obj = dict((event.get("data") or {}).get("object") or {})
+    metadata = dict(obj.get("metadata") or {})
+    if not metadata and obj.get("subscription_details"):
+        metadata = dict((obj["subscription_details"] or {}).get("metadata") or {})
+    tenant_raw = metadata.get("tenant_id") or obj.get("client_reference_id")
+    if not tenant_raw:
+        return {"received": True}
+    try:
+        tenant_id = UUID(str(tenant_raw))
+    except ValueError as exc:
+        raise HTTPException(
+            422, detail={"code": "invalid_tenant", "message": "Invalid tenant metadata"}
+        ) from exc
+    plan_code = str(metadata.get("plan_code") or "starter")
+    if event_type == "checkout.session.completed":
+        await repo.update_billing_tenant(
+            tenant_id, {"stripe_customer_id": obj.get("customer"), "status": "active"}
+        )
+        await repo.upsert_subscription(
+            tenant_id,
+            {
+                "plan_code": plan_code,
+                "stripe_subscription_id": obj.get("subscription"),
+                "status": "active",
+            },
+        )
+    elif event_type in {"customer.subscription.updated", "customer.subscription.deleted"}:
+        status = "canceled" if event_type.endswith("deleted") else str(obj.get("status", "active"))
+        target_plan = await repo.get_plan_by_code(plan_code)
+        subscription_items = list((obj.get("items") or {}).get("data") or [])
+
+        def item_for(price_id: Any) -> str | None:
+            return next(
+                (
+                    str(item["id"])
+                    for item in subscription_items
+                    if str((item.get("price") or {}).get("id")) == str(price_id)
+                ),
+                None,
+            )
+
+        await repo.upsert_subscription(
+            tenant_id,
+            {
+                "plan_code": plan_code,
+                "stripe_subscription_id": obj.get("id"),
+                "status": status,
+                "current_period_start": _stripe_datetime(obj.get("current_period_start")),
+                "current_period_end": _stripe_datetime(obj.get("current_period_end")),
+                "cancel_at": _stripe_datetime(obj.get("cancel_at")),
+                "stripe_overage_item_id": item_for(
+                    (target_plan or {}).get("stripe_overage_price_id")
+                ),
+                "stripe_phone_item_id": item_for((target_plan or {}).get("stripe_phone_price_id")),
+                "past_due_since": datetime.now(UTC) if status == "past_due" else None,
+            },
+        )
+        tenant_status = (
+            "active"
+            if status == "active"
+            else (
+                "trial"
+                if status == "trialing"
+                else "past_due"
+                if status == "past_due"
+                else "suspended"
+            )
+        )
+        await repo.update_billing_tenant(tenant_id, {"status": tenant_status})
+    elif event_type in {"invoice.paid", "invoice.payment_failed"}:
+        invoice_status = "paid" if event_type == "invoice.paid" else "past_due"
+        await repo.upsert_invoice(
+            tenant_id,
+            {
+                "stripe_invoice_id": obj.get("id"),
+                "period_start": _stripe_datetime(obj.get("period_start")),
+                "period_end": _stripe_datetime(obj.get("period_end")),
+                "amount_cents": obj.get("amount_due", 0),
+                "status": invoice_status,
+                "pdf_url": obj.get("invoice_pdf"),
+            },
+        )
+        await repo.update_billing_tenant(
+            tenant_id, {"status": "active" if invoice_status == "paid" else "past_due"}
+        )
+    return {"received": True}
 
 
 @webhooks.post("/livekit")
@@ -337,6 +516,7 @@ async def agent_templates(auth: Auth) -> dict[str, Any]:
 async def create_agent(body: AgentCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
     if auth.role not in {"owner", "admin"}:
         raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
+    await _enforce_agent_limit(auth, repo)
     template = get_agent_template(body.template_id) if body.template_id else None
     if body.template_id and not template:
         raise HTTPException(
@@ -674,6 +854,7 @@ async def release_phone_number(number_id: UUID, auth: Auth, repo: Repo, phone: P
 
 @v1.post("/sessions", status_code=201)
 async def create_session(body: SessionCreate, auth: Auth, repo: Repo, rtc: Rtc) -> dict[str, Any]:
+    await _enforce_call_limit(auth, repo, "web")
     agent = await repo.get_agent(auth.tenant_id, body.agent_id)
     if not agent or agent["status"] != "active":
         raise HTTPException(
@@ -738,6 +919,7 @@ async def create_outbound_call(
         str | None, Header(alias="Idempotency-Key", min_length=1, max_length=200)
     ] = None,
 ) -> dict[str, Any]:
+    await _enforce_call_limit(auth, repo, "phone_outbound")
     agent = await repo.get_agent(auth.tenant_id, body.agent_id)
     if not agent or agent["status"] != "active":
         raise HTTPException(
@@ -1051,10 +1233,68 @@ async def delete_do_not_call(phone: str, auth: Auth, repo: Repo) -> None:
         )
 
 
+@v1.get("/billing/plan")
+async def billing_plan(auth: Auth, repo: Repo) -> dict[str, Any]:
+    plan = await repo.get_billing_plan(auth.tenant_id)
+    if not plan:
+        raise HTTPException(
+            404, detail={"code": "plan_not_found", "message": "Billing plan not found"}
+        )
+    return plan
+
+
+@v1.get("/billing/usage")
+async def billing_usage(auth: Auth, repo: Repo, period: str | None = None) -> dict[str, Any]:
+    value = period or datetime.now(UTC).strftime("%Y-%m")
+    try:
+        month = datetime.strptime(value, "%Y-%m").date().replace(day=1)
+    except ValueError as exc:
+        raise HTTPException(
+            422, detail={"code": "invalid_period", "message": "period must be YYYY-MM"}
+        ) from exc
+    return await repo.get_billing_usage(auth.tenant_id, month)
+
+
+@v1.get("/billing/invoices")
+async def billing_invoices(auth: Auth, repo: Repo) -> dict[str, Any]:
+    return {"data": await repo.list_invoices(auth.tenant_id)}
+
+
+@v1.post("/billing/checkout")
+async def billing_checkout(
+    body: BillingCheckoutRequest, auth: Auth, repo: Repo, stripe: Stripe
+) -> dict[str, str]:
+    _require_admin(auth)
+    current = await repo.get_billing_plan(auth.tenant_id)
+    target = await repo.get_plan_by_code(body.plan_code)
+    if not target:
+        raise HTTPException(404, detail={"code": "plan_not_found", "message": "Plan not found"})
+    if get_settings().app_env not in {"dev", "test"} and not target.get("stripe_price_id"):
+        raise HTTPException(
+            503, detail={"code": "stripe_plan_not_synced", "message": "Plan has no Stripe price"}
+        )
+    return await stripe.checkout(
+        (current or {}).get("stripe_customer_id"), target, str(auth.tenant_id)
+    )
+
+
+@v1.post("/billing/portal")
+async def billing_portal(auth: Auth, repo: Repo, stripe: Stripe) -> dict[str, str]:
+    _require_admin(auth)
+    plan = await repo.get_billing_plan(auth.tenant_id)
+    customer_id = (plan or {}).get("stripe_customer_id")
+    if not customer_id:
+        raise HTTPException(
+            409, detail={"code": "stripe_customer_missing", "message": "Complete checkout first"}
+        )
+    return await stripe.portal(str(customer_id))
+
+
 @v1.post("/agents/{agent_id}/test-session", status_code=201)
 async def create_test_session(
     agent_id: UUID, body: SessionCreate, auth: Auth, repo: Repo, rtc: Rtc
 ) -> dict[str, Any]:
+    await _enforce_call_limit(auth, repo, "web")
     if body.agent_id != agent_id:
         raise HTTPException(
             422, detail={"code": "agent_mismatch", "message": "Path and body agent_id must match"}
@@ -1649,6 +1889,37 @@ async def campaign_runner_tick(repo: Repo, rtc: Rtc, phone: Phone) -> dict[str, 
         "deferred": deferred,
         "failed": failed,
     }
+
+
+@internal.post("/billing/tick")
+async def billing_meter_tick(repo: Repo, stripe: Stripe) -> dict[str, int]:
+    batches = await repo.billing_meter_batches()
+    reported = synced_phones = failed = 0
+    for batch in batches:
+        tenant_id = batch["tenant_id"]
+        record_ids = list(batch.get("record_ids") or [])
+        delta = int(batch.get("overage_delta") or 0)
+        try:
+            if delta > 0:
+                item_id = batch.get("stripe_overage_item_id")
+                if not item_id:
+                    failed += 1
+                    continue
+                marker = await stripe.report_usage(
+                    str(item_id), delta, f"usage-{tenant_id}-{datetime.now(UTC):%Y-%m-%d-%H}"
+                )
+            else:
+                marker = "included"
+            await repo.mark_usage_reported(tenant_id, record_ids, marker)
+            reported += len(record_ids)
+            if batch.get("stripe_phone_item_id"):
+                await stripe.set_quantity(
+                    str(batch["stripe_phone_item_id"]), int(batch.get("phone_quantity") or 0)
+                )
+                synced_phones += 1
+        except Exception:
+            failed += 1
+    return {"tenants": len(batches), "records": reported, "phones": synced_phones, "failed": failed}
 
 
 @internal.patch("/calls/{call_id}")

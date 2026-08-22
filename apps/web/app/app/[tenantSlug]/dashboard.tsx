@@ -58,6 +58,19 @@ type Campaign = Item & {
   schedule?: Record<string, unknown>;
   stats?: Record<string, number>;
 };
+type BillingPlan = Record<string, unknown> & {
+  code: string;
+  name: string;
+  included_minutes: number;
+  monthly_price_cents: number;
+  subscription_status?: string;
+};
+type BillingUsage = {
+  minutes: number;
+  included_minutes: number;
+  overage_minutes: number;
+  estimated_overage_cents: number;
+};
 type Section =
   | "overview"
   | "agents"
@@ -68,6 +81,7 @@ type Section =
   | "tools"
   | "numbers"
   | "members"
+  | "billing"
   | "settings";
 type AgentTab =
   | "prompt"
@@ -98,6 +112,7 @@ const sections: Array<[Section, string]> = [
   ["tools", "Ferramentas"],
   ["numbers", "Números"],
   ["members", "Membros"],
+  ["billing", "Billing"],
   ["settings", "Configurações"],
 ];
 
@@ -537,6 +552,9 @@ export default function Dashboard({
   );
   const [members, setMembers] = useState<Item[]>([]);
   const [apiKeys, setApiKeys] = useState<Item[]>([]);
+  const [billingPlan, setBillingPlan] = useState<BillingPlan | null>(null);
+  const [billingUsage, setBillingUsage] = useState<BillingUsage | null>(null);
+  const [invoices, setInvoices] = useState<Item[]>([]);
   const [tenant, setTenant] = useState<Item | null>(null);
   const [tenantId, setTenantId] = useState("");
   const [role, setRole] = useState("viewer");
@@ -584,11 +602,14 @@ export default function Dashboard({
     setLoading(true);
     try {
       const me = await api<{ tenant_id: string; role: string }>("me");
-      const [a, templates, c, tenantResult] = await Promise.all([
+      const [a, templates, c, tenantResult, planResult, usageResult, invoiceResult] = await Promise.all([
         api<{ data: Item[] }>("agents"),
         api<{ data: AgentTemplate[] }>("agent-templates"),
         api<{ data: Call[] }>("calls"),
         api<Item>(`tenants/${me.tenant_id}`),
+        api<BillingPlan>("billing/plan"),
+        api<BillingUsage>("billing/usage"),
+        api<{ data: Item[] }>("billing/invoices"),
       ]);
       const canConfigure = ["owner", "admin"].includes(me.role);
       const [k, t, keys, memberResult, voiceResult, secretResult, phoneResult, campaignResult] =
@@ -618,6 +639,9 @@ export default function Dashboard({
       setRole(me.role);
       setMembers(memberResult.data);
       setApiKeys(keys.data);
+      setBillingPlan(planResult);
+      setBillingUsage(usageResult);
+      setInvoices(invoiceResult.data);
       setAgents(a.data);
       setAgentTemplates(templates.data);
       setCalls(c.data);
@@ -1365,6 +1389,27 @@ export default function Dashboard({
       await api(`campaigns/${campaignId}/${action}`, { method: "POST" });
       await refresh();
       setNotice(`AÃ§Ã£o ${action} aplicada Ã  campanha.`);
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function upgradePlan(planCode: string) {
+    try {
+      const result = await api<{ url: string }>("billing/checkout", {
+        method: "POST",
+        body: JSON.stringify({ plan_code: planCode }),
+      });
+      window.location.assign(result.url);
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function openBillingPortal() {
+    try {
+      const result = await api<{ url: string }>("billing/portal", { method: "POST" });
+      window.location.assign(result.url);
     } catch (error) {
       setNotice(String(error));
     }
@@ -2694,6 +2739,35 @@ export default function Dashboard({
                   </form>
                 </article>
               </section>
+            )}
+            {section === "billing" && billingPlan && billingUsage && (
+              <>
+                <section className="stats">
+                  <article className="card"><span className="muted">Plano</span><strong className="value">{billingPlan.name}</strong></article>
+                  <article className="card"><span className="muted">Minutos usados</span><strong className="value">{billingUsage.minutes}</strong></article>
+                  <article className="card"><span className="muted">Incluídos</span><strong className="value">{billingUsage.included_minutes}</strong></article>
+                  <article className="card"><span className="muted">Excedente estimado</span><strong className="value">{(billingUsage.estimated_overage_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong></article>
+                </section>
+                <section className="split">
+                  <article className="card">
+                    <h2>Assinatura</h2>
+                    <p>Plano atual: <b>{billingPlan.code}</b> · {billingPlan.subscription_status ?? "trial"}</p>
+                    <div className="actions">
+                      {billingPlan.code !== "starter" && <button type="button" onClick={() => void upgradePlan("starter")}>Starter · R$ 297</button>}
+                      {billingPlan.code !== "pro" && <button type="button" onClick={() => void upgradePlan("pro")}>Pro · R$ 897</button>}
+                      {billingPlan.code !== "business" && <button type="button" onClick={() => void upgradePlan("business")}>Business · R$ 2.497</button>}
+                      <button type="button" className="secondary" onClick={() => void openBillingPortal()}>Portal e cartão</button>
+                    </div>
+                  </article>
+                  <article className="card">
+                    <h2>Faturas</h2>
+                    {invoices.map((invoice) => (
+                      <div className="row" key={invoice.id}><span><strong>{String(invoice.status)}</strong><small>{(Number(invoice.amount_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</small></span>{typeof invoice.pdf_url === "string" && invoice.pdf_url && <a href={invoice.pdf_url} target="_blank" rel="noreferrer">PDF</a>}</div>
+                    ))}
+                    {!invoices.length && <Empty>Nenhuma fatura emitida.</Empty>}
+                  </article>
+                </section>
+              </>
             )}
             {section === "settings" && (
               <section className="split">

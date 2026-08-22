@@ -30,6 +30,9 @@ class MemoryStore:
         self.campaigns: dict[UUID, dict[str, Any]] = {}
         self.campaign_contacts: dict[UUID, dict[str, Any]] = {}
         self.do_not_call: dict[tuple[UUID, str], dict[str, Any]] = {}
+        self.subscriptions: dict[UUID, dict[str, Any]] = {}
+        self.usage_records: dict[UUID, dict[str, Any]] = {}
+        self.invoices: dict[UUID, dict[str, Any]] = {}
 
     def create_agent(self, tenant_id: UUID, name: str) -> dict[str, Any]:
         agent_id, draft_id = uuid4(), uuid4()

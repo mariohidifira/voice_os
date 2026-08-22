@@ -87,6 +87,10 @@ class CallTakeoverRequest(BaseModel):
     operator_extension: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
 
 
+class BillingCheckoutRequest(BaseModel):
+    plan_code: str = Field(pattern=r"^(starter|pro|business)$")
+
+
 class CampaignCreate(BaseModel):
     agent_id: UUID
     name: str = Field(min_length=1, max_length=120)

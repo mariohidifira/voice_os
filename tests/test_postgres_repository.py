@@ -186,6 +186,68 @@ async def test_postgres_campaign_claim_and_result_reconciliation() -> None:
 
 
 @pytest.mark.asyncio(loop_scope="module")
+async def test_postgres_billing_usage_subscription_and_invoice_reconcile() -> None:
+    repo = PostgresRepository()
+    agent = await repo.create_agent(TENANT, "Billing repository", str(USER))
+    subscription_id = f"sub_test_{uuid4().hex}"
+    invoice_id = f"in_test_{uuid4().hex}"
+    call_id: UUID | None = None
+    try:
+        published = await repo.publish_agent(TENANT, agent["id"])
+        assert published
+        call = await repo.create_call(
+            TENANT,
+            agent["id"],
+            {},
+            {},
+            agent_version_id=published["current_version_id"],
+        )
+        call_id = call["id"]
+        async with SessionFactory() as db, db.begin():
+            await db.execute(text("SET LOCAL row_security = off"))
+            await db.execute(
+                text(
+                    "UPDATE calls SET started_at=now()-interval '121 seconds',ended_at=now() WHERE id=:id"
+                ),
+                {"id": call_id},
+            )
+        await repo.update_internal_call(call_id, {"status": "completed"})
+        usage = await repo.get_billing_usage(TENANT, datetime.now(UTC).date().replace(day=1))
+        assert usage["minutes"] >= 3
+        await repo.upsert_subscription(
+            TENANT,
+            {"plan_code": "pro", "stripe_subscription_id": subscription_id, "status": "active"},
+        )
+        assert (await repo.get_billing_plan(TENANT))["code"] == "pro"  # type: ignore[index]
+        await repo.upsert_invoice(
+            TENANT,
+            {"stripe_invoice_id": invoice_id, "amount_cents": 89700, "status": "paid"},
+        )
+        assert any(
+            item["stripe_invoice_id"] == invoice_id for item in await repo.list_invoices(TENANT)
+        )
+    finally:
+        async with SessionFactory() as db, db.begin():
+            await db.execute(text("SET LOCAL row_security = off"))
+            await db.execute(
+                text("DELETE FROM invoices WHERE stripe_invoice_id=:id"), {"id": invoice_id}
+            )
+            await db.execute(
+                text("DELETE FROM subscriptions WHERE stripe_subscription_id=:id"),
+                {"id": subscription_id},
+            )
+            if call_id:
+                await db.execute(
+                    text("DELETE FROM usage_records WHERE call_id=:id"), {"id": call_id}
+                )
+                await db.execute(text("DELETE FROM calls WHERE id=:id"), {"id": call_id})
+            await db.execute(
+                text("DELETE FROM agent_versions WHERE agent_id=:id"), {"id": agent["id"]}
+            )
+            await db.execute(text("DELETE FROM agents WHERE id=:id"), {"id": agent["id"]})
+
+
+@pytest.mark.asyncio(loop_scope="module")
 async def test_postgres_agent_and_call_lifecycle() -> None:
     repo = PostgresRepository()
     agent = await repo.create_agent(TENANT, "Repository coverage", str(USER))

@@ -1,4 +1,4 @@
-.PHONY: dev test lint typecheck build migrate seed smoke generate-types
+.PHONY: dev test lint typecheck build migrate seed smoke generate-types stripe-sync
 dev:
 	docker compose up --build
 test:
@@ -21,3 +21,5 @@ smoke:
 generate-types:
 	python scripts/generate_openapi.py
 	npm run generate --workspace=@voiceos/shared
+stripe-sync:
+	python scripts/stripe_sync.py

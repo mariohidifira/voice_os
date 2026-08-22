@@ -269,6 +269,8 @@ locals {
     { name = "OPENAI_API_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:OPENAI_API_KEY::" },
     { name = "ELEVENLABS_API_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:ELEVENLABS_API_KEY::" },
     { name = "RESEND_API_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:RESEND_API_KEY::" },
+    { name = "STRIPE_SECRET_KEY", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:STRIPE_SECRET_KEY::" },
+    { name = "STRIPE_WEBHOOK_SECRET", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:STRIPE_WEBHOOK_SECRET::" },
     { name = "TWILIO_ACCOUNT_SID", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:TWILIO_ACCOUNT_SID::" },
     { name = "TWILIO_AUTH_TOKEN", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:TWILIO_AUTH_TOKEN::" },
     { name = "TWILIO_MESSAGING_SERVICE_SID", valueFrom = "${aws_secretsmanager_secret.app["providers"].arn}:TWILIO_MESSAGING_SERVICE_SID::" },

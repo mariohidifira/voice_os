@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .billing import PLANS
 from .campaigns import retry_at
 from .db import SessionFactory
 from .store import MemoryStore, store
@@ -162,6 +163,21 @@ class Repository(Protocol):
         self, contact_id: UUID, data: dict[str, Any]
     ) -> dict[str, Any] | None: ...
     async def get_plan_concurrency(self, tenant_id: UUID) -> int: ...
+    async def get_billing_plan(self, tenant_id: UUID) -> dict[str, Any] | None: ...
+    async def get_plan_by_code(self, code: str) -> dict[str, Any] | None: ...
+    async def get_billing_usage(self, tenant_id: UUID, period: date) -> dict[str, Any]: ...
+    async def list_invoices(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def upsert_invoice(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def upsert_subscription(
+        self, tenant_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any]: ...
+    async def update_billing_tenant(
+        self, tenant_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None: ...
+    async def billing_meter_batches(self) -> list[dict[str, Any]]: ...
+    async def mark_usage_reported(
+        self, tenant_id: UUID, record_ids: list[UUID], stripe_id: str
+    ) -> None: ...
 
 
 class PostgresRepository:
@@ -850,6 +866,24 @@ class PostgresRepository:
         call = (
             await self._update_call(tenant_id, call_id, data, internal=True) if tenant_id else None
         )
+        if call and call.get("status") in {
+            "completed",
+            "no_answer",
+            "busy",
+            "failed",
+            "cancelled",
+        }:
+            async with self._internal_session() as db:
+                await db.execute(
+                    text(
+                        "INSERT INTO usage_records(id,tenant_id,call_id,period,billable_seconds,channel,cost_usd) "
+                        "SELECT gen_random_uuid(),tenant_id,id,date_trunc('month',COALESCE(ended_at,now()))::date,"
+                        "GREATEST(0,EXTRACT(EPOCH FROM (COALESCE(ended_at,now())-CASE WHEN channel LIKE 'phone%' THEN COALESCE(answered_at,started_at) ELSE started_at END)))::int,"
+                        "channel,COALESCE((cost->>'total_usd')::numeric,0) FROM calls WHERE id=:id "
+                        "ON CONFLICT(call_id) DO UPDATE SET billable_seconds=EXCLUDED.billable_seconds,cost_usd=EXCLUDED.cost_usd,updated_at=now()"
+                    ),
+                    {"id": call_id},
+                )
         if (
             call
             and call.get("campaign_id")
@@ -1575,6 +1609,164 @@ class PostgresRepository:
             )
             return int(value.scalar_one_or_none() or 1)
 
+    async def get_billing_plan(self, tenant_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(
+                    "SELECT p.*,s.id AS subscription_id,s.status AS subscription_status,s.current_period_start,s.current_period_end,"
+                    "t.status AS tenant_status,t.stripe_customer_id,t.created_at AS tenant_created_at FROM tenants t "
+                    "LEFT JOIN LATERAL (SELECT * FROM subscriptions sx WHERE sx.tenant_id=t.id ORDER BY sx.created_at DESC LIMIT 1) s ON true "
+                    "JOIN plans p ON p.id=COALESCE(s.plan_id,(SELECT id FROM plans WHERE code='trial')) WHERE t.id=:tenant"
+                ),
+                {"tenant": tenant_id},
+            )
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def get_plan_by_code(self, code: str) -> dict[str, Any] | None:
+        async with self._internal_session() as db:
+            row = await db.execute(text("SELECT * FROM plans WHERE code=:code"), {"code": code})
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def get_billing_usage(self, tenant_id: UUID, period: date) -> dict[str, Any]:
+        plan = await self.get_billing_plan(tenant_id)
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(
+                    "SELECT COALESCE(sum(CEIL(billable_seconds/60.0)),0)::int AS minutes,COALESCE(sum(cost_usd),0) AS cost_usd,count(*) AS calls "
+                    "FROM usage_records WHERE period=:period"
+                ),
+                {"period": period},
+            )
+            usage = dict(row.mappings().one())
+        included = int((plan or {}).get("included_minutes") or 0)
+        used = int(usage["minutes"])
+        overage = max(0, used - included)
+        return {
+            **usage,
+            "period": period.isoformat()[:7],
+            "included_minutes": included,
+            "overage_minutes": overage,
+            "estimated_overage_cents": overage
+            * int((plan or {}).get("overage_cents_per_min") or 0),
+        }
+
+    async def list_invoices(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(
+                text("SELECT * FROM invoices ORDER BY period_start DESC NULLS LAST,created_at DESC")
+            )
+            return [dict(row) for row in rows.mappings()]
+
+    async def upsert_invoice(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        async with self._internal_session() as db:
+            row = await db.execute(
+                text(
+                    "INSERT INTO invoices(id,tenant_id,stripe_invoice_id,period_start,period_end,amount_cents,status,pdf_url) "
+                    "VALUES(:id,:tenant,:stripe_id,:start,:end,:amount,:status,:pdf) "
+                    "ON CONFLICT(stripe_invoice_id) DO UPDATE SET period_start=EXCLUDED.period_start,period_end=EXCLUDED.period_end,amount_cents=EXCLUDED.amount_cents,status=EXCLUDED.status,pdf_url=EXCLUDED.pdf_url,updated_at=now() RETURNING *"
+                ),
+                {
+                    "id": uuid4(),
+                    "tenant": tenant_id,
+                    "stripe_id": data["stripe_invoice_id"],
+                    "start": data.get("period_start"),
+                    "end": data.get("period_end"),
+                    "amount": data.get("amount_cents", 0),
+                    "status": data["status"],
+                    "pdf": data.get("pdf_url"),
+                },
+            )
+            return dict(row.mappings().one())
+
+    async def upsert_subscription(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        async with self._internal_session() as db:
+            plan_id = (
+                await db.execute(
+                    text("SELECT id FROM plans WHERE code=:code"), {"code": data["plan_code"]}
+                )
+            ).scalar_one()
+            row = await db.execute(
+                text(
+                    "INSERT INTO subscriptions(id,tenant_id,plan_id,stripe_subscription_id,status,current_period_start,current_period_end,cancel_at,stripe_overage_item_id,stripe_phone_item_id,past_due_since) "
+                    "VALUES(:id,:tenant,:plan,:stripe_id,:status,:start,:end,:cancel_at,:overage_item,:phone_item,:past_due_since) "
+                    "ON CONFLICT(stripe_subscription_id) DO UPDATE SET plan_id=EXCLUDED.plan_id,status=EXCLUDED.status,current_period_start=EXCLUDED.current_period_start,current_period_end=EXCLUDED.current_period_end,cancel_at=EXCLUDED.cancel_at,stripe_overage_item_id=COALESCE(EXCLUDED.stripe_overage_item_id,subscriptions.stripe_overage_item_id),stripe_phone_item_id=COALESCE(EXCLUDED.stripe_phone_item_id,subscriptions.stripe_phone_item_id),past_due_since=EXCLUDED.past_due_since,updated_at=now() RETURNING *"
+                ),
+                {
+                    "id": uuid4(),
+                    "tenant": tenant_id,
+                    "plan": plan_id,
+                    "stripe_id": data.get("stripe_subscription_id"),
+                    "status": data["status"],
+                    "start": data.get("current_period_start"),
+                    "end": data.get("current_period_end"),
+                    "cancel_at": data.get("cancel_at"),
+                    "overage_item": data.get("stripe_overage_item_id"),
+                    "phone_item": data.get("stripe_phone_item_id"),
+                    "past_due_since": data.get("past_due_since"),
+                },
+            )
+            return dict(row.mappings().one())
+
+    async def update_billing_tenant(
+        self, tenant_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        allowed = {"status", "stripe_customer_id"}
+        values = {key: value for key, value in data.items() if key in allowed}
+        if not values:
+            return await self.get_tenant(tenant_id)
+        params: dict[str, Any] = {"id": tenant_id, **values}
+        assignments = ",".join(f"{key}=:{key}" for key in values)
+        async with self._internal_session() as db:
+            row = await db.execute(
+                text(f"UPDATE tenants SET {assignments},updated_at=now() WHERE id=:id RETURNING *"),
+                params,
+            )
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def billing_meter_batches(self) -> list[dict[str, Any]]:
+        async with self._internal_session() as db:
+            await db.execute(
+                text(
+                    "UPDATE tenants t SET status='suspended',updated_at=now() FROM subscriptions s "
+                    "WHERE s.tenant_id=t.id AND s.status='past_due' AND s.past_due_since<=now()-interval '7 days'"
+                )
+            )
+            rows = await db.execute(
+                text(
+                    "SELECT s.tenant_id,s.stripe_overage_item_id,s.stripe_phone_item_id,p.included_minutes,"
+                    "COALESCE((SELECT sum(CEIL(u.billable_seconds/60.0)) FROM usage_records u WHERE u.tenant_id=s.tenant_id AND u.period=date_trunc('month',now())::date),0)::int total_minutes,"
+                    "COALESCE((SELECT sum(CEIL(u.billable_seconds/60.0)) FROM usage_records u WHERE u.tenant_id=s.tenant_id AND u.period=date_trunc('month',now())::date AND u.stripe_usage_record_id IS NOT NULL),0)::int reported_minutes,"
+                    "ARRAY(SELECT u.id FROM usage_records u WHERE u.tenant_id=s.tenant_id AND u.period=date_trunc('month',now())::date AND u.stripe_usage_record_id IS NULL) record_ids,"
+                    "(SELECT count(*) FROM phone_numbers n WHERE n.tenant_id=s.tenant_id AND n.status='active')::int phone_quantity "
+                    "FROM subscriptions s JOIN plans p ON p.id=s.plan_id WHERE s.status IN ('active','trialing')"
+                )
+            )
+        batches = []
+        for row in rows.mappings():
+            item = dict(row)
+            included = int(item["included_minutes"])
+            item["overage_delta"] = max(0, int(item["total_minutes"]) - included) - max(
+                0, int(item["reported_minutes"]) - included
+            )
+            batches.append(item)
+        return batches
+
+    async def mark_usage_reported(
+        self, tenant_id: UUID, record_ids: list[UUID], stripe_id: str
+    ) -> None:
+        if not record_ids:
+            return
+        async with self._internal_session() as db:
+            await db.execute(
+                text(
+                    "UPDATE usage_records SET stripe_usage_record_id=:stripe,updated_at=now() WHERE tenant_id=:tenant AND id=ANY(:ids)"
+                ),
+                {"stripe": stripe_id, "tenant": tenant_id, "ids": record_ids},
+            )
+
 
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
@@ -1952,6 +2144,32 @@ class MemoryRepository:
     ) -> dict[str, Any] | None:
         call = self.memory.calls.get(call_id)
         updated = await self.update_call(call["tenant_id"], call_id, data) if call else None
+        if updated and updated.get("status") in {
+            "completed",
+            "no_answer",
+            "busy",
+            "failed",
+            "cancelled",
+        }:
+            ended = updated.get("ended_at") or datetime.now(UTC)
+            if str(updated.get("channel", "")).startswith("phone"):
+                started = (
+                    updated.get("answered_at")
+                    or updated.get("started_at")
+                    or updated.get("created_at")
+                )
+            else:
+                started = updated.get("started_at") or updated.get("created_at")
+            seconds = max(0, int((ended - started).total_seconds())) if started else 0
+            self.memory.usage_records[call_id] = {
+                "id": self.memory.usage_records.get(call_id, {}).get("id", uuid4()),
+                "tenant_id": updated["tenant_id"],
+                "call_id": call_id,
+                "period": ended.date().replace(day=1),
+                "billable_seconds": seconds,
+                "channel": updated.get("channel", "web"),
+                "cost_usd": float((updated.get("cost") or {}).get("total_usd", 0)),
+            }
         if (
             updated
             and updated.get("campaign_id")
@@ -2283,6 +2501,137 @@ class MemoryRepository:
     async def get_plan_concurrency(self, tenant_id: UUID) -> int:
         tenant = self.memory.tenants.get(tenant_id) or {}
         return int((tenant.get("plan") or {}).get("max_concurrent_calls", 50))
+
+    async def get_billing_plan(self, tenant_id: UUID) -> dict[str, Any] | None:
+        tenant = self.memory.tenants.get(tenant_id)
+        if tenant is None:
+            return None
+        subscription = next(
+            (item for item in self.memory.subscriptions.values() if item["tenant_id"] == tenant_id),
+            None,
+        )
+        plan_code = str((subscription or {}).get("plan_code", "trial"))
+        return {
+            **PLANS[plan_code],
+            "subscription_id": (subscription or {}).get("id"),
+            "subscription_status": (subscription or {}).get("status", "trialing"),
+            "tenant_status": (tenant or {}).get("status", "trial"),
+            "stripe_customer_id": (tenant or {}).get("stripe_customer_id"),
+            "tenant_created_at": (tenant or {}).get("created_at"),
+        }
+
+    async def get_plan_by_code(self, code: str) -> dict[str, Any] | None:
+        plan = PLANS.get(code)
+        return dict(plan) if plan else None
+
+    async def get_billing_usage(self, tenant_id: UUID, period: date) -> dict[str, Any]:
+        plan = await self.get_billing_plan(tenant_id) or PLANS["trial"]
+        records = [
+            item
+            for item in self.memory.usage_records.values()
+            if item["tenant_id"] == tenant_id and item["period"] == period
+        ]
+        minutes = sum((int(item["billable_seconds"]) + 59) // 60 for item in records)
+        included = int(plan["included_minutes"])
+        overage = max(0, minutes - included)
+        return {
+            "period": period.isoformat()[:7],
+            "minutes": minutes,
+            "calls": len(records),
+            "cost_usd": round(sum(float(item["cost_usd"]) for item in records), 4),
+            "included_minutes": included,
+            "overage_minutes": overage,
+            "estimated_overage_cents": overage * int(plan["overage_cents_per_min"]),
+        }
+
+    async def list_invoices(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return [item for item in self.memory.invoices.values() if item["tenant_id"] == tenant_id]
+
+    async def upsert_invoice(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        item = next(
+            (
+                value
+                for value in self.memory.invoices.values()
+                if value.get("stripe_invoice_id") == data["stripe_invoice_id"]
+            ),
+            None,
+        )
+        if item:
+            item.update(data)
+            return item
+        item = {"id": uuid4(), "tenant_id": tenant_id, **data, "created_at": datetime.now(UTC)}
+        self.memory.invoices[item["id"]] = item
+        return item
+
+    async def upsert_subscription(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        item = next(
+            (
+                value
+                for value in self.memory.subscriptions.values()
+                if value.get("stripe_subscription_id") == data.get("stripe_subscription_id")
+            ),
+            None,
+        )
+        if item:
+            item.update(data)
+            return item
+        item = {"id": uuid4(), "tenant_id": tenant_id, **data, "created_at": datetime.now(UTC)}
+        self.memory.subscriptions[item["id"]] = item
+        return item
+
+    async def update_billing_tenant(
+        self, tenant_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        tenant = self.memory.tenants.setdefault(
+            tenant_id, {"id": tenant_id, "status": "trial", "settings": {}}
+        )
+        tenant.update(data)
+        return tenant
+
+    async def billing_meter_batches(self) -> list[dict[str, Any]]:
+        batches: list[dict[str, Any]] = []
+        period = datetime.now(UTC).date().replace(day=1)
+        for subscription in self.memory.subscriptions.values():
+            if subscription.get("status") not in {"active", "trialing"}:
+                continue
+            tenant_id = subscription["tenant_id"]
+            plan = PLANS[str(subscription.get("plan_code", "trial"))]
+            records = [
+                item
+                for item in self.memory.usage_records.values()
+                if item["tenant_id"] == tenant_id and item["period"] == period
+            ]
+            total = sum((int(item["billable_seconds"]) + 59) // 60 for item in records)
+            reported = sum(
+                (int(item["billable_seconds"]) + 59) // 60
+                for item in records
+                if item.get("stripe_usage_record_id")
+            )
+            included = int(plan["included_minutes"])
+            batches.append(
+                {
+                    "tenant_id": tenant_id,
+                    "stripe_overage_item_id": subscription.get("stripe_overage_item_id"),
+                    "stripe_phone_item_id": subscription.get("stripe_phone_item_id"),
+                    "record_ids": [
+                        item["id"] for item in records if not item.get("stripe_usage_record_id")
+                    ],
+                    "overage_delta": max(0, total - included) - max(0, reported - included),
+                    "phone_quantity": sum(
+                        item["tenant_id"] == tenant_id and item["status"] == "active"
+                        for item in self.memory.phone_numbers.values()
+                    ),
+                }
+            )
+        return batches
+
+    async def mark_usage_reported(
+        self, tenant_id: UUID, record_ids: list[UUID], stripe_id: str
+    ) -> None:
+        selected = set(record_ids)
+        for record in self.memory.usage_records.values():
+            if record["tenant_id"] == tenant_id and record["id"] in selected:
+                record["stripe_usage_record_id"] = stripe_id
 
     async def delete_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> bool:
         if not await self.get_knowledge_base(tenant_id, kb_id):

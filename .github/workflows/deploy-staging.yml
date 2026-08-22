@@ -18,6 +18,8 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
       TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
       TWILIO_MESSAGING_SERVICE_SID: ${{ secrets.TWILIO_MESSAGING_SERVICE_SID }}
@@ -47,7 +49,7 @@ jobs:
           aws secretsmanager put-secret-value --secret-id "$(jq -r '.database' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg value "postgresql+asyncpg://voiceos_admin:${DB_PASSWORD_ESCAPED}@${DB_ENDPOINT}/voiceos" '{DATABASE_URL:$value}')"
           aws secretsmanager put-secret-value --secret-id "$(jq -r '.auth' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg value "$AUTH_SECRET" '{AUTH_SECRET:$value}')"
           aws secretsmanager put-secret-value --secret-id "$(jq -r '.internal-api' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg value "$INTERNAL_API_TOKEN" '{INTERNAL_API_TOKEN:$value}')"
-          aws secretsmanager put-secret-value --secret-id "$(jq -r '.providers' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg livekit_url "$LIVEKIT_URL" --arg livekit_key "$LIVEKIT_API_KEY" --arg livekit_secret "$LIVEKIT_API_SECRET" --arg deepgram "$DEEPGRAM_API_KEY" --arg anthropic "$ANTHROPIC_API_KEY" --arg openai "$OPENAI_API_KEY" --arg elevenlabs "$ELEVENLABS_API_KEY" --arg resend "$RESEND_API_KEY" --arg twilio_sid "$TWILIO_ACCOUNT_SID" --arg twilio_token "$TWILIO_AUTH_TOKEN" --arg twilio_messaging "$TWILIO_MESSAGING_SERVICE_SID" --arg sip_inbound "$LIVEKIT_SIP_TRUNK_ID_INBOUND" --arg sip_outbound "$LIVEKIT_SIP_TRUNK_ID_OUTBOUND" '{LIVEKIT_URL:$livekit_url,LIVEKIT_API_KEY:$livekit_key,LIVEKIT_API_SECRET:$livekit_secret,DEEPGRAM_API_KEY:$deepgram,ANTHROPIC_API_KEY:$anthropic,OPENAI_API_KEY:$openai,ELEVENLABS_API_KEY:$elevenlabs,RESEND_API_KEY:$resend,TWILIO_ACCOUNT_SID:$twilio_sid,TWILIO_AUTH_TOKEN:$twilio_token,TWILIO_MESSAGING_SERVICE_SID:$twilio_messaging,LIVEKIT_SIP_TRUNK_ID_INBOUND:$sip_inbound,LIVEKIT_SIP_TRUNK_ID_OUTBOUND:$sip_outbound}')"
+          aws secretsmanager put-secret-value --secret-id "$(jq -r '.providers' <<<"$SECRET_ARNS")" --secret-string "$(jq -cn --arg livekit_url "$LIVEKIT_URL" --arg livekit_key "$LIVEKIT_API_KEY" --arg livekit_secret "$LIVEKIT_API_SECRET" --arg deepgram "$DEEPGRAM_API_KEY" --arg anthropic "$ANTHROPIC_API_KEY" --arg openai "$OPENAI_API_KEY" --arg elevenlabs "$ELEVENLABS_API_KEY" --arg resend "$RESEND_API_KEY" --arg stripe "$STRIPE_SECRET_KEY" --arg stripe_webhook "$STRIPE_WEBHOOK_SECRET" --arg twilio_sid "$TWILIO_ACCOUNT_SID" --arg twilio_token "$TWILIO_AUTH_TOKEN" --arg twilio_messaging "$TWILIO_MESSAGING_SERVICE_SID" --arg sip_inbound "$LIVEKIT_SIP_TRUNK_ID_INBOUND" --arg sip_outbound "$LIVEKIT_SIP_TRUNK_ID_OUTBOUND" '{LIVEKIT_URL:$livekit_url,LIVEKIT_API_KEY:$livekit_key,LIVEKIT_API_SECRET:$livekit_secret,DEEPGRAM_API_KEY:$deepgram,ANTHROPIC_API_KEY:$anthropic,OPENAI_API_KEY:$openai,ELEVENLABS_API_KEY:$elevenlabs,RESEND_API_KEY:$resend,STRIPE_SECRET_KEY:$stripe,STRIPE_WEBHOOK_SECRET:$stripe_webhook,TWILIO_ACCOUNT_SID:$twilio_sid,TWILIO_AUTH_TOKEN:$twilio_token,TWILIO_MESSAGING_SERVICE_SID:$twilio_messaging,LIVEKIT_SIP_TRUNK_ID_INBOUND:$sip_inbound,LIVEKIT_SIP_TRUNK_ID_OUTBOUND:$sip_outbound}')"
       - name: Build and push service images
         shell: bash
         run: |

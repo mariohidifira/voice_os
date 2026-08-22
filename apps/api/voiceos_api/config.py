@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     aws_kms_key_id: str | None = None
     aws_region: str = "sa-east-1"
     resend_api_key: str | None = None
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
     email_from: str = "VoiceOS <noreply@example.invalid>"
     google_client_id: str | None = None
     google_client_secret: str | None = None
