@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787369525.5583787,
-    "ast_hash": "85603a3e1ee39f4b6ace14483b933e21",
+    "mtime": 1787369878.2237542,
+    "ast_hash": "60d5fcc5bf84d316980ae94775010dc1",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
