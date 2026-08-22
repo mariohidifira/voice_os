@@ -12,6 +12,7 @@ from jsonschema import ValidationError, validate
 from livekit import api as livekit_api
 from pydantic import ValidationError as PydanticValidationError
 
+from .agent_templates import get_agent_template, list_agent_templates
 from .auth import Principal, internal_token, principal
 from .config import get_settings
 from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_embeddings
@@ -193,11 +194,32 @@ async def list_agents(auth: Auth, repo: Repo) -> dict[str, Any]:
     return {"data": await repo.list_agents(auth.tenant_id), "next_cursor": None}
 
 
+@v1.get("/agent-templates")
+async def agent_templates(auth: Auth) -> dict[str, Any]:
+    return {"data": list_agent_templates(), "next_cursor": None}
+
+
 @v1.post("/agents", status_code=201)
 async def create_agent(body: AgentCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
     if auth.role not in {"owner", "admin"}:
         raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
-    return await repo.create_agent(auth.tenant_id, body.name, auth.user_id)
+    template = get_agent_template(body.template_id) if body.template_id else None
+    if body.template_id and not template:
+        raise HTTPException(422, detail={"code": "template_not_found", "message": "Agent template not found"})
+    agent = await repo.create_agent(auth.tenant_id, body.name, auth.user_id)
+    if template:
+        draft = await repo.update_draft(
+            auth.tenant_id,
+            agent["id"],
+            {
+                "system_prompt": template["system_prompt"],
+                "greeting": template["greeting"],
+                "variables": template["variables"],
+            },
+        )
+        if draft:
+            agent = {**agent, "draft": draft}
+    return agent
 
 
 @v1.get("/agents/{agent_id}")

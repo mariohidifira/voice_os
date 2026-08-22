@@ -6,6 +6,7 @@ import VoiceWidget from "./voice-widget";
 type Item = Record<string, unknown> & { id: string; name?: string; status?: string };
 type Call = Item & { channel?: string; duration_s?: number; summary?: string; started_at?: string; turns?: Array<{ id?: string; role: string; text: string; audio_offset_ms?: number }>; recordings?: Array<{ url?: string; storage_key?: string }> };
 type Document = Item & { source_type?: string; source_uri?: string; chunk_count?: number; error?: string };
+type AgentTemplate = Item & { description?: string; suggested_tools?: string[] };
 type Section = "overview" | "agents" | "calls" | "knowledge" | "tools" | "members" | "settings";
 
 const sections: Array<[Section, string]> = [["overview", "Visão geral"], ["agents", "Agentes"], ["calls", "Chamadas"], ["knowledge", "Conhecimento"], ["tools", "Ferramentas"], ["members", "Membros"], ["settings", "Configurações"]];
@@ -27,6 +28,8 @@ function Empty({ children }: { children: React.ReactNode }) { return <div classN
 export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
   const [section, setSection] = useState<Section>("overview");
   const [agents, setAgents] = useState<Item[]>([]);
+  const [agentTemplates, setAgentTemplates] = useState<AgentTemplate[]>([]);
+  const [newAgentTemplate, setNewAgentTemplate] = useState("receptionist");
   const [calls, setCalls] = useState<Call[]>([]);
   const [knowledge, setKnowledge] = useState<Item[]>([]);
   const [selectedKnowledge, setSelectedKnowledge] = useState<Item | null>(null);
@@ -47,14 +50,14 @@ export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [me, a, c, k, t, keys] = await Promise.all([
+      const [me, a, templates, c, k, t, keys] = await Promise.all([
         api<{ tenant_id: string }>("me"),
-        api<{ data: Item[] }>("agents"), api<{ data: Call[] }>("calls"),
+        api<{ data: Item[] }>("agents"), api<{ data: AgentTemplate[] }>("agent-templates"), api<{ data: Call[] }>("calls"),
         api<{ data: Item[] }>("knowledge-bases"), api<{ data: Item[] }>("tools"), api<{ data: Item[] }>("api-keys"),
       ]);
       const memberResult = await api<{ data: Item[] }>(`tenants/${me.tenant_id}/members`);
       setTenantId(me.tenant_id); setMembers(memberResult.data); setApiKeys(keys.data);
-      setAgents(a.data); setCalls(c.data); setKnowledge(k.data); setTools(t.data); setNotice("");
+      setAgents(a.data); setAgentTemplates(templates.data); setCalls(c.data); setKnowledge(k.data); setTools(t.data); setNotice("");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Falha ao carregar dados"); }
     finally { setLoading(false); }
   }, []);
@@ -68,7 +71,7 @@ export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
 
   async function createAgent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); const name = String(form.get("name") ?? "").trim(); if (!name) return;
-    try { const created = await api<Item>("agents", { method: "POST", body: JSON.stringify({ name }) }); formElement.reset(); await refresh(); await openAgent(created.id); setNotice("Agente criado. Configure o rascunho antes de publicar."); }
+    try { const created = await api<Item>("agents", { method: "POST", body: JSON.stringify({ name, template_id: newAgentTemplate }) }); formElement.reset(); await refresh(); await openAgent(created.id); setNotice("Agente criado a partir do template. Revise o rascunho antes de publicar."); }
     catch (error) { setNotice(String(error)); }
   }
   async function openAgent(id: string) { const [detail, linked] = await Promise.all([api<Item>(`agents/${id}`), api<{ data: Item[] }>(`agents/${id}/draft/tools`)]); setSelectedAgent(detail); setSelectedToolIds(linked.data.map((tool) => tool.id)); setSection("agents"); }
@@ -110,6 +113,7 @@ export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
         {section === "tools" && <section className="split"><article className="card"><h2>Ferramentas</h2>{tools.map((tool) => <div className="row static" key={tool.id}><span><strong>{tool.name}</strong><small>{String(tool.description ?? tool.type)}</small></span><span><button className="secondary compact" onClick={() => void testTool(tool)}>Testar</button> <span className={`pill ${tool.last_test_ok_at ? "ok" : ""}`}>{tool.last_test_ok_at ? "testada" : "pendente"}</span></span></div>)}{toolTestResult && <pre className="testResult">{toolTestResult}</pre>}</article><article className="card"><h2>Novo webhook</h2><form className="formGrid" onSubmit={createTool}><Field label="Nome snake_case"><input name="name" required pattern="[a-z0-9_]+"/></Field><Field label="Descrição"><input name="description" required maxLength={300}/></Field><Field label="URL HTTPS"><input name="url" type="url" required/></Field><button>Criar ferramenta</button></form></article></section>}
         {section === "members" && <section className="split"><article className="card"><h2>Membros</h2>{members.map((member) => <div className="row static" key={member.id}><span><strong>{String(member.name ?? member.email)}</strong><small>{String(member.email)}</small></span><span className="pill ok">{String(member.role)}</span></div>)}{!members.length && <Empty>Nenhum membro listado.</Empty>}</article><article className="card"><h2>Adicionar membro</h2><form className="formGrid" onSubmit={inviteMember}><Field label="E-mail"><input name="email" type="email" required/></Field><Field label="Papel"><select name="role"><option value="viewer">Viewer</option><option value="operator">Operator</option><option value="developer">Developer</option><option value="admin">Admin</option></select></Field><button>Adicionar</button></form></article></section>}
         {section === "settings" && <section className="split"><article className="card"><h2>Integrações</h2><p>Google Calendar e Gmail</p><button className="secondary" onClick={async () => { try { const result = await api<{ url: string }>("integrations/google/connect"); location.href = result.url; } catch (error) { setNotice(String(error)); } }}>Conectar Google</button><h2>Chaves existentes</h2>{apiKeys.map((key) => <div className="row static" key={key.id}><span><strong>{key.name}</strong><small>{String(key.prefix)}… · {String(key.scope)}</small></span><span className={`pill ${key.revoked_at ? "" : "ok"}`}>{key.revoked_at ? "revogada" : "ativa"}</span></div>)}</article><article className="card"><h2>Nova API key</h2><p className="muted">A chave completa é exibida somente uma vez; apenas SHA-256 é armazenado.</p><form className="formGrid" onSubmit={createApiKey}><Field label="Nome"><input name="name" required/></Field><Field label="Escopo"><select name="scope"><option value="secret">Secret</option><option value="public">Public/widget</option></select></Field><Field label="Origem permitida (obrigatória para public)"><input name="origin" type="url" placeholder="https://cliente.com"/></Field><button>Criar chave</button></form></article></section>}
+        {section === "agents" && <aside className="templateDock card"><b>Template para o próximo agente</b><select aria-label="Template do agente" value={newAgentTemplate} onChange={(event) => setNewAgentTemplate(event.target.value)}>{agentTemplates.map((template) => <option value={template.id} key={template.id}>{template.name}</option>)}</select><small>{agentTemplates.find((template) => template.id === newAgentTemplate)?.description}</small></aside>}
       </>}
     </main>
   </div>;

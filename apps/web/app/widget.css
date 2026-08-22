@@ -22,3 +22,4 @@
 .toolPicker .check small{margin-left:5px}
 .compact{padding:5px 9px;font-size:12px}
 .testResult{max-height:280px;overflow:auto;padding:12px;background:#090d12;border:1px solid var(--line);border-radius:9px;color:#bad7cf;white-space:pre-wrap}
+.templateDock{position:fixed;right:24px;bottom:24px;display:grid;gap:7px;width:300px;box-shadow:0 12px 35px #0008}.templateDock select{border:1px solid var(--line);border-radius:8px;background:#0b1017;color:var(--text);padding:9px}

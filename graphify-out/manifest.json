@@ -35,8 +35,8 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/tools.py": {
-    "mtime": 1787147151.162108,
-    "ast_hash": "b92b23503794cd701ec3c4c1e8ddc225",
+    "mtime": 1787367732.5768151,
+    "ast_hash": "229280233c59ad23d7b1a7c158aafe6f",
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/__init__.py": {
@@ -105,13 +105,13 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787365817.7880206,
-    "ast_hash": "96a5acc68f1ec2671758ec2a7c702c80",
+    "mtime": 1787367452.3672287,
+    "ast_hash": "72efd0618e15291390dd687d89dbe18e",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
-    "mtime": 1787364124.6741655,
-    "ast_hash": "f20fc0d967504d8305030e954cbbdadb",
+    "mtime": 1787367365.221923,
+    "ast_hash": "ccbbcc6b0282867c5a2793d2f66c3157",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/store.py": {
@@ -250,8 +250,8 @@
     "semantic_hash": ""
   },
   "tests/test_api.py": {
-    "mtime": 1787365848.3952518,
-    "ast_hash": "83520af663f80856e18f4dbe01250532",
+    "mtime": 1787367733.838094,
+    "ast_hash": "2d8b3085287771d3231234713bf30173",
     "semantic_hash": ""
   },
   "tests/test_health.py": {
@@ -510,8 +510,8 @@
     "semantic_hash": ""
   },
   "pyproject.toml": {
-    "mtime": 1787252521.884308,
-    "ast_hash": "ea9559490d913e4ee8ee286e2340b5dc",
+    "mtime": 1787367690.0869043,
+    "ast_hash": "386c85870a589c8e5bcd2d31ec9d19eb",
     "semantic_hash": ""
   },
   "scripts/test_live_redis.py": {
@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787366937.016701,
-    "ast_hash": "96275839f920f4fecba63d379eeb5d47",
+    "mtime": 1787367536.247514,
+    "ast_hash": "e90ac032f60348fc8717260399319612",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
@@ -687,6 +687,46 @@
   "apps/web/playwright.config.ts": {
     "mtime": 1787366861.5192294,
     "ast_hash": "54b04ff587ed761cd6545f234d242b36",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/agent_templates.py": {
+    "mtime": 1787367661.6049063,
+    "ast_hash": "61f8f2db9c262758b16a2bfc3e08d9a2",
+    "semantic_hash": ""
+  },
+  "reports/phase1-conversations-audio.json": {
+    "mtime": 1787367790.6232543,
+    "ast_hash": "bf30eb15e7fa66ccc568e0cb5fc688a9",
+    "semantic_hash": ""
+  },
+  "reports/phase1-conversations-text.json": {
+    "mtime": 1787367790.12667,
+    "ast_hash": "d97e14246cffc61233c9ea6b4ce5045d",
+    "semantic_hash": ""
+  },
+  "scripts/__init__.py": {
+    "mtime": 1787367662.911194,
+    "ast_hash": "b05dc8c707a1a5a73d26b5908d957d31",
+    "semantic_hash": ""
+  },
+  "scripts/conversation_suite.py": {
+    "mtime": 1787367775.7846305,
+    "ast_hash": "9a1b2f08a5f3e2208f316dd803ff0562",
+    "semantic_hash": ""
+  },
+  "tests/test_conversation_suite.py": {
+    "mtime": 1787367632.889913,
+    "ast_hash": "c14fa1de23a105ffffd5cd722e6057b8",
+    "semantic_hash": ""
+  },
+  "tests/conversations/audio.yaml": {
+    "mtime": 1787367636.0709295,
+    "ast_hash": "79710702ec7501de677ab8f527a51da4",
+    "semantic_hash": ""
+  },
+  "tests/conversations/text.yaml": {
+    "mtime": 1787367634.8285112,
+    "ast_hash": "6d783d12d8d86569b84bed69898da5ea",
     "semantic_hash": ""
   }
 }

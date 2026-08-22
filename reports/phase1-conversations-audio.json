@@ -1,0 +1,9 @@
+{
+  "mode": "audio",
+  "cases": 10,
+  "passed": 10,
+  "pass_rate": 1.0,
+  "ttfb_p50_ms": 0.26700005400925875,
+  "ttfb_p95_ms": 0.3879999276250601,
+  "failures": []
+}

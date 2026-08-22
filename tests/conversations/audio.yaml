@@ -1,0 +1,12 @@
+[
+  {"id":"audio_greeting","user":"Bom dia","reply":"Bom dia, como posso ajudar?","contains":["ajudar"]},
+  {"id":"audio_faq","user":"Qual o horário?","reply":"Atendemos das nove às dezoito horas.","contains":["nove"],"knowledge":["Horário: 9h às 18h."]},
+  {"id":"audio_unknown","user":"Vocês têm garagem?","reply":"Não tenho essa informação.","contains":["não tenho"],"knowledge":[]},
+  {"id":"audio_name","user":"Eu sou João","reply":"Prazer, João.","contains":["João"],"tool":{"name":"set_variable","arguments":{"name":"nome","value":"João"}}},
+  {"id":"audio_calendar","user":"Consulte terça de manhã","reply":"Há horário às onze da manhã.","contains":["onze"],"tool":{"name":"google_calendar_check","arguments":{"date":"terça"}}},
+  {"id":"audio_order","user":"Consulte o pedido quatro dois","reply":"O pedido saiu para entrega.","contains":["entrega"],"tool":{"name":"consultar_pedido","arguments":{"id":"42"}}},
+  {"id":"audio_barge_early","user":"Conte os detalhes","reply":"Vou explicar os detalhes.","contains":["detalhes"],"interrupt":"Espere"},
+  {"id":"audio_barge_late","user":"Fale sobre suporte","reply":"O suporte funciona todos os dias.","contains":["suporte"],"interrupt":"Quero vendas"},
+  {"id":"audio_backchannel","user":"Pode explicar","reply":"Claro, vou explicar.","contains":["explicar"],"backchannel":"aham"},
+  {"id":"audio_end","user":"Pode desligar","reply":"Obrigado e até logo.","contains":["até logo"],"tool":{"name":"end_call","arguments":{"reason":"complete"}}}
+]

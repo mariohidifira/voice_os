@@ -6,10 +6,6 @@ from jsonschema import Draft202012Validator
 from .contracts import ToolCall, ToolHandler
 
 
-class ToolExecutionError(RuntimeError):
-    pass
-
-
 class ToolRegistry:
     def __init__(self) -> None:
         self.handlers: dict[str, ToolHandler] = {}
@@ -31,7 +27,7 @@ class ToolRegistry:
         except TimeoutError:
             return {"error": "timeout"}
         except Exception as exc:
-            raise ToolExecutionError(str(exc)) from exc
+            return {"error": "execution_failed", "message": str(exc)}
 
     async def execute_many(self, calls: tuple[ToolCall, ...]) -> list[dict[str, Any]]:
         return await asyncio.gather(*(self.execute(call) for call in calls))

@@ -105,6 +105,40 @@ def test_agent_publish_session_and_isolation() -> None:
     assert client.get("/v1/calls", headers=headers(tenant_b)).json()["data"] == []
 
 
+def test_required_agent_templates_create_configured_drafts() -> None:
+    store.agents.clear()
+    store.agent_versions.clear()
+    auth = headers(str(uuid4()))
+    templates = client.get("/v1/agent-templates", headers=auth)
+    assert templates.status_code == 200
+    by_id = {item["id"]: item for item in templates.json()["data"]}
+    assert set(by_id) == {"receptionist", "scheduling", "order_support"}
+    assert by_id["scheduling"]["suggested_tools"] == [
+        "set_variable",
+        "google_calendar_check",
+        "google_calendar_book",
+        "end_call",
+    ]
+
+    for template_id in by_id:
+        created = client.post(
+            "/v1/agents",
+            json={"name": f"Template {template_id}", "template_id": template_id},
+            headers=auth,
+        )
+        assert created.status_code == 201
+        draft = client.get(f"/v1/agents/{created.json()['id']}", headers=auth).json()["draft"]
+        assert draft["system_prompt"] == by_id[template_id]["system_prompt"]
+        assert draft["greeting"] == by_id[template_id]["greeting"]
+        assert draft["variables"] == by_id[template_id]["variables"]
+
+    invalid = client.post(
+        "/v1/agents", json={"name": "Inválido", "template_id": "missing"}, headers=auth
+    )
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "template_not_found"
+
+
 def test_session_end_user_filters_and_draft_test_session() -> None:
     store.agents.clear()
     store.agent_versions.clear()
