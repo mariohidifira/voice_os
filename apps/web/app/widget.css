@@ -11,3 +11,8 @@
 .danger{background:#e75d67;color:white}
 .remoteAudio{position:absolute;width:1px;height:1px;overflow:hidden}
 @keyframes pulse{50%{transform:scale(1.08);opacity:.75}}
+.ingest{margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+.iconDanger{padding:3px 8px;margin-left:7px;background:#43222a;color:#ffb0b8}
+.queryResult{margin-top:9px;padding:12px;border:1px solid var(--line);border-radius:9px;background:#0b1118}
+.queryResult b{color:var(--accent);font-size:12px}
+.queryResult p{margin:6px 0 0;white-space:pre-wrap}

@@ -339,6 +339,7 @@ def test_knowledge_base_and_document_crud_is_tenant_scoped() -> None:
     kb_id = kb.json()["id"]
     assert client.get("/v1/knowledge-bases", headers=auth_b).json()["data"] == []
     assert client.patch(f"/v1/knowledge-bases/{kb_id}", json={"name": "FAQ BR"}, headers=auth_a).json()["name"] == "FAQ BR"
+    assert client.post(f"/v1/knowledge-bases/{kb_id}/documents", json={"name": "Sem fonte"}, headers=auth_a).status_code == 422
     document = client.post(f"/v1/knowledge-bases/{kb_id}/documents", json={"name": "Atendimento", "text": "Prazo de entrega de dois dias."}, headers=auth_a)
     assert document.status_code == 202
     document_id = document.json()["id"]

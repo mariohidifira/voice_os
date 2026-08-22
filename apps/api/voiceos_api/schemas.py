@@ -108,12 +108,11 @@ class DocumentCreate(BaseModel):
     text: str | None = None
     url: str | None = None
 
-    @field_validator("url")
-    @classmethod
-    def require_one_source(cls, value: str | None, info: Any) -> str | None:
-        if not value and not info.data.get("text"):
+    @model_validator(mode="after")
+    def require_one_source(self) -> "DocumentCreate":
+        if not self.url and not self.text:
             raise ValueError("text or url is required")
-        return value
+        return self
 
 
 class KnowledgeQuery(BaseModel):

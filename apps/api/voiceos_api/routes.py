@@ -10,6 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from fastapi.responses import StreamingResponse
 from jsonschema import ValidationError, validate
 from livekit import api as livekit_api
+from pydantic import ValidationError as PydanticValidationError
 
 from .auth import Principal, internal_token, principal
 from .config import get_settings
@@ -525,7 +526,10 @@ async def create_document(kb_id: UUID, request: Request, background: BackgroundT
         body = DocumentCreate(name=getattr(uploaded, "filename", None) or "documento", text="uploaded")
         source_type, mime = "upload", getattr(uploaded, "content_type", None)
     else:
-        body = DocumentCreate.model_validate(await request.json())
+        try:
+            body = DocumentCreate.model_validate(await request.json())
+        except PydanticValidationError as exc:
+            raise HTTPException(422, detail={"code": "invalid_document", "message": "Document requires text or URL"}) from exc
         source_type, mime = ("url" if body.url else "text"), None
     item = await repo.create_document(auth.tenant_id, kb_id, {"name": body.name, "source_type": source_type, "source_uri": body.url, "mime": mime, "size_bytes": len(upload_bytes) if upload_bytes is not None else None})
     if not item:
