@@ -31,6 +31,10 @@ test("criar agente, publicar, testar e ver chamada", async ({ page, request }) =
   await page.getByLabel("Prompt do sistema").fill("Você atende testes E2E com respostas objetivas.");
   await page.getByRole("button", { name: "Salvar rascunho" }).click();
   await expect(page.getByRole("status")).toContainText("Rascunho e ferramentas salvos");
+  await page.getByLabel("Velocidade").fill("1.1");
+  await page.getByLabel("Keywords STT (vírgulas)").fill("VoiceOS, agendamento");
+  await page.getByRole("button", { name: "Salvar configuração avançada" }).click();
+  await expect(page.getByRole("status")).toContainText("Configuração avançada salva");
   await page.getByRole("button", { name: "Publicar" }).click();
   await expect(page.getByRole("status")).toContainText("Versão publicada");
 
