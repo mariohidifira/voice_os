@@ -3,8 +3,13 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from livekit.agents import AgentSession, UserInputTranscribedEvent, UserStateChangedEvent
-from livekit.agents.llm import RawFunctionTool
+from livekit.agents import (
+    AgentSession,
+    ConversationItemAddedEvent,
+    UserInputTranscribedEvent,
+    UserStateChangedEvent,
+)
+from livekit.agents.llm import ChatMessage, RawFunctionTool
 from voiceos_voice.api_client import MemoryRuntimeCache, WorkerAPI
 from voiceos_voice.livekit_worker import (
     LiveKitCallBridge,
@@ -51,6 +56,35 @@ async def test_call_bridge_persists_final_transcript_and_closes_call() -> None:
     assert turn_payload["turns"][0]["text"] == "Olá"
     assert patch_payload["status"] == "completed"
     assert patch_payload["variables"] == {"lead": "42"}
+
+
+@pytest.mark.asyncio
+async def test_call_bridge_uses_livekit_end_to_end_voice_latency() -> None:
+    call_id = uuid4()
+    requests: list[tuple[str, dict[str, Any]]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = __import__("json").loads(request.content or b"{}")
+        requests.append((request.url.path, body))
+        if request.url.path.endswith("/turns"):
+            return httpx.Response(200, json={"accepted": 1})
+        return httpx.Response(200, json={"id": str(call_id), **body})
+
+    api = WorkerAPI(
+        "http://api", "internal", MemoryRuntimeCache(), httpx.MockTransport(handler)
+    )
+    bridge = LiveKitCallBridge(api, call_id, {})
+    item = ChatMessage(
+        role="assistant", content=["Resposta"], metrics={"e2e_latency": 0.875}
+    )
+    await bridge.conversation_item(ConversationItemAddedEvent(item=item))
+    await bridge.close()
+
+    patch_payload = next(
+        body for path, body in requests if path == f"/internal/calls/{call_id}"
+    )
+    assert patch_payload["latency"]["ttfb_samples_ms"] == [875]
+    assert patch_payload["latency"]["ttfb_p50_ms"] == 875
 
 
 @pytest.mark.asyncio

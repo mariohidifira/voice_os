@@ -28,14 +28,16 @@ class CallAccounting:
 
     def observe_metric(self, event: MetricsCollectedEvent) -> None:
         metric = event.metrics
-        if metric.type == "tts_metrics" and not metric.cancelled:
-            self.ttfb.append(metric.ttfb)
-        elif metric.type == "interruption_metrics":
+        if metric.type == "interruption_metrics":
             self.barge_ins += metric.num_interruptions
             if metric.num_interruptions and metric.detection_delay >= 0:
                 self.barge_in_reaction.extend(
                     [metric.detection_delay] * metric.num_interruptions
                 )
+
+    def observe_e2e_latency(self, latency: float | None) -> None:
+        if latency is not None and latency >= 0:
+            self.ttfb.append(latency)
 
     def observe_usage(self, event: SessionUsageUpdatedEvent) -> None:
         self.usage = [
@@ -47,10 +49,14 @@ class CallAccounting:
         return {
             "ttfb_p50_ms": _percentile(self.ttfb, 0.50),
             "ttfb_p95_ms": _percentile(self.ttfb, 0.95),
+            "ttfb_samples_ms": [round(value * 1000) for value in self.ttfb],
             "turns": self.turns,
             "barge_ins": self.barge_ins,
             "barge_in_p50_ms": _percentile(self.barge_in_reaction, 0.50),
             "barge_in_p95_ms": _percentile(self.barge_in_reaction, 0.95),
+            "barge_in_samples_ms": [
+                round(value * 1000) for value in self.barge_in_reaction
+            ],
         }
 
     def cost(self, duration_s: int) -> dict[str, Any]:

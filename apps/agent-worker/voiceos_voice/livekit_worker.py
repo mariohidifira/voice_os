@@ -88,6 +88,13 @@ class LiveKitCallBridge:
         if role != "assistant" or not content:
             return
         text = content if isinstance(content, str) else " ".join(str(part) for part in content)
+        metrics = getattr(item, "metrics", None)
+        e2e_latency = (
+            metrics.get("e2e_latency")
+            if isinstance(metrics, dict)
+            else getattr(metrics, "e2e_latency", None)
+        )
+        self.accounting.observe_e2e_latency(e2e_latency)
         await self.api.append_turns(
             self.call_id,
             [{"ordinal": self.ordinal, "role": "assistant", "text": text, "started_at": datetime.now(UTC).isoformat()}],

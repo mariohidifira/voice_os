@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1787382586.1471972,
-    "ast_hash": "c15556434247161fa1364276a89a32e5",
+    "mtime": 1787383917.044889,
+    "ast_hash": "5b5c708873a8874c46c7a27ad917c290",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "PROVIDER-SETUP-CHECKLIST.md": {
-    "mtime": 1787369183.9348674,
-    "ast_hash": "099e388a969caac5a1152c03f1debc55",
+    "mtime": 1787383404.0055997,
+    "ast_hash": "2f34a8191a7688ee57be233cc1105190",
     "semantic_hash": ""
   },
   "docs/00-README.md": {
@@ -535,8 +535,8 @@
     "semantic_hash": ""
   },
   ".github/workflows/deploy-staging.yml": {
-    "mtime": 1787088779.4500842,
-    "ast_hash": "be3c9cbed7249882ce54e1e4280aa05a",
+    "mtime": 1787383376.6089203,
+    "ast_hash": "f35ed7a72b6711c5db90f52d05057672",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/knowledge.py": {
@@ -610,13 +610,13 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/livekit_worker.py": {
-    "mtime": 1787325194.5450835,
-    "ast_hash": "6ff32bdde459884892ec334ca8f25646",
+    "mtime": 1787383607.4917805,
+    "ast_hash": "b46fff9c754bad6ccfe7f1fce5a5de66",
     "semantic_hash": ""
   },
   "tests/test_livekit_worker.py": {
-    "mtime": 1787263494.9769452,
-    "ast_hash": "f9dcbd17007b3f8b937e7042a0675b29",
+    "mtime": 1787383608.723996,
+    "ast_hash": "680ef7d78457e67f429f83f39aad2736",
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/recording.py": {
@@ -630,8 +630,8 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/accounting.py": {
-    "mtime": 1787369159.6182408,
-    "ast_hash": "2174ab2d0f52e5aa832e95c333c98984",
+    "mtime": 1787383536.500488,
+    "ast_hash": "35d1575f4eb2cffb762417108f421864",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/postprocessing.py": {
@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "tests/test_accounting.py": {
-    "mtime": 1787369160.8142924,
-    "ast_hash": "1852d9574ffcaf25ca1b288a68ddd265",
+    "mtime": 1787383545.3223813,
+    "ast_hash": "5b827b1200053532c37ee828687ec1d5",
     "semantic_hash": ""
   },
   "tests/test_postprocessing.py": {
@@ -735,18 +735,18 @@
     "semantic_hash": ""
   },
   "scripts/verify_phase1_staging.py": {
-    "mtime": 1787369240.3820448,
-    "ast_hash": "5bd55182f7575e196ead9f29c4fd0b0b",
+    "mtime": 1787383700.7765224,
+    "ast_hash": "8f19fa5fd77b4ec94cb690383954bea0",
     "semantic_hash": ""
   },
   "tests/test_phase1_staging_verifier.py": {
-    "mtime": 1787369163.8222015,
-    "ast_hash": "4aed7b1a43d9b4a33663cce134476953",
+    "mtime": 1787383689.163424,
+    "ast_hash": "3a85aa52e0f4d2997cbdbd5b7d6daa13",
     "semantic_hash": ""
   },
   ".github/workflows/phase1-staging-acceptance.yml": {
-    "mtime": 1787369182.7884624,
-    "ast_hash": "44ddf5eb0b365233b6007b9a81498abe",
+    "mtime": 1787383658.6515448,
+    "ast_hash": "bfa06b8d94b164ae38aa8a18516db282",
     "semantic_hash": ""
   },
   "apps/web/app/onboarding/actions.ts": {

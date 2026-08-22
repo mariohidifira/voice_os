@@ -1,5 +1,5 @@
 from livekit.agents import MetricsCollectedEvent, SessionUsageUpdatedEvent
-from livekit.agents.metrics import AgentSessionUsage, InterruptionMetrics, TTSMetrics
+from livekit.agents.metrics import AgentSessionUsage, InterruptionMetrics
 from livekit.agents.metrics.usage import LLMModelUsage, STTModelUsage, TTSModelUsage
 from voiceos_voice.accounting import CallAccounting
 
@@ -7,11 +7,7 @@ from voiceos_voice.accounting import CallAccounting
 def test_accounting_aggregates_latency_usage_and_cost(monkeypatch: object) -> None:
     accounting = CallAccounting(turns=4)
     for ttfb in (0.1, 0.2, 0.4):
-        accounting.observe_metric(
-            MetricsCollectedEvent(
-                metrics=TTSMetrics(label="elevenlabs", request_id="r", timestamp=0, ttfb=ttfb, duration=1, audio_duration=1, cancelled=False, characters_count=100, streamed=True)
-            )
-        )
+        accounting.observe_e2e_latency(ttfb)
     accounting.observe_metric(
         MetricsCollectedEvent(metrics=InterruptionMetrics(timestamp=0, total_duration=1, prediction_duration=0.1, detection_delay=0.2, num_interruptions=2, num_backchannels=1, num_requests=3))
     )
@@ -29,10 +25,12 @@ def test_accounting_aggregates_latency_usage_and_cost(monkeypatch: object) -> No
     assert accounting.latency() == {
         "ttfb_p50_ms": 200,
         "ttfb_p95_ms": 400,
+        "ttfb_samples_ms": [100, 200, 400],
         "turns": 4,
         "barge_ins": 2,
         "barge_in_p50_ms": 200,
         "barge_in_p95_ms": 200,
+        "barge_in_samples_ms": [200, 200],
     }
     cost = accounting.cost(60)
     assert cost["stt_usd"] == 0.0048

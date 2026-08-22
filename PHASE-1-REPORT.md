@@ -17,7 +17,7 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 
 - `ruff check .`: aprovado.
 - MyPy strict: aprovado em 37 arquivos.
-- `pytest -q`: 80 testes aprovados; cobertura combinada da API e do agent worker em 82,88% (gate mínimo 80%).
+- `pytest -q`: 87 testes aprovados; cobertura combinada da API e do agent worker em 83,18% (gate mínimo 80%).
 - TypeScript, ESLint e build de produção Next.js: aprovados.
 - Playwright essencial: 2 cenários aprovados contra PostgreSQL, mock HTTP e API em `localhost:8005`, cobrindo o fluxo administrativo e o onboarding completo, inclusive a persistência da voz escolhida no agente inicial.
 - Isolamento PostgreSQL reforçado: toda sessão de tenant assume o papel `voiceos_app` (`NOSUPERUSER`/`NOBYPASSRLS`) antes de definir `app.tenant_id`; o E2E confirma que o novo tenant não enxerga agentes do tenant demo.
@@ -66,7 +66,10 @@ Os seguintes critérios não podem ser honestamente declarados concluídos no am
 
 O workflow manual `phase1-staging-acceptance` busca os detalhes de 50 chamadas reais e falha se
 qualquer gate de latência, barge-in, custo ou gravação não for atendido. O worker agora persiste
-`barge_in_p50_ms` e `barge_in_p95_ms` a partir da métrica real de `detection_delay` do LiveKit.
+as amostras de latência voz-para-voz `e2e_latency` por turno e as amostras de reação ao barge-in
+baseadas em `detection_delay` do LiveKit. O lote é isolado por `acceptance_run_id`; todas as 50
+chamadas precisam ter TTFB, uso completo de STT/LLM/TTS, custo válido e Egress S3 `ready`, além de
+pelo menos 20 casos reais de interrupção com sucesso mínimo de 95%.
 
 As contas, nomes de secrets e ordem de configuração estão em `PROVIDER-SETUP-CHECKLIST.md`. Nenhum secret deve ser commitado.
 

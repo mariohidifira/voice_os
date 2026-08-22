@@ -342,7 +342,35 @@ INTERNAL_API_TOKEN
 AGENT_WORKER_MAX_ROOMS
 ```
 
-## 10. Ordem prática de execução
+## 10. Lote real de aceite da Fase 1
+
+Depois do deploy e antes de executar `phase1-staging-acceptance`, defina um identificador único,
+por exemplo `phase1-2026-08-22-01`. Todas as 50 sessões devem enviar:
+
+```json
+{
+  "metadata": {
+    "acceptance_run_id": "phase1-2026-08-22-01",
+    "acceptance_barge_in": false
+  }
+}
+```
+
+Marque `acceptance_barge_in: true` em pelo menos 20 chamadas nas quais o participante realmente
+interromper o agente. O lote somente é válido quando:
+
+- [ ] 50 chamadas WebRTC reais do mesmo `acceptance_run_id` terminaram com status `completed`.
+- [ ] Cada chamada tem pelo menos uma amostra real de TTFB produzida pelo LiveKit Agents.
+- [ ] Pelo menos 20 chamadas exercitaram barge-in; sucesso mínimo de 95% e reação p95 até 300 ms.
+- [ ] Todas registraram uso de STT, LLM e TTS, moeda USD, duração e custo positivo.
+- [ ] Todas possuem gravação Egress com status `ready` e chave S3.
+- [ ] Deepgram, Anthropic e ElevenLabs reais foram usados; nenhum mock/fallback local participa do lote.
+
+Execute o workflow manual `phase1-staging-acceptance` e informe o mesmo valor no input `run_id`.
+O artefato `phase1-staging-acceptance` conterá o relatório e o job falhará se qualquer evidência
+estiver ausente ou fora dos RNF-01/02/03/09.
+
+## 11. Ordem prática de execução
 
 1. [ ] AWS + GitHub OIDC.
 2. [ ] Gerar `AUTH_SECRET` e `INTERNAL_API_TOKEN`.
@@ -360,7 +388,7 @@ AGENT_WORKER_MAX_ROOMS
 14. [ ] Configurar Stripe na Fase 3.
 15. [ ] Configurar Meta WhatsApp na Fase 4.
 
-## 11. Registro de conclusão
+## 12. Registro de conclusão
 
 | Grupo | Responsável | Data | Status/observação |
 |---|---|---|---|
