@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1787381307.3259575,
-    "ast_hash": "d7795090175192a294eb7ca968e654d7",
+    "mtime": 1787382586.1471972,
+    "ast_hash": "c15556434247161fa1364276a89a32e5",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "apps/web/e2e/essential-flow.spec.ts": {
-    "mtime": 1787381001.1559453,
-    "ast_hash": "6ea2e9d3ba8357cbc4a9c5012b305755",
+    "mtime": 1787382070.2887678,
+    "ast_hash": "409cef12592d91ec3a05e7cbd0d18ed5",
     "semantic_hash": ""
   },
   "apps/web/playwright.config.ts": {
@@ -750,8 +750,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/onboarding/actions.ts": {
-    "mtime": 1787371950.5761013,
-    "ast_hash": "8bfc10480dfbb5dbc96fffab5ef9157a",
+    "mtime": 1787382070.1889179,
+    "ast_hash": "1a9c038025cc0518513602500adb99bd",
     "semantic_hash": ""
   },
   "apps/web/app/onboarding/page.tsx": {
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/onboarding/wizard.tsx": {
-    "mtime": 1787370476.1628096,
-    "ast_hash": "f92f2060a9242e178f1ec34851c2de24",
+    "mtime": 1787381990.1872802,
+    "ast_hash": "42afe712c6610334ca27ce61e67dd883",
     "semantic_hash": ""
   },
   "apps/web/lib/onboarding.test.ts": {

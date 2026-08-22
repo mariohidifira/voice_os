@@ -9,17 +9,17 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 - Extração PDF, DOCX, HTML, URL e texto, chunking, embeddings OpenAI, pgvector e consulta isolada por tenant.
 - Tools nativas `end_call`, `set_variable`, `send_email`, `google_calendar_check` e `google_calendar_book`; webhooks com schema, templates, SSRF guard, teste, timeout e erro recuperável.
 - Painel essencial para agentes, templates, edição, tools vinculadas, teste WebRTC, chamadas, áudio/transcrição, conhecimento, membros, integrações, settings e API keys.
-- Onboarding autenticado em duas etapas para criar tenant, owner, agente inicial por template e abrir imediatamente o teste de voz.
+- Onboarding autenticado em duas etapas para criar tenant, owner e agente inicial por template, exigir e persistir a voz ElevenLabs no draft e abrir imediatamente o teste de voz.
 - Templates obrigatórios 1, 2 e 4: Recepcionista/FAQ, Agendamento e Suporte/Consulta de pedido.
 - Playwright do fluxo login por magic link → criar agente → editar → publicar → testar → ver chamada.
 
 ## Evidências automatizadas locais
 
 - `ruff check .`: aprovado.
-- MyPy strict: aprovado em 33 arquivos.
-- `pytest -q`: 80 testes aprovados; cobertura combinada da API em 83,62% (gate mínimo 80%).
+- MyPy strict: aprovado em 37 arquivos.
+- `pytest -q`: 80 testes aprovados; cobertura combinada da API e do agent worker em 82,88% (gate mínimo 80%).
 - TypeScript, ESLint e build de produção Next.js: aprovados.
-- Playwright essencial: 2 cenários aprovados contra PostgreSQL, mock HTTP e API em `localhost:8005`, cobrindo o fluxo administrativo e o onboarding completo.
+- Playwright essencial: 2 cenários aprovados contra PostgreSQL, mock HTTP e API em `localhost:8005`, cobrindo o fluxo administrativo e o onboarding completo, inclusive a persistência da voz escolhida no agente inicial.
 - Isolamento PostgreSQL reforçado: toda sessão de tenant assume o papel `voiceos_app` (`NOSUPERUSER`/`NOBYPASSRLS`) antes de definir `app.tenant_id`; o E2E confirma que o novo tenant não enxerga agentes do tenant demo.
 - RBAC de configuração: operator/viewer recebem 403 em KB, tools, secrets, integrações e membros; o painel carrega somente os recursos permitidos ao papel.
 - Detalhe de chamada: player autenticado por URL S3 assinada e tenant-scoped, download, transcrição clicável sincronizada, custo, TTFB, reação ao barge-in, tools, eventos, resultado e variáveis coletadas.

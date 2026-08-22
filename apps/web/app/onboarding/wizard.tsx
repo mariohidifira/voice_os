@@ -2,9 +2,94 @@
 
 import { useState } from "react";
 
-export default function OnboardingWizard({ action }: { action: (formData: FormData) => Promise<void> }) {
+export default function OnboardingWizard({
+  action,
+}: {
+  action: (formData: FormData) => Promise<void>;
+}) {
   const [step, setStep] = useState(1);
   const [company, setCompany] = useState("");
   const [timezone, setTimezone] = useState("America/Sao_Paulo");
-  return <main className="onboarding"><div className="eyebrow">VoiceOS · configuração inicial</div><h1>Crie sua primeira operação de voz</h1><div className="steps"><span className={step >= 1 ? "active" : ""}>1 Empresa</span><span className={step >= 2 ? "active" : ""}>2 Agente</span><span>3 Teste</span></div><form action={action} className="card formGrid"><input type="hidden" name="company" value={company}/><input type="hidden" name="timezone" value={timezone}/>{step === 1 ? <><label className="field"><span>Nome da empresa</span><input value={company} onChange={(event) => setCompany(event.target.value)} required placeholder="Clínica Exemplo"/></label><label className="field"><span>Timezone</span><select value={timezone} onChange={(event) => setTimezone(event.target.value)}><option>America/Sao_Paulo</option><option>America/Fortaleza</option><option>America/Manaus</option><option>America/Recife</option></select></label><button type="button" disabled={!company.trim()} onClick={() => setStep(2)}>Continuar</button></> : <><label className="field"><span>Template</span><select name="template_id"><option value="receptionist">Recepcionista / FAQ</option><option value="scheduling">Agendamento</option><option value="order_support">Suporte / Consulta de pedido</option></select></label><label className="field"><span>Nome do agente</span><input name="agent_name" required placeholder="Ana"/></label><label className="field"><span>Voice ID ElevenLabs</span><input name="voice_id" placeholder="Opcional até configurar o provedor"/></label><div className="two"><button type="button" className="secondary" onClick={() => setStep(1)}>Voltar</button><button type="submit">Criar e testar</button></div></>}</form></main>;
+  return (
+    <main className="onboarding">
+      <div className="eyebrow">VoiceOS · configuração inicial</div>
+      <h1>Crie sua primeira operação de voz</h1>
+      <div className="steps">
+        <span className={step >= 1 ? "active" : ""}>1 Empresa</span>
+        <span className={step >= 2 ? "active" : ""}>2 Agente</span>
+        <span>3 Teste</span>
+      </div>
+      <form action={action} className="card formGrid">
+        <input type="hidden" name="company" value={company} />
+        <input type="hidden" name="timezone" value={timezone} />
+        {step === 1 ? (
+          <>
+            <label className="field">
+              <span>Nome da empresa</span>
+              <input
+                value={company}
+                onChange={(event) => setCompany(event.target.value)}
+                required
+                placeholder="Clínica Exemplo"
+              />
+            </label>
+            <label className="field">
+              <span>Timezone</span>
+              <select
+                value={timezone}
+                onChange={(event) => setTimezone(event.target.value)}
+              >
+                <option>America/Sao_Paulo</option>
+                <option>America/Fortaleza</option>
+                <option>America/Manaus</option>
+                <option>America/Recife</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={!company.trim()}
+              onClick={() => setStep(2)}
+            >
+              Continuar
+            </button>
+          </>
+        ) : (
+          <>
+            <label className="field">
+              <span>Template</span>
+              <select name="template_id">
+                <option value="receptionist">Recepcionista / FAQ</option>
+                <option value="scheduling">Agendamento</option>
+                <option value="order_support">
+                  Suporte / Consulta de pedido
+                </option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Nome do agente</span>
+              <input name="agent_name" required placeholder="Ana" />
+            </label>
+            <label className="field">
+              <span>Voice ID ElevenLabs</span>
+              <input
+                name="voice_id"
+                required
+                placeholder="Ex.: 21m00Tcm4TlvDq8ikWAM"
+              />
+            </label>
+            <div className="two">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setStep(1)}
+              >
+                Voltar
+              </button>
+              <button type="submit">Criar e testar</button>
+            </div>
+          </>
+        )}
+      </form>
+    </main>
+  );
 }

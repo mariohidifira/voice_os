@@ -209,7 +209,9 @@ test("criar agente, publicar, testar e ver chamada", async ({
   await expect(
     ownerRow.getByLabel("Papel de owner@demo.voiceos.local"),
   ).toBeDisabled();
-  await expect(ownerRow.getByRole("button", { name: "Remover" })).toBeDisabled();
+  await expect(
+    ownerRow.getByRole("button", { name: "Remover" }),
+  ).toBeDisabled();
 
   await page.getByRole("button", { name: "Chamadas", exact: true }).click();
   await expect(
@@ -221,10 +223,16 @@ test("criar agente, publicar, testar e ver chamada", async ({
   await page.getByLabel("Buscar").fill("Chamada demo 1");
   await page.getByRole("button", { name: "Filtrar" }).click();
   await expect(page.getByRole("status")).toContainText("1 chamada(s)");
-  await expect(page.getByText("Chamada demo 2", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("Chamada demo 2", { exact: false })).toHaveCount(
+    0,
+  );
   await page.getByRole("button", { name: "Limpar" }).click();
-  await expect(page.getByRole("status")).toContainText("Filtros de chamadas removidos");
-  await expect(page.getByText("Chamada demo 2", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    "Filtros de chamadas removidos",
+  );
+  await expect(
+    page.getByText("Chamada demo 2", { exact: false }).first(),
+  ).toBeVisible();
   await page
     .getByRole("button", {
       name: "completed · web 120s · Chamada demo 1",
@@ -256,6 +264,8 @@ test("onboarding cria tenant, agente por template e abre teste", async ({
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByLabel("Template").selectOption("scheduling");
   await page.getByPlaceholder("Ana").fill("Agenda E2E");
+  const onboardingVoiceId = `voice-onboarding-${Date.now()}`;
+  await page.getByLabel("Voice ID ElevenLabs").fill(onboardingVoiceId);
   await page.getByRole("button", { name: "Criar e testar" }).click();
   await expect(page).toHaveURL(/\/app\/operacao-e2e-/);
   await expect(
@@ -267,4 +277,11 @@ test("onboarding cria tenant, agente por template e abre teste", async ({
   await expect(
     page.getByRole("button", { name: /Recepcionista active/ }),
   ).toHaveCount(0);
+  await page
+    .getByRole("dialog", { name: "Teste de voz" })
+    .locator("button.close")
+    .click();
+  await page.getByRole("button", { name: /Agenda E2E draft/ }).click();
+  await page.getByRole("tab", { name: "Voz" }).click();
+  await expect(page.getByLabel("Voice ID")).toHaveValue(onboardingVoiceId);
 });

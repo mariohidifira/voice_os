@@ -2323,8 +2323,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_config_get_settings",
-      "community": 40,
-      "community_name": "Auth Runtime",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "get_settings()"
     },
     {
@@ -2994,8 +2994,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_native_integrations_nativeintegrations_init",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 40,
+      "community_name": "Auth Runtime",
       "norm_label": ".__init__()"
     },
     {
@@ -3005,8 +3005,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_native_integrations_py_asyncbasetransport",
-      "community": 69,
-      "community_name": "HealthChecker",
+      "community": 40,
+      "community_name": "Auth Runtime",
       "norm_label": "asyncbasetransport"
     },
     {
@@ -7042,8 +7042,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_storage",
-      "community": 40,
-      "community_name": "Auth Runtime",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "storage.py"
     },
     {
@@ -7097,8 +7097,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_storage_get_recording_storage",
-      "community": 40,
-      "community_name": "Auth Runtime",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "get_recording_storage()"
     },
     {
@@ -7262,8 +7262,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_tool_execution_toolexecutor_init",
-      "community": 40,
-      "community_name": "Auth Runtime",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".__init__()"
     },
     {
@@ -7273,8 +7273,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_tool_execution_py_asyncbasetransport",
-      "community": 40,
-      "community_name": "Auth Runtime",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "asyncbasetransport"
     },
     {
@@ -7930,7 +7930,7 @@
       "label": "createWorkspace()",
       "file_type": "code",
       "source_file": "apps/web/app/onboarding/actions.ts",
-      "source_location": "L13",
+      "source_location": "L18",
       "_origin": "ast",
       "id": "apps_web_app_onboarding_actions_createworkspace",
       "community": 25,
@@ -10356,8 +10356,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_test_agent_versions",
-      "community": 99,
-      "community_name": "request",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "test_agent_versions.py"
     },
     {
@@ -10367,8 +10367,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "scripts_test_agent_versions_request",
-      "community": 99,
-      "community_name": "request",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "request()"
     },
     {
@@ -10378,8 +10378,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "scripts_test_agent_versions_py_any",
-      "community": 99,
-      "community_name": "request",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "any"
     },
     {
@@ -10389,8 +10389,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "scripts_test_agent_versions_internal_request",
-      "community": 99,
-      "community_name": "request",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "internal_request()"
     },
     {
@@ -10400,8 +10400,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_test_agent_versions_rationale_1",
-      "community": 99,
-      "community_name": "request",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": "exercise agent draft, publish, version history and rollback against postgresql."
     },
     {
@@ -41081,7 +41081,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/onboarding/actions.ts",
-      "source_location": "L13",
+      "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_onboarding_actions",
@@ -41177,7 +41177,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/onboarding/actions.ts",
-      "source_location": "L38",
+      "source_location": "L69",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_onboarding_actions_createworkspace",
@@ -41189,7 +41189,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/onboarding/actions.ts",
-      "source_location": "L24",
+      "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_onboarding_actions_createworkspace",
@@ -41228,18 +41228,6 @@
       "_origin": "ast",
       "source": "apps_web_app_onboarding_page",
       "target": "apps_web_app_onboarding_wizard",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/app/onboarding/page.tsx",
-      "source_location": "L4",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "apps_web_app_onboarding_page",
-      "target": "apps_web_app_onboarding_wizard_onboardingwizard",
       "confidence_score": 1.0
     },
     {
@@ -47124,5 +47112,5 @@
       "source_file": "PHASE-0-REPORT.md"
     }
   ],
-  "built_at_commit": "4df7e9881057f1272342edf04358b884569b88b9"
+  "built_at_commit": "c7982f12ac3284ad3fcc97d4d86703be268241e8"
 }

@@ -1,16 +1,16 @@
 # Graph Report - VOICE_OS  (2026-08-22)
 
 ## Corpus Check
-- 159 files · ~72,735 words
+- 159 files · ~72,879 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1267 nodes · 2866 edges · 100 communities (68 shown, 32 thin omitted)
+- 1267 nodes · 2865 edges · 99 communities (67 shown, 32 thin omitted)
 - Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 335 edges (avg confidence: 0.71)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4df7e988`
+- Built from commit: `c7982f12`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -98,7 +98,6 @@
 - SessionGuards
 - Repository protocol
 - __init__.py
-- request
 
 ## God Nodes (most connected - your core abstractions)
 1. `Repository` - 72 edges
@@ -132,7 +131,7 @@
 - **Tenant Agent Version Management Flow** — apps_api_voiceos_api_routes_agent_version_lifecycle, apps_api_voiceos_api_repository_postgres_rls, apps_api_voiceos_api_schemas_api_contracts, scripts_test_agent_versions_acceptance [INFERRED 0.95]
 - **Phase 0 Local Acceptance Stack** — compose_local_platform, phase_0_local_acceptance, scripts_test_auth_flow_acceptance, scripts_test_rls_acceptance, scripts_smoke_local_stack [EXTRACTED 1.00]
 
-## Communities (100 total, 32 thin omitted)
+## Communities (99 total, 32 thin omitted)
 
 ### Community 0 - "Voice Core Modules"
 Cohesion: 0.06
@@ -207,8 +206,8 @@ Cohesion: 0.67
 Nodes (3): run worker loop, Local Docker Compose stack, Phase 4 WhatsApp processing
 
 ### Community 25 - "JWT Token Route"
-Cohesion: 0.08
-Nodes (21): GET(), proxy(), createWorkspace(), databaseUrl, OnboardingWizard(), emailProvider, providers, secureCookies (+13 more)
+Cohesion: 0.07
+Nodes (20): GET(), proxy(), createWorkspace(), databaseUrl, emailProvider, providers, secureCookies, databaseUrl (+12 more)
 
 ### Community 26 - "Authentication Flow Test"
 Cohesion: 0.50
@@ -243,8 +242,8 @@ Cohesion: 0.22
 Nodes (8): 14 — Fases de Execução, Depois da Fase 5 (backlog priorizado, não especificado aqui), Fase 0 — Fundação (1 semana), Fase 1 — Agente de voz por WebRTC + painel essencial (3–4 semanas), Fase 2 — Telefone (3 semanas), Fase 3 — Billing, API pública, qualidade, LGPD (2–3 semanas), Fase 4 — WhatsApp e simulador (2–3 semanas), Fase 5 — Widget embutível, SDK, white-label (2 semanas)
 
 ### Community 40 - "Auth Runtime"
-Cohesion: 0.17
-Nodes (13): get_settings(), Settings, get_livekit_sessions(), LiveKitSessions, Any, UUID, get_recording_storage(), Any (+5 more)
+Cohesion: 0.16
+Nodes (11): Settings, get_livekit_sessions(), LiveKitSessions, Any, UUID, AsyncBaseTransport, Any, RecordingStorage (+3 more)
 
 ### Community 41 - "ESLint Configuration"
 Cohesion: 0.33
@@ -279,8 +278,8 @@ Cohesion: 0.29
 Nodes (11): get_tool_executor(), _json_path(), _lookup(), Any, _render(), _safe_url(), ToolExecutor, test_webhook_bearer_secret_is_applied() (+3 more)
 
 ### Community 69 - "HealthChecker"
-Cohesion: 0.15
-Nodes (11): get_native_integrations(), NativeIntegrations, Any, AsyncBaseTransport, UUID, EnvelopeCipher, get_secret_cipher(), Protocol (+3 more)
+Cohesion: 0.17
+Nodes (10): get_native_integrations(), NativeIntegrations, Any, UUID, EnvelopeCipher, get_secret_cipher(), Protocol, SecretCipher (+2 more)
 
 ### Community 71 - "MemoryStore"
 Cohesion: 0.15
@@ -299,8 +298,8 @@ Cohesion: 0.41
 Nodes (3): Any, UUID, WorkerAPI
 
 ### Community 76 - "FakeEventBus"
-Cohesion: 0.60
-Nodes (4): internal_token(), Principal, UUID, Header
+Cohesion: 0.20
+Nodes (11): internal_token(), Principal, UUID, get_settings(), get_recording_storage(), AsyncBaseTransport, Header, internal_request() (+3 more)
 
 ### Community 77 - "repository.py"
 Cohesion: 0.39
@@ -337,10 +336,6 @@ Nodes (3): SessionGuards, test_session_guards_prompt_once_then_end_after_second_
 ### Community 92 - "Repository protocol"
 Cohesion: 0.15
 Nodes (9): AnthropicPromptImprover, get_prompt_improver(), PromptImprover, AsyncBaseTransport, Protocol, UnavailablePromptImprover, RuntimeError, test_prompt_improver_preserves_jinja_variables() (+1 more)
-
-### Community 99 - "request"
-Cohesion: 0.50
-Nodes (4): internal_request(), Any, Exercise agent draft, publish, version history and rollback against PostgreSQL., request()
 
 ## Knowledge Gaps
 - **188 isolated node(s):** `Item`, `Call`, `Document`, `AgentTemplate`, `Section` (+183 more)
