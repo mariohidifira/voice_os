@@ -7,7 +7,7 @@ from uuid import UUID
 import httpx
 import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from jsonschema import ValidationError, validate
 from livekit import api as livekit_api
 from pydantic import ValidationError as PydanticValidationError
@@ -48,6 +48,7 @@ from .schemas import (
     ToolTestRequest,
 )
 from .secrets import SecretCipher, get_secret_cipher
+from .storage import RecordingStorage, get_recording_storage
 from .tool_execution import ToolExecutor, get_tool_executor
 
 v1 = APIRouter(prefix="/v1")
@@ -62,6 +63,7 @@ Cipher = Annotated[SecretCipher, Depends(get_secret_cipher)]
 Native = Annotated[NativeIntegrations, Depends(get_native_integrations)]
 Processor = Annotated[Postprocessor, Depends(get_postprocessor)]
 Rtc = Annotated[LiveKitSessions, Depends(get_livekit_sessions)]
+Storage = Annotated[RecordingStorage, Depends(get_recording_storage)]
 
 
 def _require_admin(auth: Principal) -> None:
@@ -377,6 +379,15 @@ async def get_call(call_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
     if not call:
         raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
     return call
+
+
+@v1.get("/calls/{call_id}/recording", response_class=RedirectResponse)
+async def get_call_recording(call_id: UUID, auth: Auth, repo: Repo, storage: Storage) -> RedirectResponse:
+    call = await repo.get_call_detail(auth.tenant_id, call_id)
+    recording = call.get("recording") if call else None
+    if not recording or recording.get("status") != "ready" or not recording.get("s3_key"):
+        raise HTTPException(404, detail={"code": "recording_not_found", "message": "Recording not found"})
+    return RedirectResponse(await storage.playback_url(str(recording["s3_key"])), status_code=307)
 
 
 @v1.get("/calls/{call_id}/live")

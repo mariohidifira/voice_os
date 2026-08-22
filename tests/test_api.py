@@ -1,4 +1,4 @@
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import jwt
 from fastapi.testclient import TestClient
@@ -7,6 +7,7 @@ from voiceos_api.health import get_health_checker
 from voiceos_api.live import get_event_bus
 from voiceos_api.main import app
 from voiceos_api.repository import MemoryRepository, get_repository
+from voiceos_api.storage import get_recording_storage
 from voiceos_api.store import store
 
 client = TestClient(app)
@@ -15,7 +16,11 @@ app.dependency_overrides[get_repository] = lambda: MemoryRepository(store)
 
 class HealthyChecker:
     async def check(self) -> dict[str, object]:
-        return {"status": "ok", "service": "api", "components": {"database": True, "redis": True, "s3": True, "livekit_token": True}}
+        return {
+            "status": "ok",
+            "service": "api",
+            "components": {"database": True, "redis": True, "s3": True, "livekit_token": True},
+        }
 
 
 app.dependency_overrides[get_health_checker] = HealthyChecker
@@ -37,9 +42,27 @@ event_bus = FakeEventBus()
 app.dependency_overrides[get_event_bus] = lambda: event_bus
 
 
+class FakeRecordingStorage:
+    async def playback_url(self, key: str, expires_s: int = 900) -> str:
+        assert key.startswith("recordings/") and expires_s == 900
+        return "https://signed.example/recording.ogg"
+
+
+app.dependency_overrides[get_recording_storage] = FakeRecordingStorage
+
+
 def headers(tenant: str, role: str = "owner") -> dict[str, str]:
     settings = get_settings()
-    token = jwt.encode({"sub": "user-1", "iss": settings.jwt_issuer, "aud": settings.jwt_audience, "tenants": [{"id": tenant, "role": role}]}, settings.auth_secret, algorithm="HS256")
+    token = jwt.encode(
+        {
+            "sub": "user-1",
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+            "tenants": [{"id": tenant, "role": role}],
+        },
+        settings.auth_secret,
+        algorithm="HS256",
+    )
     return {"Authorization": f"Bearer {token}", "X-Tenant-Id": tenant}
 
 
@@ -66,13 +89,25 @@ def test_members_and_api_keys_are_tenant_scoped_and_admin_only() -> None:
     assert created.status_code == 201
     member = created.json()
     assert member["email"] == "dev@example.com" and member["role"] == "developer"
-    assert client.get(f"/v1/tenants/{tenant_a}/members", headers=owner).json()["data"][0]["id"] == member["id"]
+    assert (
+        client.get(f"/v1/tenants/{tenant_a}/members", headers=owner).json()["data"][0]["id"]
+        == member["id"]
+    )
     assert client.get(f"/v1/tenants/{tenant_b}/members", headers=owner).status_code == 404
-    assert client.post(f"/v1/tenants/{tenant_a}/members", json={"email": "x@y.dev"}, headers=viewer).status_code == 403
-    changed = client.patch(f"/v1/tenants/{tenant_a}/members/{member['id']}", json={"role": "operator"}, headers=owner)
+    assert (
+        client.post(
+            f"/v1/tenants/{tenant_a}/members", json={"email": "x@y.dev"}, headers=viewer
+        ).status_code
+        == 403
+    )
+    changed = client.patch(
+        f"/v1/tenants/{tenant_a}/members/{member['id']}", json={"role": "operator"}, headers=owner
+    )
     assert changed.json()["role"] == "operator"
 
-    public_without_origin = client.post("/v1/api-keys", json={"name": "widget", "scope": "public"}, headers=owner)
+    public_without_origin = client.post(
+        "/v1/api-keys", json={"name": "widget", "scope": "public"}, headers=owner
+    )
     assert public_without_origin.status_code == 422
     key_response = client.post(
         "/v1/api-keys",
@@ -83,10 +118,15 @@ def test_members_and_api_keys_are_tenant_scoped_and_admin_only() -> None:
     key = key_response.json()
     assert key["key"].startswith("vos_pk_") and "hash" not in key
     listed = client.get("/v1/api-keys", headers=owner).json()["data"]
-    assert listed[0]["prefix"] == key["prefix"] and "key" not in listed[0] and "hash" not in listed[0]
+    assert (
+        listed[0]["prefix"] == key["prefix"] and "key" not in listed[0] and "hash" not in listed[0]
+    )
     assert client.get("/v1/api-keys", headers=viewer).status_code == 403
     assert client.delete(f"/v1/api-keys/{key['id']}", headers=owner).status_code == 204
-    assert client.delete(f"/v1/tenants/{tenant_a}/members/{member['id']}", headers=owner).status_code == 204
+    assert (
+        client.delete(f"/v1/tenants/{tenant_a}/members/{member['id']}", headers=owner).status_code
+        == 204
+    )
 
 
 def test_agent_publish_session_and_isolation() -> None:
@@ -99,7 +139,10 @@ def test_agent_publish_session_and_isolation() -> None:
     assert created.status_code == 201
     agent = created.json()
     assert client.get("/v1/agents", headers=headers(tenant_b)).json()["data"] == []
-    assert client.post(f"/v1/agents/{agent['id']}/publish", headers=headers(tenant_a)).json()["status"] == "active"
+    assert (
+        client.post(f"/v1/agents/{agent['id']}/publish", headers=headers(tenant_a)).json()["status"]
+        == "active"
+    )
     session = client.post("/v1/sessions", json={"agent_id": agent["id"]}, headers=headers(tenant_a))
     assert session.status_code == 201
     assert client.get("/v1/calls", headers=headers(tenant_b)).json()["data"] == []
@@ -150,18 +193,31 @@ def test_session_end_user_filters_and_draft_test_session() -> None:
     published = client.post(f"/v1/agents/{agent['id']}/publish", headers=auth).json()
     session = client.post(
         "/v1/sessions",
-        json={"agent_id": agent["id"], "end_user": {"external_id": "customer-42", "name": "Cliente"}},
+        json={
+            "agent_id": agent["id"],
+            "end_user": {"external_id": "customer-42", "name": "Cliente"},
+        },
         headers=auth,
     ).json()
     call = client.get(f"/v1/calls/{session['call_id']}", headers=auth).json()
     assert call["agent_version_id"] == published["current_version_id"]
     assert call["end_user_id"]
-    assert len(client.get(f"/v1/calls?agent_id={agent['id']}&channel=web&status=queued", headers=auth).json()["data"]) == 1
+    assert (
+        len(
+            client.get(
+                f"/v1/calls?agent_id={agent['id']}&channel=web&status=queued", headers=auth
+            ).json()["data"]
+        )
+        == 1
+    )
 
     detail = client.get(f"/v1/agents/{agent['id']}", headers=auth).json()
     test_session = client.post(
         f"/v1/agents/{agent['id']}/test-session",
-        json={"agent_id": agent["id"], "end_user": {"external_id": "customer-42", "phone": "+5511999999999"}},
+        json={
+            "agent_id": agent["id"],
+            "end_user": {"external_id": "customer-42", "phone": "+5511999999999"},
+        },
         headers=auth,
     ).json()
     test_call = client.get(f"/v1/calls/{test_session['call_id']}", headers=auth).json()
@@ -183,7 +239,10 @@ def test_agent_draft_versions_and_rollback() -> None:
 
     draft = client.patch(
         f"/v1/agents/{created['id']}/draft",
-        json={"system_prompt": "Atenda como concierge.", "llm": {"provider": "anthropic", "temperature": 0.2}},
+        json={
+            "system_prompt": "Atenda como concierge.",
+            "llm": {"provider": "anthropic", "temperature": 0.2},
+        },
         headers=auth,
     )
     assert draft.status_code == 200
@@ -205,7 +264,12 @@ def test_agent_draft_versions_and_rollback() -> None:
 
     versions = client.get(f"/v1/agents/{created['id']}/versions", headers=auth).json()["data"]
     assert [version["version"] for version in versions] == [3, 2, 1]
-    assert client.get(f"/v1/agents/{created['id']}/versions/{first_version_id}", headers=auth).status_code == 200
+    assert (
+        client.get(
+            f"/v1/agents/{created['id']}/versions/{first_version_id}", headers=auth
+        ).status_code
+        == 200
+    )
 
     rolled_back = client.post(
         f"/v1/agents/{created['id']}/rollback",
@@ -215,14 +279,18 @@ def test_agent_draft_versions_and_rollback() -> None:
     assert rolled_back.status_code == 200
     assert rolled_back.json()["current_version_id"] == first_version_id
 
-    renamed = client.patch(f"/v1/agents/{created['id']}", json={"name": "Concierge BR"}, headers=auth)
+    renamed = client.patch(
+        f"/v1/agents/{created['id']}", json={"name": "Concierge BR"}, headers=auth
+    )
     assert renamed.json()["name"] == "Concierge BR"
     assert client.delete(f"/v1/agents/{created['id']}", headers=auth).status_code == 204
     assert client.get(f"/v1/agents/{created['id']}", headers=auth).status_code == 404
 
 
 def test_operator_cannot_create_agent() -> None:
-    response = client.post("/v1/agents", json={"name": "Blocked"}, headers=headers(str(uuid4()), "operator"))
+    response = client.post(
+        "/v1/agents", json={"name": "Blocked"}, headers=headers(str(uuid4()), "operator")
+    )
     assert response.status_code == 403
 
 
@@ -235,9 +303,10 @@ def test_operator_and_viewer_cannot_access_agent_configuration_resources() -> No
         assert client.get("/v1/integrations", headers=auth).status_code == 403
         assert client.get("/v1/knowledge-bases", headers=auth).status_code == 403
         assert client.get(f"/v1/tenants/{tenant}/members", headers=auth).status_code == 403
-        assert client.post(
-            "/v1/knowledge-bases", json={"name": "Blocked"}, headers=auth
-        ).status_code == 403
+        assert (
+            client.post("/v1/knowledge-bases", json={"name": "Blocked"}, headers=auth).status_code
+            == 403
+        )
 
 
 def test_internal_auth() -> None:
@@ -264,11 +333,28 @@ def test_tool_and_internal_runtime() -> None:
     assert tool.status_code == 201
     tool_id = tool.json()["id"]
     assert client.get("/v1/tools", headers=headers(tenant)).json()["data"][0]["id"] == tool_id
-    assert client.patch(f"/v1/tools/{tool_id}", json={"speak_before": "Consultando"}, headers=headers(tenant)).json()["speak_before"] == "Consultando"
-    assert client.put(f"/v1/agents/{agent['id']}/draft/tools", json={"tool_ids": [tool_id]}, headers=headers(tenant)).status_code == 200
+    assert (
+        client.patch(
+            f"/v1/tools/{tool_id}", json={"speak_before": "Consultando"}, headers=headers(tenant)
+        ).json()["speak_before"]
+        == "Consultando"
+    )
+    assert (
+        client.put(
+            f"/v1/agents/{agent['id']}/draft/tools",
+            json={"tool_ids": [tool_id]},
+            headers=headers(tenant),
+        ).status_code
+        == 200
+    )
     linked = client.get(f"/v1/agents/{agent['id']}/draft/tools", headers=headers(tenant))
     assert linked.status_code == 200 and linked.json()["data"][0]["id"] == tool_id
-    assert client.get(f"/v1/agents/{agent['id']}/draft/tools", headers=headers(str(uuid4()))).status_code == 404
+    assert (
+        client.get(
+            f"/v1/agents/{agent['id']}/draft/tools", headers=headers(str(uuid4()))
+        ).status_code
+        == 404
+    )
     runtime = client.get(
         f"/internal/agents/{agent['id']}/runtime?version=draft",
         headers={"X-Internal-Token": get_settings().internal_api_token},
@@ -277,12 +363,24 @@ def test_tool_and_internal_runtime() -> None:
     assert runtime.json()["language"] == "pt-BR"
     assert runtime.json()["tools"][0]["name"] == "consultar_pedido"
     published = client.post(f"/v1/agents/{agent['id']}/publish", headers=headers(tenant)).json()
-    current = client.get(f"/internal/agents/{agent['id']}/runtime?version=current", headers={"X-Internal-Token": get_settings().internal_api_token}).json()
+    current = client.get(
+        f"/internal/agents/{agent['id']}/runtime?version=current",
+        headers={"X-Internal-Token": get_settings().internal_api_token},
+    ).json()
     assert current["version_id"] == published["current_version_id"]
     assert current["tools"][0]["id"] == tool_id
-    next_draft = client.get(f"/internal/agents/{agent['id']}/runtime?version=draft", headers={"X-Internal-Token": get_settings().internal_api_token}).json()
+    next_draft = client.get(
+        f"/internal/agents/{agent['id']}/runtime?version=draft",
+        headers={"X-Internal-Token": get_settings().internal_api_token},
+    ).json()
     assert next_draft["tools"][0]["id"] == tool_id
-    assert client.get(f"/internal/agents/{agent['id']}/runtime?version=invalid", headers={"X-Internal-Token": get_settings().internal_api_token}).status_code == 404
+    assert (
+        client.get(
+            f"/internal/agents/{agent['id']}/runtime?version=invalid",
+            headers={"X-Internal-Token": get_settings().internal_api_token},
+        ).status_code
+        == 404
+    )
     assert client.delete(f"/v1/tools/{tool_id}", headers=headers(tenant)).status_code == 204
 
 
@@ -290,7 +388,9 @@ def test_secret_values_are_encrypted_and_never_returned() -> None:
     store.secrets.clear()
     tenant = str(uuid4())
     auth = headers(tenant)
-    created = client.post("/v1/secrets", json={"name": "crm_token", "value": "super-secret"}, headers=auth)
+    created = client.post(
+        "/v1/secrets", json={"name": "crm_token", "value": "super-secret"}, headers=auth
+    )
     assert created.status_code == 201
     assert "value" not in created.json() and "ciphertext" not in created.json()
     secret_id = created.json()["id"]
@@ -308,8 +408,20 @@ def test_publish_rejects_untested_webhook_tool() -> None:
     tenant = str(uuid4())
     auth = headers(tenant)
     agent = client.post("/v1/agents", json={"name": "Guarded"}, headers=auth).json()
-    tool = client.post("/v1/tools", json={"name": "crm_lookup", "description": "Use para consultar o CRM", "type": "webhook", "parameters_schema": {"type": "object"}, "webhook": {"url": "https://example.test", "auth": {"type": "none"}}}, headers=auth).json()
-    client.put(f"/v1/agents/{agent['id']}/draft/tools", json={"tool_ids": [tool["id"]]}, headers=auth)
+    tool = client.post(
+        "/v1/tools",
+        json={
+            "name": "crm_lookup",
+            "description": "Use para consultar o CRM",
+            "type": "webhook",
+            "parameters_schema": {"type": "object"},
+            "webhook": {"url": "https://example.test", "auth": {"type": "none"}},
+        },
+        headers=auth,
+    ).json()
+    client.put(
+        f"/v1/agents/{agent['id']}/draft/tools", json={"tool_ids": [tool["id"]]}, headers=auth
+    )
     rejected = client.post(f"/v1/agents/{agent['id']}/publish", headers=auth)
     assert rejected.status_code == 422
     assert "must pass a test" in rejected.json()["error"]["details"]["errors"][0]
@@ -348,22 +460,52 @@ def test_call_lifecycle_internal_batches_and_detail() -> None:
     assert events.json() == {"accepted": 1}
     turns = client.post(
         f"/internal/calls/{call_id}/turns",
-        json={"turns": [{"ordinal": 0, "role": "user", "text": "Olá"}, {"ordinal": 1, "role": "agent", "text": "Como posso ajudar?", "ttfb_ms": 720}]},
+        json={
+            "turns": [
+                {"ordinal": 0, "role": "user", "text": "Olá"},
+                {"ordinal": 1, "role": "agent", "text": "Como posso ajudar?", "ttfb_ms": 720},
+            ]
+        },
         headers=internal,
     )
     assert turns.json() == {"accepted": 2}
     tool_call = client.post(
         f"/internal/calls/{call_id}/tool-calls",
-        json={"name": "consultar_pedido", "arguments": {"id": "42"}, "result": {"status": "enviado"}, "status": "ok", "duration_ms": 25},
+        json={
+            "name": "consultar_pedido",
+            "arguments": {"id": "42"},
+            "result": {"status": "enviado"},
+            "status": "ok",
+            "duration_ms": 25,
+        },
         headers=internal,
     )
     assert tool_call.status_code == 201
-    assert [event[2]["type"] for event in event_bus.events] == ["call.answered", "turn.user", "turn.agent", "tool.called"]
+    assert [event[2]["type"] for event in event_bus.events] == [
+        "call.answered",
+        "turn.user",
+        "turn.agent",
+        "tool.called",
+    ]
 
     detail = client.get(f"/v1/calls/{call_id}", headers=auth).json()
     assert [turn["role"] for turn in detail["turns"]] == ["user", "agent"]
     assert detail["events"][0]["type"] == "call.answered"
     assert detail["tool_calls"][0]["name"] == "consultar_pedido"
+    store.call_recordings[UUID(call_id)] = {
+        "s3_key": f"recordings/{tenant}/{call_id}.ogg",
+        "format": "ogg",
+        "status": "ready",
+    }
+    recording = client.get(f"/v1/calls/{call_id}/recording", headers=auth, follow_redirects=False)
+    assert recording.status_code == 307
+    assert recording.headers["location"] == "https://signed.example/recording.ogg"
+    assert (
+        client.get(
+            f"/v1/calls/{call_id}/recording", headers=headers(str(uuid4())), follow_redirects=False
+        ).status_code
+        == 404
+    )
 
     ended = client.post(f"/v1/calls/{call_id}/hangup", headers=auth)
     assert ended.json()["end_reason"] == "agent_hangup"
@@ -373,10 +515,24 @@ def test_call_lifecycle_internal_batches_and_detail() -> None:
 
 def test_invalid_token_and_wrong_tenant() -> None:
     tenant = str(uuid4())
-    assert client.get("/v1/me", headers={"Authorization": "Bearer invalid", "X-Tenant-Id": tenant}).status_code == 401
+    assert (
+        client.get(
+            "/v1/me", headers={"Authorization": "Bearer invalid", "X-Tenant-Id": tenant}
+        ).status_code
+        == 401
+    )
     settings = get_settings()
-    token = jwt.encode({"sub": "u", "iss": settings.jwt_issuer, "aud": settings.jwt_audience, "tenants": []}, settings.auth_secret, algorithm="HS256")
-    assert client.get("/v1/me", headers={"Authorization": f"Bearer {token}", "X-Tenant-Id": tenant}).status_code == 403
+    token = jwt.encode(
+        {"sub": "u", "iss": settings.jwt_issuer, "aud": settings.jwt_audience, "tenants": []},
+        settings.auth_secret,
+        algorithm="HS256",
+    )
+    assert (
+        client.get(
+            "/v1/me", headers={"Authorization": f"Bearer {token}", "X-Tenant-Id": tenant}
+        ).status_code
+        == 403
+    )
 
 
 def test_knowledge_base_and_document_crud_is_tenant_scoped() -> None:
@@ -385,26 +541,69 @@ def test_knowledge_base_and_document_crud_is_tenant_scoped() -> None:
     store.chunks.clear()
     tenant_a, tenant_b = str(uuid4()), str(uuid4())
     auth_a, auth_b = headers(tenant_a), headers(tenant_b)
-    kb = client.post("/v1/knowledge-bases", json={"name": "FAQ", "chunk_size": 400, "chunk_overlap": 50}, headers=auth_a)
+    kb = client.post(
+        "/v1/knowledge-bases",
+        json={"name": "FAQ", "chunk_size": 400, "chunk_overlap": 50},
+        headers=auth_a,
+    )
     assert kb.status_code == 201
     kb_id = kb.json()["id"]
     assert client.get("/v1/knowledge-bases", headers=auth_b).json()["data"] == []
-    assert client.patch(f"/v1/knowledge-bases/{kb_id}", json={"name": "FAQ BR"}, headers=auth_a).json()["name"] == "FAQ BR"
-    assert client.post(f"/v1/knowledge-bases/{kb_id}/documents", json={"name": "Sem fonte"}, headers=auth_a).status_code == 422
-    document = client.post(f"/v1/knowledge-bases/{kb_id}/documents", json={"name": "Atendimento", "text": "Prazo de entrega de dois dias."}, headers=auth_a)
+    assert (
+        client.patch(
+            f"/v1/knowledge-bases/{kb_id}", json={"name": "FAQ BR"}, headers=auth_a
+        ).json()["name"]
+        == "FAQ BR"
+    )
+    assert (
+        client.post(
+            f"/v1/knowledge-bases/{kb_id}/documents", json={"name": "Sem fonte"}, headers=auth_a
+        ).status_code
+        == 422
+    )
+    document = client.post(
+        f"/v1/knowledge-bases/{kb_id}/documents",
+        json={"name": "Atendimento", "text": "Prazo de entrega de dois dias."},
+        headers=auth_a,
+    )
     assert document.status_code == 202
     document_id = document.json()["id"]
     documents = client.get(f"/v1/knowledge-bases/{kb_id}/documents", headers=auth_a).json()["data"]
     assert documents[0]["status"] == "ready"
     assert documents[0]["chunk_count"] == 1
-    query = client.post(f"/v1/knowledge-bases/{kb_id}/query", json={"query": "Prazo de entrega de dois dias.", "min_score": 0.99}, headers=auth_a)
+    query = client.post(
+        f"/v1/knowledge-bases/{kb_id}/query",
+        json={"query": "Prazo de entrega de dois dias.", "min_score": 0.99},
+        headers=auth_a,
+    )
     assert query.json()["data"][0]["content"] == "Prazo de entrega de dois dias."
-    internal_query = client.post("/internal/rag/query", json={"knowledge_base_id": kb_id, "query": "Prazo de entrega de dois dias.", "min_score": 0.99}, headers={"X-Internal-Token": get_settings().internal_api_token})
+    internal_query = client.post(
+        "/internal/rag/query",
+        json={
+            "knowledge_base_id": kb_id,
+            "query": "Prazo de entrega de dois dias.",
+            "min_score": 0.99,
+        },
+        headers={"X-Internal-Token": get_settings().internal_api_token},
+    )
     assert internal_query.json()["data"][0]["score"] > 0.99
-    upload = client.post(f"/v1/knowledge-bases/{kb_id}/documents", files={"file": ("faq.html", b"<h1>Trocas</h1><p>Prazo de sete dias.</p>", "text/html")}, headers=auth_a)
+    upload = client.post(
+        f"/v1/knowledge-bases/{kb_id}/documents",
+        files={"file": ("faq.html", b"<h1>Trocas</h1><p>Prazo de sete dias.</p>", "text/html")},
+        headers=auth_a,
+    )
     assert upload.status_code == 202
-    uploaded_documents = client.get(f"/v1/knowledge-bases/{kb_id}/documents", headers=auth_a).json()["data"]
-    assert any(item["name"] == "faq.html" and item["status"] == "ready" for item in uploaded_documents)
+    uploaded_documents = client.get(
+        f"/v1/knowledge-bases/{kb_id}/documents", headers=auth_a
+    ).json()["data"]
+    assert any(
+        item["name"] == "faq.html" and item["status"] == "ready" for item in uploaded_documents
+    )
     assert client.get(f"/v1/knowledge-bases/{kb_id}", headers=auth_b).status_code == 404
-    assert client.delete(f"/v1/knowledge-bases/{kb_id}/documents/{document_id}", headers=auth_a).status_code == 204
+    assert (
+        client.delete(
+            f"/v1/knowledge-bases/{kb_id}/documents/{document_id}", headers=auth_a
+        ).status_code
+        == 204
+    )
     assert client.delete(f"/v1/knowledge-bases/{kb_id}", headers=auth_a).status_code == 204

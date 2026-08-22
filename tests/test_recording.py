@@ -3,8 +3,10 @@ from uuid import uuid4
 
 import pytest
 from livekit import api
+from voiceos_api.config import Settings
 from voiceos_api.repository import MemoryRepository
 from voiceos_api.routes import _egress_recording
+from voiceos_api.storage import RecordingStorage
 from voiceos_api.store import MemoryStore
 from voiceos_voice.recording import start_egress
 
@@ -14,9 +16,7 @@ async def test_start_egress_uses_audio_only_ogg_and_tenant_scoped_s3_key() -> No
     captured: list[api.RoomCompositeEgressRequest] = []
 
     class Egress:
-        async def start_room_composite_egress(
-            self, request: api.RoomCompositeEgressRequest
-        ) -> Any:
+        async def start_room_composite_egress(self, request: api.RoomCompositeEgressRequest) -> Any:
             captured.append(request)
             return type("Info", (), {"egress_id": "EG_123"})()
 
@@ -69,11 +69,39 @@ async def test_memory_repository_upserts_recording_into_call_detail() -> None:
     repository = MemoryRepository(memory)
     tenant_id, agent_id = uuid4(), uuid4()
     call = await repository.create_internal_call(
-        {"tenant_id": tenant_id, "agent_id": agent_id, "agent_version_id": None, "channel": "web", "livekit_room": "room", "variables": {}, "metadata": {}}
+        {
+            "tenant_id": tenant_id,
+            "agent_id": agent_id,
+            "agent_version_id": None,
+            "channel": "web",
+            "livekit_room": "room",
+            "variables": {},
+            "metadata": {},
+        }
     )
     await repository.upsert_call_recording(
-        call["id"], {"s3_key": f"recordings/{tenant_id}/{call['id']}.ogg", "format": "ogg", "status": "ready"}
+        call["id"],
+        {"s3_key": f"recordings/{tenant_id}/{call['id']}.ogg", "format": "ogg", "status": "ready"},
     )
     detail = await repository.get_call_detail(tenant_id, call["id"])
     assert detail is not None
     assert detail["recording"]["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_recording_storage_generates_short_lived_tenant_object_url() -> None:
+    class S3:
+        def generate_presigned_url(self, operation: str, **kwargs: Any) -> str:
+            assert operation == "get_object"
+            assert kwargs == {
+                "Params": {"Bucket": "recordings-test", "Key": "recordings/tenant/call.ogg"},
+                "ExpiresIn": 900,
+            }
+            return "https://signed.example/recording"
+
+    settings = Settings(s3_bucket_recordings="recordings-test")
+    storage = RecordingStorage(settings, S3())
+    assert (
+        await storage.playback_url("recordings/tenant/call.ogg")
+        == "https://signed.example/recording"
+    )

@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_postprocess_model: str = "claude-haiku-4-5"
     aws_kms_key_id: str | None = None
-    aws_region: str = "us-east-1"
+    aws_region: str = "sa-east-1"
     resend_api_key: str | None = None
     email_from: str = "VoiceOS <noreply@example.invalid>"
     google_client_id: str | None = None

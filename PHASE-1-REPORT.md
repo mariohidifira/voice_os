@@ -22,7 +22,7 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 - Playwright essencial: 2 cenários aprovados contra PostgreSQL, mock HTTP e API em `localhost:8005`, cobrindo o fluxo administrativo e o onboarding completo.
 - Isolamento PostgreSQL reforçado: toda sessão de tenant assume o papel `voiceos_app` (`NOSUPERUSER`/`NOBYPASSRLS`) antes de definir `app.tenant_id`; o E2E confirma que o novo tenant não enxerga agentes do tenant demo.
 - RBAC de configuração: operator/viewer recebem 403 em KB, tools, secrets, integrações e membros; o painel carrega somente os recursos permitidos ao papel.
-- Detalhe de chamada: player/download, custo, TTFB, reação ao barge-in, tools, eventos, resultado e variáveis coletadas.
+- Detalhe de chamada: player autenticado por URL S3 assinada e tenant-scoped, download, transcrição clicável sincronizada, custo, TTFB, reação ao barge-in, tools, eventos, resultado e variáveis coletadas.
 - Editor avançado: modelo/temperatura/tokens, voz/velocidade/estabilidade, presets de turno, interrupções, backchannels, keywords STT, filler, transferência, variáveis e JSON read-only; persistência coberta no E2E.
 - Ciclo administrativo do agente: pausar, reativar e excluir pelo painel.
 - Conversas determinísticas: 40 casos texto + 10 casos áudio sintético, 100% aprovados.
