@@ -602,6 +602,7 @@ export default function Dashboard({
   ).length;
   const completed = calls.filter((call) => call.status === "completed").length;
   const canConfigure = ["owner", "admin"].includes(role);
+  const ownerCount = members.filter((member) => member.role === "owner").length;
 
   async function createAgent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2078,6 +2079,12 @@ export default function Dashboard({
                         <select
                           aria-label={`Papel de ${String(member.email)}`}
                           defaultValue={String(member.role)}
+                          disabled={member.role === "owner" && ownerCount === 1}
+                          title={
+                            member.role === "owner" && ownerCount === 1
+                              ? "Promova outro owner antes de alterar este papel"
+                              : undefined
+                          }
                           onChange={(event) =>
                             void updateMember(member.id, event.target.value)
                           }
@@ -2091,6 +2098,12 @@ export default function Dashboard({
                         <button
                           className="danger"
                           type="button"
+                          disabled={member.role === "owner" && ownerCount === 1}
+                          title={
+                            member.role === "owner" && ownerCount === 1
+                              ? "O workspace precisa manter ao menos um owner"
+                              : undefined
+                          }
                           onClick={() => void removeMember(member.id)}
                         >
                           Remover

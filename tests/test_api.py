@@ -184,6 +184,59 @@ def test_members_and_api_keys_are_tenant_scoped_and_admin_only() -> None:
     )
 
 
+def test_tenant_must_always_keep_an_owner() -> None:
+    store.memberships.clear()
+    store.users.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    first = client.post(
+        f"/v1/tenants/{tenant}/members",
+        json={"email": "owner-one@example.com", "role": "owner"},
+        headers=auth,
+    ).json()
+    demote_last = client.patch(
+        f"/v1/tenants/{tenant}/members/{first['id']}",
+        json={"role": "admin"},
+        headers=auth,
+    )
+    assert demote_last.status_code == 409
+    assert demote_last.json()["error"]["code"] == "last_owner_required"
+    assert (
+        client.delete(f"/v1/tenants/{tenant}/members/{first['id']}", headers=auth).status_code
+        == 409
+    )
+
+    second = client.post(
+        f"/v1/tenants/{tenant}/members",
+        json={"email": "owner-two@example.com", "role": "owner"},
+        headers=auth,
+    ).json()
+    assert (
+        client.patch(
+            f"/v1/tenants/{tenant}/members/{first['id']}",
+            json={"role": "admin"},
+            headers=auth,
+        ).status_code
+        == 200
+    )
+    assert (
+        client.delete(f"/v1/tenants/{tenant}/members/{second['id']}", headers=auth).status_code
+        == 409
+    )
+    assert (
+        client.patch(
+            f"/v1/tenants/{tenant}/members/{first['id']}",
+            json={"role": "owner"},
+            headers=auth,
+        ).status_code
+        == 200
+    )
+    assert (
+        client.delete(f"/v1/tenants/{tenant}/members/{second['id']}", headers=auth).status_code
+        == 204
+    )
+
+
 def test_agent_publish_session_and_isolation() -> None:
     store.agents.clear()
     store.agent_versions.clear()

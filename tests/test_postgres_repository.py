@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import text
 from voiceos_api.db import SessionFactory
-from voiceos_api.repository import PostgresRepository
+from voiceos_api.repository import LastOwnerError, PostgresRepository
 
 TENANT = UUID("00000000-0000-0000-0000-000000000001")
 USER = UUID("00000000-0000-0000-0000-000000000002")
@@ -16,7 +16,16 @@ async def test_postgres_members_and_api_keys_lifecycle() -> None:
     marker = uuid4().hex
     email = f"member-{marker}@example.com"
     member = await repo.create_member(TENANT, email, "developer")
-    key = await repo.create_api_key(TENANT, {"name": f"key-{marker}", "prefix": "vos_sk_test", "hash": marker, "scope": "secret", "allowed_origins": []})
+    key = await repo.create_api_key(
+        TENANT,
+        {
+            "name": f"key-{marker}",
+            "prefix": "vos_sk_test",
+            "hash": marker,
+            "scope": "secret",
+            "allowed_origins": [],
+        },
+    )
     try:
         assert any(item["id"] == member["id"] for item in await repo.list_members(TENANT))
         updated = await repo.update_member(TENANT, member["id"], "operator")
@@ -32,8 +41,33 @@ async def test_postgres_members_and_api_keys_lifecycle() -> None:
         async with SessionFactory() as db, db.begin():
             await db.execute(text("SET LOCAL row_security = off"))
             await db.execute(text("DELETE FROM api_keys WHERE id=:id"), {"id": key["id"]})
-            await db.execute(text("DELETE FROM memberships WHERE user_id=:id"), {"id": member["id"]})
+            await db.execute(
+                text("DELETE FROM memberships WHERE user_id=:id"), {"id": member["id"]}
+            )
             await db.execute(text("DELETE FROM users WHERE id=:id"), {"id": member["id"]})
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_postgres_serializes_last_owner_protection() -> None:
+    repo = PostgresRepository()
+    temporary_owner_id: UUID | None = None
+    try:
+        temporary_owner = await repo.create_member(
+            TENANT, f"owner-guard-{uuid4().hex}@example.com", "owner"
+        )
+        temporary_owner_id = temporary_owner["id"]
+        assert await repo.update_member(TENANT, USER, "admin")
+        with pytest.raises(LastOwnerError):
+            await repo.update_member(TENANT, temporary_owner_id, "admin")
+        with pytest.raises(LastOwnerError):
+            await repo.delete_member(TENANT, temporary_owner_id)
+    finally:
+        await repo.update_member(TENANT, USER, "owner")
+        if temporary_owner_id:
+            await repo.delete_member(TENANT, temporary_owner_id)
+            async with SessionFactory() as db, db.begin():
+                await db.execute(text("SET LOCAL row_security = off"))
+                await db.execute(text("DELETE FROM users WHERE id=:id"), {"id": temporary_owner_id})
 
 
 @pytest.mark.asyncio(loop_scope="module")
@@ -51,11 +85,15 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
     try:
         assert await repo.get_agent(TENANT, agent_id)
         assert await repo.get_agent_detail(TENANT, agent_id)
-        assert (await repo.update_agent(TENANT, agent_id, {"name": "Repository covered"}))["name"] == "Repository covered"  # type: ignore[index]
+        assert (await repo.update_agent(TENANT, agent_id, {"name": "Repository covered"}))[
+            "name"
+        ] == "Repository covered"  # type: ignore[index]
         assert await repo.update_agent(TENANT, agent_id, {})
         assert await repo.update_agent(TENANT, UUID(int=0), {"name": "missing"}) is None
 
-        draft = await repo.update_draft(TENANT, agent_id, {"system_prompt": "Versão um", "rag": {"enabled": True}})
+        draft = await repo.update_draft(
+            TENANT, agent_id, {"system_prompt": "Versão um", "rag": {"enabled": True}}
+        )
         assert draft and draft["system_prompt"] == "Versão um"
         first = await repo.publish_agent(TENANT, agent_id)
         assert first
@@ -73,10 +111,21 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
 
         tool = await repo.create_tool(
             TENANT,
-            {"name": f"repo_tool_{str(agent_id)[:8]}", "description": "Teste", "type": "webhook", "native_kind": None, "parameters_schema": {"type": "object"}, "webhook": None, "speak_before": None, "async": False},
+            {
+                "name": f"repo_tool_{str(agent_id)[:8]}",
+                "description": "Teste",
+                "type": "webhook",
+                "native_kind": None,
+                "parameters_schema": {"type": "object"},
+                "webhook": None,
+                "speak_before": None,
+                "async": False,
+            },
         )
         tool_id = tool["id"]
-        assert [item["id"] for item in await repo.list_tools(TENANT) if item["id"] == tool_id] == [tool_id]
+        assert [item["id"] for item in await repo.list_tools(TENANT) if item["id"] == tool_id] == [
+            tool_id
+        ]
         assert await repo.get_tool(TENANT, tool_id)
         updated_tool = await repo.update_tool(TENANT, tool_id, {"speak_before": "Consultando"})
         assert updated_tool and updated_tool["speak_before"] == "Consultando"
@@ -91,17 +140,33 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
         assert await repo.get_runtime(agent_id, str(current_runtime["version_id"]))
         assert await repo.get_runtime(agent_id, "invalid") is None
 
-        kb = await repo.create_knowledge_base(TENANT, {"name": f"KB {str(agent_id)[:8]}", "embedding_model": "text-embedding-3-small", "chunk_size": 400, "chunk_overlap": 50})
+        kb = await repo.create_knowledge_base(
+            TENANT,
+            {
+                "name": f"KB {str(agent_id)[:8]}",
+                "embedding_model": "text-embedding-3-small",
+                "chunk_size": 400,
+                "chunk_overlap": 50,
+            },
+        )
         kb_id = kb["id"]
         assert await repo.get_knowledge_base(TENANT, kb_id)
         assert await repo.get_knowledge_base_tenant(kb_id) == TENANT
         assert any(item["id"] == kb_id for item in await repo.list_knowledge_bases(TENANT))
-        assert (await repo.update_knowledge_base(TENANT, kb_id, {"name": "KB updated"}))["name"] == "KB updated"  # type: ignore[index]
-        document = await repo.create_document(TENANT, kb_id, {"name": "FAQ", "source_type": "text", "source_uri": None})
+        assert (await repo.update_knowledge_base(TENANT, kb_id, {"name": "KB updated"}))[
+            "name"
+        ] == "KB updated"  # type: ignore[index]
+        document = await repo.create_document(
+            TENANT, kb_id, {"name": "FAQ", "source_type": "text", "source_uri": None}
+        )
         assert document
         document_id = document["id"]
         vector = [1.0] + [0.0] * 1535
-        await repo.complete_document(TENANT, document_id, [{"content": "Prazo dois dias", "embedding": vector, "metadata": {}, "token_count": 4}])
+        await repo.complete_document(
+            TENANT,
+            document_id,
+            [{"content": "Prazo dois dias", "embedding": vector, "metadata": {}, "token_count": 4}],
+        )
         assert (await repo.list_documents(TENANT, kb_id))[0]["status"] == "ready"
         matches = await repo.query_chunks(TENANT, kb_id, vector, 5, 0.99)
         assert matches[0]["content"] == "Prazo dois dias"
@@ -110,39 +175,149 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
         assert "ciphertext" not in secret
         assert (await repo.get_secret(TENANT, secret_id))["ciphertext"] == b"encrypted"  # type: ignore[index]
         assert any(item["id"] == secret_id for item in await repo.list_secrets(TENANT))
-        integration = await repo.upsert_integration(TENANT, "google", {"scopes": ["calendar"], "refresh_token_secret_id": secret_id, "account_email": "owner@example.com", "status": "active"})
+        integration = await repo.upsert_integration(
+            TENANT,
+            "google",
+            {
+                "scopes": ["calendar"],
+                "refresh_token_secret_id": secret_id,
+                "account_email": "owner@example.com",
+                "status": "active",
+            },
+        )
         integration_id = integration["id"]
-        assert (await repo.get_integration(TENANT, "google"))["account_email"] == "owner@example.com"  # type: ignore[index]
-        updated_integration = await repo.upsert_integration(TENANT, "google", {"scopes": ["calendar"], "refresh_token_secret_id": secret_id, "account_email": "new@example.com", "status": "active"})
-        assert updated_integration["id"] == integration_id and updated_integration["account_email"] == "new@example.com"
+        assert (await repo.get_integration(TENANT, "google"))[
+            "account_email"
+        ] == "owner@example.com"  # type: ignore[index]
+        updated_integration = await repo.upsert_integration(
+            TENANT,
+            "google",
+            {
+                "scopes": ["calendar"],
+                "refresh_token_secret_id": secret_id,
+                "account_email": "new@example.com",
+                "status": "active",
+            },
+        )
+        assert (
+            updated_integration["id"] == integration_id
+            and updated_integration["account_email"] == "new@example.com"
+        )
 
-        end_user = await repo.upsert_end_user(TENANT, {"external_id": f"repo-{agent_id}", "name": "Mario", "metadata": {"source": "pytest"}})
+        end_user = await repo.upsert_end_user(
+            TENANT,
+            {"external_id": f"repo-{agent_id}", "name": "Mario", "metadata": {"source": "pytest"}},
+        )
         end_user_id = end_user["id"]
-        updated_end_user = await repo.upsert_end_user(TENANT, {"external_id": f"repo-{agent_id}", "phone": "+5511999999999", "metadata": {"updated": True}})
+        updated_end_user = await repo.upsert_end_user(
+            TENANT,
+            {
+                "external_id": f"repo-{agent_id}",
+                "phone": "+5511999999999",
+                "metadata": {"updated": True},
+            },
+        )
         assert updated_end_user["id"] == end_user_id
         assert updated_end_user["metadata"] == {"source": "pytest", "updated": True}
 
-        call = await repo.create_call(TENANT, agent_id, {"name": "Mario"}, {"source": "pytest"}, agent_version_id=first_version, end_user_id=end_user_id)
+        call = await repo.create_call(
+            TENANT,
+            agent_id,
+            {"name": "Mario"},
+            {"source": "pytest"},
+            agent_version_id=first_version,
+            end_user_id=end_user_id,
+        )
         call_id = call["id"]
         call_ids.append(call_id)
         assert await repo.get_call(TENANT, call_id)
         assert any(item["id"] == call_id for item in await repo.list_calls(TENANT))
-        assert [item["id"] for item in await repo.list_calls(TENANT, {"agent_id": agent_id, "channel": "web", "status": "queued", "end_user_id": end_user_id})] == [call_id]
-        assert await repo.update_call(TENANT, call_id, {"status": "in_progress", "latency": {"ttfb_p50_ms": 700}})
+        assert [
+            item["id"]
+            for item in await repo.list_calls(
+                TENANT,
+                {
+                    "agent_id": agent_id,
+                    "channel": "web",
+                    "status": "queued",
+                    "end_user_id": end_user_id,
+                },
+            )
+        ] == [call_id]
+        assert await repo.update_call(
+            TENANT, call_id, {"status": "in_progress", "latency": {"ttfb_p50_ms": 700}}
+        )
         assert await repo.update_call(TENANT, call_id, {})
 
-        assert await repo.append_call_events(call_id, [{"type": "call.answered", "payload": {}, "at": datetime.now(UTC)}]) == 1
-        assert await repo.append_call_turns(call_id, [{"id": None, "ordinal": 0, "role": "user", "text": "Olá", "started_at": None, "ended_at": None, "interrupted": False, "ttfb_ms": None, "stt_confidence": 0.98, "audio_offset_ms": 0}]) == 1
-        tool_call = await repo.append_call_tool_call(call_id, {"id": None, "turn_id": None, "tool_id": tool_id, "name": tool["name"], "arguments": {"id": 42}, "result": {"ok": True}, "status": "ok", "duration_ms": 20, "started_at": datetime.now(UTC)})
+        assert (
+            await repo.append_call_events(
+                call_id, [{"type": "call.answered", "payload": {}, "at": datetime.now(UTC)}]
+            )
+            == 1
+        )
+        assert (
+            await repo.append_call_turns(
+                call_id,
+                [
+                    {
+                        "id": None,
+                        "ordinal": 0,
+                        "role": "user",
+                        "text": "Olá",
+                        "started_at": None,
+                        "ended_at": None,
+                        "interrupted": False,
+                        "ttfb_ms": None,
+                        "stt_confidence": 0.98,
+                        "audio_offset_ms": 0,
+                    }
+                ],
+            )
+            == 1
+        )
+        tool_call = await repo.append_call_tool_call(
+            call_id,
+            {
+                "id": None,
+                "turn_id": None,
+                "tool_id": tool_id,
+                "name": tool["name"],
+                "arguments": {"id": 42},
+                "result": {"ok": True},
+                "status": "ok",
+                "duration_ms": 20,
+                "started_at": datetime.now(UTC),
+            },
+        )
         assert tool_call
         detail = await repo.get_call_detail(TENANT, call_id)
-        assert detail and len(detail["events"]) == len(detail["turns"]) == len(detail["tool_calls"]) == 1
+        assert (
+            detail
+            and len(detail["events"]) == len(detail["turns"]) == len(detail["tool_calls"]) == 1
+        )
 
-        internal_call = await repo.create_internal_call({"tenant_id": TENANT, "agent_id": agent_id, "agent_version_id": first_version, "channel": "web", "livekit_room": "room_test", "variables": {}, "metadata": {}})
+        internal_call = await repo.create_internal_call(
+            {
+                "tenant_id": TENANT,
+                "agent_id": agent_id,
+                "agent_version_id": first_version,
+                "channel": "web",
+                "livekit_room": "room_test",
+                "variables": {},
+                "metadata": {},
+            }
+        )
         call_ids.append(internal_call["id"])
-        assert await repo.update_internal_call(internal_call["id"], {"status": "completed", "ended_at": datetime.now(UTC)})
+        assert await repo.update_internal_call(
+            internal_call["id"], {"status": "completed", "ended_at": datetime.now(UTC)}
+        )
         assert await repo.update_internal_call(UUID(int=0), {"status": "failed"}) is None
-        assert await repo.append_call_events(UUID(int=0), [{"type": "error", "payload": {}, "at": datetime.now(UTC)}]) == 0
+        assert (
+            await repo.append_call_events(
+                UUID(int=0), [{"type": "error", "payload": {}, "at": datetime.now(UTC)}]
+            )
+            == 0
+        )
         assert await repo.append_call_turns(UUID(int=0), []) == 0
         assert await repo.append_call_tool_call(UUID(int=0), {"arguments": {}}) is None
         assert await repo.get_call_detail(TENANT, UUID(int=0)) is None
@@ -153,23 +328,31 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
             await db.execute(text("SET LOCAL row_security = off"))
             for call_id in call_ids:
                 await db.execute(text("DELETE FROM call_events WHERE call_id=:id"), {"id": call_id})
-                await db.execute(text("DELETE FROM call_tool_calls WHERE call_id=:id"), {"id": call_id})
+                await db.execute(
+                    text("DELETE FROM call_tool_calls WHERE call_id=:id"), {"id": call_id}
+                )
                 await db.execute(text("DELETE FROM call_turns WHERE call_id=:id"), {"id": call_id})
                 await db.execute(text("DELETE FROM calls WHERE id=:id"), {"id": call_id})
             if tool_id:
                 await db.execute(text("DELETE FROM agent_tools WHERE tool_id=:id"), {"id": tool_id})
-            await db.execute(text("DELETE FROM agent_versions WHERE agent_id=:id"), {"id": agent_id})
+            await db.execute(
+                text("DELETE FROM agent_versions WHERE agent_id=:id"), {"id": agent_id}
+            )
             await db.execute(text("DELETE FROM agents WHERE id=:id"), {"id": agent_id})
             if tool_id:
                 await db.execute(text("DELETE FROM tools WHERE id=:id"), {"id": tool_id})
             if end_user_id:
                 await db.execute(text("DELETE FROM end_users WHERE id=:id"), {"id": end_user_id})
             if document_id:
-                await db.execute(text("DELETE FROM chunks WHERE document_id=:id"), {"id": document_id})
+                await db.execute(
+                    text("DELETE FROM chunks WHERE document_id=:id"), {"id": document_id}
+                )
                 await db.execute(text("DELETE FROM documents WHERE id=:id"), {"id": document_id})
             if kb_id:
                 await db.execute(text("DELETE FROM knowledge_bases WHERE id=:id"), {"id": kb_id})
             if secret_id:
                 if integration_id:
-                    await db.execute(text("DELETE FROM integrations WHERE id=:id"), {"id": integration_id})
+                    await db.execute(
+                        text("DELETE FROM integrations WHERE id=:id"), {"id": integration_id}
+                    )
                 await db.execute(text("DELETE FROM secrets WHERE id=:id"), {"id": secret_id})

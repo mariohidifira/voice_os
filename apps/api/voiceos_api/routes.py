@@ -21,7 +21,7 @@ from .livekit_sessions import LiveKitSessions, get_livekit_sessions
 from .native_integrations import NativeIntegrations, get_native_integrations
 from .postprocessing import Postprocessor, get_postprocessor
 from .prompt_improvement import PromptImprover, get_prompt_improver
-from .repository import Repository, get_repository
+from .repository import LastOwnerError, Repository, get_repository
 from .schemas import (
     AgentCreate,
     AgentDraftPatch,
@@ -237,9 +237,19 @@ async def update_member(
     tenant_id: UUID, user_id: UUID, body: MemberPatch, auth: Auth, repo: Repo
 ) -> dict[str, Any]:
     _require_admin(auth)
-    if tenant_id != auth.tenant_id or not (
-        member := await repo.update_member(auth.tenant_id, user_id, body.role)
-    ):
+    if tenant_id != auth.tenant_id:
+        raise HTTPException(404, detail={"code": "member_not_found", "message": "Member not found"})
+    try:
+        member = await repo.update_member(auth.tenant_id, user_id, body.role)
+    except LastOwnerError:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "last_owner_required",
+                "message": "Promote another owner before changing the last owner",
+            },
+        ) from None
+    if not member:
         raise HTTPException(404, detail={"code": "member_not_found", "message": "Member not found"})
     return member
 
@@ -247,7 +257,19 @@ async def update_member(
 @v1.delete("/tenants/{tenant_id}/members/{user_id}", status_code=204)
 async def delete_member(tenant_id: UUID, user_id: UUID, auth: Auth, repo: Repo) -> None:
     _require_admin(auth)
-    if tenant_id != auth.tenant_id or not await repo.delete_member(auth.tenant_id, user_id):
+    if tenant_id != auth.tenant_id:
+        raise HTTPException(404, detail={"code": "member_not_found", "message": "Member not found"})
+    try:
+        deleted = await repo.delete_member(auth.tenant_id, user_id)
+    except LastOwnerError:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "last_owner_required",
+                "message": "Promote another owner before removing the last owner",
+            },
+        ) from None
+    if not deleted:
         raise HTTPException(404, detail={"code": "member_not_found", "message": "Member not found"})
 
 

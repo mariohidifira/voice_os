@@ -202,6 +202,15 @@ test("criar agente, publicar, testar e ver chamada", async ({
   await secretRow.getByRole("button", { name: "Remover" }).click();
   await expect(page.getByRole("status")).toContainText("Secret removido");
 
+  await page.getByRole("button", { name: "Membros", exact: true }).click();
+  const ownerRow = page
+    .locator(".row.static")
+    .filter({ hasText: "owner@demo.voiceos.local" });
+  await expect(
+    ownerRow.getByLabel("Papel de owner@demo.voiceos.local"),
+  ).toBeDisabled();
+  await expect(ownerRow.getByRole("button", { name: "Remover" })).toBeDisabled();
+
   await page.getByRole("button", { name: "Chamadas", exact: true }).click();
   await expect(
     page

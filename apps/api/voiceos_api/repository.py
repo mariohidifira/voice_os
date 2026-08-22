@@ -12,6 +12,10 @@ from .db import SessionFactory
 from .store import MemoryStore, store
 
 
+class LastOwnerError(ValueError):
+    """Raised when a membership mutation would leave a tenant without an owner."""
+
+
 class Repository(Protocol):
     async def get_tenant(self, tenant_id: UUID) -> dict[str, Any] | None: ...
     async def update_tenant(
@@ -204,6 +208,30 @@ class PostgresRepository:
         self, tenant_id: UUID, user_id: UUID, role: str
     ) -> dict[str, Any] | None:
         async with self.tenant_session(tenant_id) as db:
+            await db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:tenant,0))"),
+                {"tenant": str(tenant_id)},
+            )
+            current_role = (
+                await db.execute(
+                    text("SELECT role FROM memberships WHERE user_id=:user FOR UPDATE"),
+                    {"user": user_id},
+                )
+            ).scalar_one_or_none()
+            if current_role is None:
+                return None
+            if current_role == "owner" and role != "owner":
+                owners = (
+                    (
+                        await db.execute(
+                            text("SELECT user_id FROM memberships WHERE role='owner' FOR UPDATE")
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if len(owners) == 1:
+                    raise LastOwnerError
             changed = await db.execute(
                 text(
                     "UPDATE memberships SET role=:role,updated_at=now() WHERE user_id=:user RETURNING user_id"
@@ -222,6 +250,30 @@ class PostgresRepository:
 
     async def delete_member(self, tenant_id: UUID, user_id: UUID) -> bool:
         async with self.tenant_session(tenant_id) as db:
+            await db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:tenant,0))"),
+                {"tenant": str(tenant_id)},
+            )
+            current_role = (
+                await db.execute(
+                    text("SELECT role FROM memberships WHERE user_id=:user FOR UPDATE"),
+                    {"user": user_id},
+                )
+            ).scalar_one_or_none()
+            if current_role is None:
+                return False
+            if current_role == "owner":
+                owners = (
+                    (
+                        await db.execute(
+                            text("SELECT user_id FROM memberships WHERE role='owner' FOR UPDATE")
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if len(owners) == 1:
+                    raise LastOwnerError
             result = await db.execute(
                 text("DELETE FROM memberships WHERE user_id=:user RETURNING user_id"),
                 {"user": user_id},
@@ -1256,10 +1308,27 @@ class MemoryRepository:
         membership = self.memory.memberships.get((tenant_id, user_id))
         if not membership:
             return None
+        if membership["role"] == "owner" and role != "owner":
+            owner_count = sum(
+                item["role"] == "owner"
+                for (member_tenant, _), item in self.memory.memberships.items()
+                if member_tenant == tenant_id
+            )
+            if owner_count == 1:
+                raise LastOwnerError
         membership["role"] = role
         return {**self.memory.users[user_id], **membership, "id": user_id}
 
     async def delete_member(self, tenant_id: UUID, user_id: UUID) -> bool:
+        membership = self.memory.memberships.get((tenant_id, user_id))
+        if membership and membership["role"] == "owner":
+            owner_count = sum(
+                item["role"] == "owner"
+                for (member_tenant, _), item in self.memory.memberships.items()
+                if member_tenant == tenant_id
+            )
+            if owner_count == 1:
+                raise LastOwnerError
         return self.memory.memberships.pop((tenant_id, user_id), None) is not None
 
     async def list_api_keys(self, tenant_id: UUID) -> list[dict[str, Any]]:
