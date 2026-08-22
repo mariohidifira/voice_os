@@ -10,8 +10,8 @@ function base64url(value: object) {
 
 export async function issueApiToken(userId: string) {
   if (!pool || !process.env.AUTH_SECRET) return null;
-  const result = await pool.query<{ id: string; role: string; slug: string }>(
-    'SELECT m.tenant_id::text AS id, m.role, t.slug FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m."user_id"=$1 AND t.deleted_at IS NULL ORDER BY m.created_at',
+  const result = await pool.query<{ id: string; role: string; slug: string; is_platform_admin: boolean }>(
+    'SELECT m.tenant_id::text AS id, m.role, t.slug, u.is_platform_admin FROM memberships m JOIN tenants t ON t.id=m.tenant_id JOIN users u ON u.id=m."user_id" WHERE m."user_id"=$1 AND t.deleted_at IS NULL ORDER BY m.created_at',
     [userId],
   );
   if (result.rows.length === 0) return null;
@@ -23,8 +23,9 @@ export async function issueApiToken(userId: string) {
     aud: process.env.JWT_AUDIENCE ?? "voiceos-api",
     iat: now,
     exp: now + 5 * 60,
-    tenants: result.rows,
+    tenants: result.rows.map(({ id, role, slug }) => ({ id, role, slug })),
+    is_platform_admin: result.rows.some((row) => row.is_platform_admin),
   });
   const signature = createHmac("sha256", process.env.AUTH_SECRET).update(`${header}.${payload}`).digest("base64url");
-  return { token: `${header}.${payload}.${signature}`, tenants: result.rows };
+  return { token: `${header}.${payload}.${signature}`, tenants: result.rows.map(({ id, role, slug }) => ({ id, role, slug })) };
 }

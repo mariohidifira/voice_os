@@ -10,7 +10,8 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   if (!issued) return NextResponse.json({ error: "not_configured_or_no_membership" }, { status: 503 });
   const { path } = await context.params;
   const apiBase = process.env.API_INTERNAL_URL ?? "http://api:8000";
-  const target = new URL(`/v1/${path.join("/")}${request.nextUrl.search}`, apiBase);
+  const apiPath = path[0] === "admin" ? `/admin/${path.slice(1).join("/")}` : `/v1/${path.join("/")}`;
+  const target = new URL(`${apiPath}${request.nextUrl.search}`, apiBase);
   const headers = new Headers(request.headers);
   const selectedTenant = selectTenant(issued.tenants, request.headers.get("referer") ?? "");
   headers.set("authorization", `Bearer ${issued.token}`);

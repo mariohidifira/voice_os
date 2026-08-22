@@ -49,6 +49,40 @@ async def test_postgres_members_and_api_keys_lifecycle() -> None:
 
 
 @pytest.mark.asyncio(loop_scope="module")
+async def test_postgres_phase3_webhooks_exports_and_lgpd() -> None:
+    repo = PostgresRepository()
+    marker = uuid4().hex
+    secret = await repo.create_secret(TENANT, f"webhook-{marker}", b"encrypted", "test-key")
+    webhook = await repo.create_webhook(
+        TENANT,
+        {"url": "https://example.test/hook", "events": ["call.ended"], "secret_id": secret["id"], "enabled": True},
+    )
+    end_user = await repo.upsert_end_user(TENANT, {"external_id": f"lgpd-{marker}", "email": f"{marker}@example.com"})
+    export = await repo.create_export(TENANT, {"type": "end_user", "filters": {"id": str(end_user["id"])}})
+    try:
+        assert len(await repo.list_end_users(TENANT, marker)) == 1
+        assert (await repo.update_end_user(TENANT, end_user["id"], {"name": "Updated"}))["name"] == "Updated"  # type: ignore[index]
+        assert await repo.queue_webhook_event(TENANT, "call.started", {}) == 0
+        assert await repo.queue_webhook_event(TENANT, "call.ended", {"call": {"id": marker}}) == 1
+        claimed = await repo.claim_webhook_deliveries()
+        delivery = next(item for item in claimed if item["webhook_id"] == webhook["id"])
+        assert delivery["ciphertext"] == b"encrypted"
+        await repo.update_webhook_delivery(delivery["id"], {"status": "failed", "last_status_code": 503, "next_retry_at": None})
+        assert await repo.retry_webhook_delivery(TENANT, webhook["id"], delivery["id"])
+        assert (await repo.get_export(TENANT, export["id"]))["status"] == "pending"  # type: ignore[index]
+        assert await repo.anonymize_end_user(TENANT, end_user["id"])
+        assert await repo.get_end_user(TENANT, end_user["id"]) is None
+    finally:
+        async with SessionFactory() as db, db.begin():
+            await db.execute(text("SET LOCAL row_security = off"))
+            await db.execute(text("DELETE FROM webhook_deliveries WHERE webhook_id=:id"), {"id": webhook["id"]})
+            await db.execute(text("DELETE FROM webhooks_out WHERE id=:id"), {"id": webhook["id"]})
+            await db.execute(text("DELETE FROM exports WHERE id=:id"), {"id": export["id"]})
+            await db.execute(text("DELETE FROM end_users WHERE id=:id"), {"id": end_user["id"]})
+            await db.execute(text("DELETE FROM secrets WHERE id=:id"), {"id": secret["id"]})
+
+
+@pytest.mark.asyncio(loop_scope="module")
 async def test_postgres_serializes_last_owner_protection() -> None:
     repo = PostgresRepository()
     temporary_owner_id: UUID | None = None

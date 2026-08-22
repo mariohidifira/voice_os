@@ -13,6 +13,7 @@ class Principal:
     user_id: str
     tenant_id: UUID
     role: str
+    is_platform_admin: bool = False
 
 
 async def principal(
@@ -31,10 +32,14 @@ async def principal(
     membership = next((m for m in memberships if m.get("id") == str(x_tenant_id)), None)
     if membership is None:
         raise HTTPException(403, detail={"code": "forbidden", "message": "Tenant access denied"})
-    return Principal(str(payload["sub"]), x_tenant_id, str(membership["role"]))
+    return Principal(
+        str(payload["sub"]),
+        x_tenant_id,
+        str(membership["role"]),
+        bool(payload.get("is_platform_admin", False)),
+    )
 
 
 async def internal_token(x_internal_token: Annotated[str | None, Header()] = None) -> None:
     if x_internal_token != get_settings().internal_api_token:
         raise HTTPException(401, detail={"code": "unauthenticated", "message": "Invalid internal token"})
-

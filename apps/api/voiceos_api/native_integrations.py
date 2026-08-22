@@ -56,6 +56,18 @@ class NativeIntegrations:
             return str(response.json()["access_token"])
 
     async def execute(self, kind: str, arguments: dict[str, Any], tenant_id: UUID, repo: Repository, cipher: SecretCipher, call: dict[str, Any] | None = None) -> dict[str, Any]:
+        if kind == "lookup_end_user":
+            query = str(
+                arguments.get("external_id")
+                or arguments.get("phone")
+                or arguments.get("email")
+                or ""
+            )
+            if not query and call and call.get("end_user_id"):
+                item = await repo.get_end_user(tenant_id, UUID(str(call["end_user_id"])))
+                return {"found": bool(item), "end_user": item}
+            matches = await repo.list_end_users(tenant_id, query)
+            return {"found": bool(matches), "end_user": matches[0] if matches else None}
         if kind == "send_email":
             if not self.settings.resend_api_key:
                 return {"error": "integration_unavailable", "message": "Resend is not configured"}

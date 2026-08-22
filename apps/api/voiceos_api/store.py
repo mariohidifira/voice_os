@@ -11,11 +11,16 @@ class MemoryStore:
         self.agents: dict[UUID, dict[str, Any]] = {}
         self.agent_versions: dict[UUID, dict[str, Any]] = {}
         self.end_users: dict[UUID, dict[str, Any]] = {}
+        self.webhooks: dict[UUID, dict[str, Any]] = {}
+        self.webhook_deliveries: dict[UUID, dict[str, Any]] = {}
+        self.exports: dict[UUID, dict[str, Any]] = {}
+        self.billing_usage_alerts: dict[tuple[UUID, str, int], dict[str, Any]] = {}
         self.calls: dict[UUID, dict[str, Any]] = {}
         self.call_events: dict[UUID, list[dict[str, Any]]] = {}
         self.call_turns: dict[UUID, list[dict[str, Any]]] = {}
         self.call_tool_calls: dict[UUID, list[dict[str, Any]]] = {}
         self.call_recordings: dict[UUID, dict[str, Any]] = {}
+        self.call_qa: dict[UUID, dict[str, Any]] = {}
         self.tools: dict[UUID, dict[str, Any]] = {}
         self.agent_tools: dict[UUID, set[UUID]] = {}
         self.knowledge_bases: dict[UUID, dict[str, Any]] = {}

@@ -1,0 +1,11 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: voiceos-slo
+    folder: VoiceOS
+    interval: 1m
+    rules:
+      - {uid: voiceos-ttfb, title: TTFB alto, condition: C, data: [{refId: A, datasourceUid: prometheus, model: {expr: 'histogram_quantile(0.95,sum(rate(voiceos_turn_ttfb_ms_bucket[10m])) by (le))'}}, {refId: C, datasourceUid: __expr__, model: {type: threshold, expression: A, conditions: [{evaluator: {type: gt, params: [2500]}}]}}], for: 10m, annotations: {summary: 'TTFB p95 acima de 2500 ms'}}
+      - {uid: voiceos-provider-errors, title: Erros de provider, condition: C, data: [{refId: A, datasourceUid: prometheus, model: {expr: 'sum(rate(voiceos_provider_errors_total[5m])) / clamp_min(sum(rate(voiceos_calls_total[5m])),1)'}}, {refId: C, datasourceUid: __expr__, model: {type: threshold, expression: A, conditions: [{evaluator: {type: gt, params: [0.05]}}]}}], for: 5m, annotations: {summary: 'Erros de provider acima de 5%'}}
+      - {uid: voiceos-fallback, title: Fallback ativo, condition: C, data: [{refId: A, datasourceUid: prometheus, model: {expr: 'sum(increase(voiceos_provider_fallback_total[15m]))'}}, {refId: C, datasourceUid: __expr__, model: {type: threshold, expression: A, conditions: [{evaluator: {type: gt, params: [0]}}]}}], for: 0s, annotations: {summary: 'Provider primário falhou; fallback ativado'}}
+      - {uid: voiceos-api-5xx, title: API 5xx, condition: C, data: [{refId: A, datasourceUid: prometheus, model: {expr: 'sum(rate(voiceos_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(voiceos_http_requests_total[5m])),1)'}}, {refId: C, datasourceUid: __expr__, model: {type: threshold, expression: A, conditions: [{evaluator: {type: gt, params: [0.01]}}]}}], for: 5m, annotations: {summary: 'API 5xx acima de 1%'}}

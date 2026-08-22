@@ -25,10 +25,12 @@ from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_e
 from .live import EventBus, encode_sse, get_event_bus
 from .livekit_sessions import LiveKitSessions, get_livekit_sessions
 from .native_integrations import NativeIntegrations, get_native_integrations
+from .outgoing_webhooks import OutgoingWebhookSender, delivery_result
 from .postprocessing import Postprocessor, get_postprocessor
 from .prompt_improvement import PromptImprover, get_prompt_improver
 from .repository import LastOwnerError, Repository, get_repository
 from .schemas import (
+    AdminTenantPatch,
     AgentCreate,
     AgentDraftPatch,
     AgentPatch,
@@ -38,6 +40,7 @@ from .schemas import (
     BillingCheckoutRequest,
     CallEventBatch,
     CallPatch,
+    CallQaPatch,
     CallTakeoverRequest,
     CallToolCallCreate,
     CallTurnBatch,
@@ -47,6 +50,8 @@ from .schemas import (
     CampaignPatch,
     DocumentCreate,
     DoNotCallCreate,
+    EndUserPatch,
+    ExportCreate,
     InternalCallCreate,
     InternalRagQuery,
     InternalToolExecute,
@@ -66,14 +71,24 @@ from .schemas import (
     ToolPatch,
     ToolTestRequest,
     VoicePreviewRequest,
+    WebhookCreate,
+    WebhookPatch,
 )
 from .secrets import SecretCipher, get_secret_cipher
-from .storage import RecordingStorage, get_recording_storage
+from .storage import (
+    ExportStorage,
+    RecordingStorage,
+    RetentionStorage,
+    get_export_storage,
+    get_recording_storage,
+    get_retention_storage,
+)
 from .telephony import Telephony, TelephonyProviderError, get_telephony
 from .tool_execution import ToolExecutor, get_tool_executor
 from .voice_preview import VoicePreview, get_voice_preview
 
 v1 = APIRouter(prefix="/v1")
+admin = APIRouter(prefix="/admin")
 internal = APIRouter(prefix="/internal", dependencies=[Depends(internal_token)])
 webhooks = APIRouter(prefix="/webhooks")
 Auth = Annotated[Principal, Depends(principal)]
@@ -87,6 +102,8 @@ Processor = Annotated[Postprocessor, Depends(get_postprocessor)]
 Improver = Annotated[PromptImprover, Depends(get_prompt_improver)]
 Rtc = Annotated[LiveKitSessions, Depends(get_livekit_sessions)]
 Storage = Annotated[RecordingStorage, Depends(get_recording_storage)]
+ExportStore = Annotated[ExportStorage, Depends(get_export_storage)]
+RetentionStore = Annotated[RetentionStorage, Depends(get_retention_storage)]
 Voice = Annotated[VoicePreview, Depends(get_voice_preview)]
 Phone = Annotated[Telephony, Depends(get_telephony)]
 Idempotency = Annotated[IdempotencyStore, Depends(get_idempotency_store)]
@@ -96,6 +113,43 @@ Stripe = Annotated[StripeGateway, Depends(get_stripe_gateway)]
 def _require_admin(auth: Principal) -> None:
     if auth.role not in {"owner", "admin"}:
         raise HTTPException(403, detail={"code": "forbidden", "message": "Admin role required"})
+
+
+def _require_platform_admin(auth: Principal) -> None:
+    if not auth.is_platform_admin:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Platform admin required"})
+
+
+@admin.get("/tenants")
+async def admin_tenants(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_platform_admin(auth)
+    return {"data": await repo.admin_list_tenants(), "next_cursor": None}
+
+
+@admin.patch("/tenants/{tenant_id}")
+async def admin_update_tenant(tenant_id: UUID, body: AdminTenantPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_platform_admin(auth)
+    item = await repo.admin_update_tenant(tenant_id, body.model_dump(exclude_unset=True))
+    if not item:
+        raise HTTPException(404, detail={"code": "tenant_not_found", "message": "Tenant not found"})
+    return item
+
+
+@admin.post("/tenants/{tenant_id}/impersonate")
+async def admin_impersonate(tenant_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_platform_admin(auth)
+    if not any(item["id"] == tenant_id for item in await repo.admin_list_tenants()):
+        raise HTTPException(404, detail={"code": "tenant_not_found", "message": "Tenant not found"})
+    settings = get_settings()
+    now = datetime.now(UTC)
+    token = jwt.encode({"sub": auth.user_id, "iss": settings.jwt_issuer, "aud": settings.jwt_audience, "iat": now, "exp": now + timedelta(minutes=15), "tenants": [{"id": str(tenant_id), "role": "owner"}], "impersonated_by": auth.user_id}, settings.auth_secret, algorithm="HS256")
+    return {"access_token": token, "token_type": "Bearer", "expires_in": 900, "tenant_id": tenant_id}
+
+
+@admin.get("/metrics")
+async def admin_metrics(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_platform_admin(auth)
+    return await repo.admin_metrics()
 
 
 def _stripe_datetime(value: Any) -> datetime | None:
@@ -500,6 +554,124 @@ async def delete_api_key(key_id: UUID, auth: Auth, repo: Repo) -> None:
         raise HTTPException(
             404, detail={"code": "api_key_not_found", "message": "API key not found"}
         )
+
+
+@v1.get("/end-users")
+async def list_end_users(auth: Auth, repo: Repo, q: str | None = None) -> dict[str, Any]:
+    return {"data": await repo.list_end_users(auth.tenant_id, q), "next_cursor": None}
+
+
+@v1.get("/analytics/overview")
+async def analytics_overview(
+    auth: Auth,
+    repo: Repo,
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: date | None = None,
+    agent_id: UUID | None = None,
+) -> dict[str, Any]:
+    end = to or datetime.now(UTC).date()
+    start = from_ or end - timedelta(days=29)
+    if start > end or (end - start).days > 366:
+        raise HTTPException(422, detail={"code": "invalid_period", "message": "Analytics period must be 0-366 days"})
+    return await repo.analytics_overview(auth.tenant_id, start, end, agent_id)
+
+
+@v1.get("/analytics/tools")
+async def analytics_tools(
+    auth: Auth,
+    repo: Repo,
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: date | None = None,
+) -> dict[str, Any]:
+    end = to or datetime.now(UTC).date()
+    start = from_ or end - timedelta(days=29)
+    if start > end or (end - start).days > 366:
+        raise HTTPException(422, detail={"code": "invalid_period", "message": "Analytics period must be 0-366 days"})
+    return {"data": await repo.analytics_tools(auth.tenant_id, start, end)}
+
+
+@v1.get("/end-users/{end_user_id}")
+async def get_end_user(end_user_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    item = await repo.get_end_user(auth.tenant_id, end_user_id)
+    if not item:
+        raise HTTPException(404, detail={"code": "end_user_not_found", "message": "End user not found"})
+    return item
+
+
+@v1.patch("/end-users/{end_user_id}")
+async def update_end_user(end_user_id: UUID, body: EndUserPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    item = await repo.update_end_user(auth.tenant_id, end_user_id, body.model_dump(exclude_unset=True))
+    if not item:
+        raise HTTPException(404, detail={"code": "end_user_not_found", "message": "End user not found"})
+    return item
+
+
+@v1.delete("/end-users/{end_user_id}", status_code=204)
+async def delete_end_user(end_user_id: UUID, auth: Auth, repo: Repo) -> None:
+    _require_admin(auth)
+    if not await repo.anonymize_end_user(auth.tenant_id, end_user_id):
+        raise HTTPException(404, detail={"code": "end_user_not_found", "message": "End user not found"})
+
+
+@v1.get("/webhooks")
+async def list_outgoing_webhooks(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    return {"data": await repo.list_webhooks(auth.tenant_id), "next_cursor": None}
+
+
+@v1.post("/webhooks", status_code=201)
+async def create_outgoing_webhook(body: WebhookCreate, auth: Auth, repo: Repo, cipher: Cipher) -> dict[str, Any]:
+    _require_admin(auth)
+    raw_secret = f"whsec_{secrets.token_urlsafe(32)}"
+    ciphertext, key_id = await cipher.encrypt(raw_secret)
+    secret = await repo.create_secret(auth.tenant_id, f"webhook-{secrets.token_hex(6)}", ciphertext, key_id)
+    item = await repo.create_webhook(auth.tenant_id, {**body.model_dump(), "secret_id": secret["id"]})
+    return {**item, "secret": raw_secret}
+
+
+@v1.patch("/webhooks/{webhook_id}")
+async def update_outgoing_webhook(webhook_id: UUID, body: WebhookPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    item = await repo.update_webhook(auth.tenant_id, webhook_id, body.model_dump(exclude_unset=True))
+    if not item:
+        raise HTTPException(404, detail={"code": "webhook_not_found", "message": "Webhook not found"})
+    return item
+
+
+@v1.delete("/webhooks/{webhook_id}", status_code=204)
+async def delete_outgoing_webhook(webhook_id: UUID, auth: Auth, repo: Repo) -> None:
+    _require_admin(auth)
+    if not await repo.delete_webhook(auth.tenant_id, webhook_id):
+        raise HTTPException(404, detail={"code": "webhook_not_found", "message": "Webhook not found"})
+
+
+@v1.get("/webhooks/{webhook_id}/deliveries")
+async def list_outgoing_webhook_deliveries(webhook_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    return {"data": await repo.list_webhook_deliveries(auth.tenant_id, webhook_id), "next_cursor": None}
+
+
+@v1.post("/webhooks/{webhook_id}/deliveries/{delivery_id}/retry")
+async def retry_outgoing_webhook(webhook_id: UUID, delivery_id: UUID, auth: Auth, repo: Repo) -> dict[str, bool]:
+    _require_admin(auth)
+    if not await repo.retry_webhook_delivery(auth.tenant_id, webhook_id, delivery_id):
+        raise HTTPException(404, detail={"code": "delivery_not_found", "message": "Delivery not found"})
+    return {"queued": True}
+
+
+@v1.post("/exports", status_code=202)
+async def create_export(body: ExportCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    return await repo.create_export(auth.tenant_id, body.model_dump())
+
+
+@v1.get("/exports/{export_id}")
+async def get_export(export_id: UUID, auth: Auth, repo: Repo, storage: ExportStore) -> dict[str, Any]:
+    item = await repo.get_export(auth.tenant_id, export_id)
+    if not item:
+        raise HTTPException(404, detail={"code": "export_not_found", "message": "Export not found"})
+    if item.get("status") == "ready" and item.get("s3_key"):
+        item["download_url"] = await storage.download_url(str(item["s3_key"]))
+    return item
 
 
 @v1.get("/agents")
@@ -1362,6 +1534,16 @@ async def get_call(call_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
     return call
 
 
+@v1.patch("/calls/{call_id}/qa")
+async def update_call_qa(call_id: UUID, body: CallQaPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if auth.role not in {"owner", "admin", "operator"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Operator role required"})
+    item = await repo.upsert_call_qa(auth.tenant_id, call_id, {**body.model_dump(), "model": "manual"})
+    if not item:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    return item
+
+
 @v1.get("/calls/{call_id}/recording", response_class=RedirectResponse)
 async def get_call_recording(
     call_id: UUID, auth: Auth, repo: Repo, storage: Storage
@@ -1795,7 +1977,9 @@ async def runtime(agent_id: UUID, repo: Repo, version: str = "current") -> dict[
 
 @internal.post("/calls", status_code=201)
 async def create_internal_call(body: InternalCallCreate, repo: Repo) -> dict[str, Any]:
-    return await repo.create_internal_call(body.model_dump())
+    call = await repo.create_internal_call(body.model_dump())
+    await repo.queue_webhook_event(body.tenant_id, "call.started", {"call": call})
+    return call
 
 
 @internal.post("/campaigns/tick")
@@ -1919,7 +2103,67 @@ async def billing_meter_tick(repo: Repo, stripe: Stripe) -> dict[str, int]:
                 synced_phones += 1
         except Exception:
             failed += 1
-    return {"tenants": len(batches), "records": reported, "phones": synced_phones, "failed": failed}
+    alerts = await repo.billing_threshold_events()
+    for alert in alerts:
+        await repo.queue_webhook_event(UUID(str(alert["tenant_id"])), "usage.threshold", {"usage": alert})
+    return {"tenants": len(batches), "records": reported, "phones": synced_phones, "alerts": len(alerts), "failed": failed}
+
+
+@internal.post("/webhooks/tick")
+async def outgoing_webhook_tick(repo: Repo, cipher: Cipher) -> dict[str, int]:
+    deliveries = await repo.claim_webhook_deliveries()
+    sender = OutgoingWebhookSender()
+    delivered = retrying = failed = 0
+    for item in deliveries:
+        status_code: int | None = None
+        try:
+            secret = await cipher.decrypt(bytes(item["ciphertext"]), str(item["kms_key_id"]))
+            status_code = await sender.send(str(item["url"]), dict(item["payload"]), secret)
+        except Exception:
+            status_code = None
+        result = delivery_result(int(item["attempts"]), status_code)
+        await repo.update_webhook_delivery(item["id"], result)
+        if result["status"] == "delivered":
+            delivered += 1
+        elif result["status"] == "retrying":
+            retrying += 1
+        else:
+            failed += 1
+    return {"claimed": len(deliveries), "delivered": delivered, "retrying": retrying, "failed": failed}
+
+
+@internal.post("/exports/tick")
+async def export_tick(repo: Repo, storage: ExportStore) -> dict[str, int]:
+    exports = await repo.claim_exports()
+    ready = failed = 0
+    for item in exports:
+        try:
+            rows = list(item.get("rows") or [])
+            columns = sorted({str(key) for row in rows for key in row}) or ["empty"]
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=columns, extrasaction="ignore")
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({key: json.dumps(value, ensure_ascii=False, default=str) if isinstance(value, (dict, list)) else value for key, value in row.items()})
+            key = f"{item['tenant_id']}/{item['id']}.csv"
+            await storage.upload(key, output.getvalue().encode("utf-8-sig"))
+            await repo.complete_export(item["id"], key)
+            ready += 1
+        except Exception:
+            await repo.complete_export(item["id"], None, error=True)
+            failed += 1
+    return {"claimed": len(exports), "ready": ready, "failed": failed}
+
+
+@internal.post("/retention/tick")
+async def retention_tick(repo: Repo, storage: RetentionStore) -> dict[str, int]:
+    result = await repo.purge_retention()
+    await storage.delete(list(result["recording_keys"]), list(result["document_keys"]))
+    return {
+        "recordings_deleted": len(result["recording_keys"]),
+        "documents_deleted": int(result["documents_deleted"]),
+        "turns_anonymized": int(result["turns_anonymized"]),
+    }
 
 
 @internal.patch("/calls/{call_id}")
@@ -1927,6 +2171,8 @@ async def update_internal_call(call_id: UUID, body: CallPatch, repo: Repo) -> di
     call = await repo.update_internal_call(call_id, body.model_dump(exclude_unset=True))
     if not call:
         raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    if body.status in {"completed", "failed", "no_answer", "busy", "voicemail", "cancelled"}:
+        await repo.queue_webhook_event(UUID(str(call["tenant_id"])), "call.ended", {"call": call})
     return call
 
 
@@ -1935,7 +2181,18 @@ async def _postprocess_call(
 ) -> None:
     try:
         result = await processor.process(call)
+        qa = dict(result.pop("qa", {}))
         await repo.update_internal_call(call_id, result)
+        await repo.upsert_call_qa(
+            UUID(str(call["tenant_id"])),
+            call_id,
+            {
+                "score": max(0, min(100, int(qa.get("score", 0)))),
+                "rubric": dict(qa.get("rubric") or {}),
+                "issues": list(qa.get("issues") or []),
+                "model": get_settings().anthropic_postprocess_model,
+            },
+        )
         await repo.append_call_events(
             call_id,
             [
@@ -1947,6 +2204,11 @@ async def _postprocess_call(
             ],
         )
     except Exception as exc:
+        await repo.upsert_call_qa(
+            UUID(str(call["tenant_id"])),
+            call_id,
+            {"score": 0, "rubric": {}, "issues": ["qa_processing_failed"], "model": "fallback"},
+        )
         await repo.append_call_events(
             call_id,
             [

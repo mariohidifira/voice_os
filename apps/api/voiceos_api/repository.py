@@ -1,7 +1,7 @@
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Protocol
 from uuid import UUID, uuid4
 
@@ -52,6 +52,10 @@ class Repository(Protocol):
         self, tenant_id: UUID, agent_id: UUID, version_id: UUID
     ) -> dict[str, Any] | None: ...
     async def upsert_end_user(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def list_end_users(self, tenant_id: UUID, query: str | None = None) -> list[dict[str, Any]]: ...
+    async def get_end_user(self, tenant_id: UUID, end_user_id: UUID) -> dict[str, Any] | None: ...
+    async def update_end_user(self, tenant_id: UUID, end_user_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def anonymize_end_user(self, tenant_id: UUID, end_user_id: UUID) -> bool: ...
     async def create_call(
         self,
         tenant_id: UUID,
@@ -72,6 +76,7 @@ class Repository(Protocol):
     ) -> list[dict[str, Any]]: ...
     async def get_call(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None: ...
     async def get_call_detail(self, tenant_id: UUID, call_id: UUID) -> dict[str, Any] | None: ...
+    async def upsert_call_qa(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
     async def update_call(
         self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]
     ) -> dict[str, Any] | None: ...
@@ -178,6 +183,26 @@ class Repository(Protocol):
     async def mark_usage_reported(
         self, tenant_id: UUID, record_ids: list[UUID], stripe_id: str
     ) -> None: ...
+    async def billing_threshold_events(self) -> list[dict[str, Any]]: ...
+    async def list_webhooks(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def create_webhook(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def update_webhook(self, tenant_id: UUID, webhook_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def delete_webhook(self, tenant_id: UUID, webhook_id: UUID) -> bool: ...
+    async def list_webhook_deliveries(self, tenant_id: UUID, webhook_id: UUID) -> list[dict[str, Any]]: ...
+    async def queue_webhook_event(self, tenant_id: UUID, event: str, data: dict[str, Any]) -> int: ...
+    async def claim_webhook_deliveries(self, limit: int = 100) -> list[dict[str, Any]]: ...
+    async def update_webhook_delivery(self, delivery_id: UUID, data: dict[str, Any]) -> None: ...
+    async def retry_webhook_delivery(self, tenant_id: UUID, webhook_id: UUID, delivery_id: UUID) -> bool: ...
+    async def create_export(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def get_export(self, tenant_id: UUID, export_id: UUID) -> dict[str, Any] | None: ...
+    async def claim_exports(self, limit: int = 20) -> list[dict[str, Any]]: ...
+    async def complete_export(self, export_id: UUID, s3_key: str | None, error: bool = False) -> None: ...
+    async def purge_retention(self) -> dict[str, Any]: ...
+    async def analytics_overview(self, tenant_id: UUID, start: date, end: date, agent_id: UUID | None = None) -> dict[str, Any]: ...
+    async def analytics_tools(self, tenant_id: UUID, start: date, end: date) -> list[dict[str, Any]]: ...
+    async def admin_list_tenants(self) -> list[dict[str, Any]]: ...
+    async def admin_update_tenant(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
+    async def admin_metrics(self) -> dict[str, Any]: ...
 
 
 class PostgresRepository:
@@ -671,6 +696,74 @@ class PostgresRepository:
             )
             return dict(row.mappings().one())
 
+    async def list_end_users(
+        self, tenant_id: UUID, query: str | None = None
+    ) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(
+                text(
+                    "SELECT eu.*,count(c.id)::int AS calls_count FROM end_users eu "
+                    "LEFT JOIN calls c ON c.end_user_id=eu.id "
+                    "WHERE (CAST(:query AS text) IS NULL OR concat_ws(' ',eu.external_id,eu.phone,eu.email,eu.name) ILIKE '%' || CAST(:query AS text) || '%') "
+                    "GROUP BY eu.id ORDER BY eu.last_seen_at DESC NULLS LAST LIMIT 200"
+                ),
+                {"query": query},
+            )
+            return [dict(item) for item in rows.mappings()]
+
+    async def get_end_user(
+        self, tenant_id: UUID, end_user_id: UUID
+    ) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("SELECT * FROM end_users WHERE id=:id"), {"id": end_user_id})
+            item = row.mappings().first()
+            if not item:
+                return None
+            result = dict(item)
+            calls = await db.execute(
+                text("SELECT id,agent_id,channel,status,duration_s,summary,started_at FROM calls WHERE end_user_id=:id ORDER BY started_at DESC LIMIT 20"),
+                {"id": end_user_id},
+            )
+            result["calls"] = [dict(call) for call in calls.mappings()]
+            return result
+
+    async def update_end_user(
+        self, tenant_id: UUID, end_user_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        fields = [field for field in ("external_id", "phone", "email", "name") if field in data]
+        assignments = [f"{field}=:{field}" for field in fields]
+        params: dict[str, Any] = {"id": end_user_id, **{field: data[field] for field in fields}}
+        if "metadata" in data:
+            assignments.append("metadata=CAST(:metadata AS jsonb)")
+            params["metadata"] = json.dumps(data["metadata"] or {})
+        if not assignments:
+            return await self.get_end_user(tenant_id, end_user_id)
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(f"UPDATE end_users SET {', '.join(assignments)},updated_at=now() WHERE id=:id RETURNING *"),
+                params,
+            )
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def anonymize_end_user(self, tenant_id: UUID, end_user_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            found = (
+                await db.execute(text("SELECT 1 FROM end_users WHERE id=:id"), {"id": end_user_id})
+            ).scalar_one_or_none()
+            if not found:
+                return False
+            await db.execute(
+                text("UPDATE call_turns SET text='[deleted]',updated_at=now() WHERE call_id IN (SELECT id FROM calls WHERE end_user_id=:id)") ,
+                {"id": end_user_id},
+            )
+            await db.execute(
+                text("UPDATE calls SET end_user_id=NULL,from_number=NULL,to_number=NULL,summary=NULL,variables='{}'::jsonb,metadata='{}'::jsonb,updated_at=now() WHERE end_user_id=:id"),
+                {"id": end_user_id},
+            )
+            await db.execute(text("DELETE FROM end_users WHERE id=:id"), {"id": end_user_id})
+            return True
+
     async def create_call(
         self,
         tenant_id: UUID,
@@ -786,6 +879,16 @@ class PostgresRepository:
                 "recording": dict(item) if (item := recording.mappings().first()) else None,
                 "qa": dict(item) if (item := qa.mappings().first()) else None,
             }
+
+    async def upsert_call_qa(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        if not await self.get_call(tenant_id, call_id):
+            return None
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text("INSERT INTO call_qa(id,tenant_id,call_id,score,rubric,issues,model) VALUES(:id,:tenant,:call,:score,CAST(:rubric AS jsonb),:issues,:model) ON CONFLICT(call_id) DO UPDATE SET score=excluded.score,rubric=excluded.rubric,issues=excluded.issues,model=excluded.model,updated_at=now() RETURNING *"),
+                {"id": uuid4(), "tenant": tenant_id, "call": call_id, "score": int(data["score"]), "rubric": json.dumps(data.get("rubric", {})), "issues": list(data.get("issues", [])), "model": data.get("model", "manual")},
+            )
+            return dict(row.mappings().one())
 
     async def update_call(
         self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]
@@ -1767,6 +1870,197 @@ class PostgresRepository:
                 {"stripe": stripe_id, "tenant": tenant_id, "ids": record_ids},
             )
 
+    async def billing_threshold_events(self) -> list[dict[str, Any]]:
+        period = datetime.now(UTC).date().replace(day=1)
+        async with self._internal_session() as db:
+            rows = await db.execute(
+                text(
+                    "WITH usage AS (SELECT s.tenant_id,p.included_minutes,COALESCE(sum(ceil(u.billable_seconds/60.0)),0)::int minutes FROM subscriptions s JOIN plans p ON p.id=s.plan_id LEFT JOIN usage_records u ON u.tenant_id=s.tenant_id AND u.period=:period WHERE s.status IN ('active','trialing') GROUP BY s.tenant_id,p.included_minutes), crossed AS (SELECT usage.*,v.threshold FROM usage CROSS JOIN (VALUES (80),(100)) v(threshold) WHERE included_minutes>0 AND minutes*100>=included_minutes*v.threshold) INSERT INTO billing_usage_alerts(tenant_id,period,threshold,minutes) SELECT tenant_id,:period,threshold,minutes FROM crossed ON CONFLICT DO NOTHING RETURNING tenant_id,period,threshold,minutes"
+                ),
+                {"period": period},
+            )
+            return [dict(row) for row in rows.mappings()]
+    async def list_webhooks(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT id,url,events,enabled,created_at,updated_at FROM webhooks_out ORDER BY created_at"))
+            return [dict(row) for row in rows.mappings()]
+
+    async def create_webhook(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text("INSERT INTO webhooks_out(id,tenant_id,url,events,secret_id,enabled) VALUES(:id,:tenant,:url,:events,:secret,:enabled) RETURNING id,url,events,enabled,created_at,updated_at"),
+                {"id": uuid4(), "tenant": tenant_id, "url": data["url"], "events": data["events"], "secret": data["secret_id"], "enabled": data.get("enabled", True)},
+            )
+            return dict(row.mappings().one())
+
+    async def update_webhook(self, tenant_id: UUID, webhook_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        fields = [field for field in ("url", "events", "enabled") if field in data]
+        if not fields:
+            return next((item for item in await self.list_webhooks(tenant_id) if item["id"] == webhook_id), None)
+        params: dict[str, Any] = {"id": webhook_id, **{field: data[field] for field in fields}}
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(f"UPDATE webhooks_out SET {', '.join(f'{field}=:{field}' for field in fields)},updated_at=now() WHERE id=:id RETURNING id,url,events,enabled,created_at,updated_at"),
+                params,
+            )
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def delete_webhook(self, tenant_id: UUID, webhook_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(text("DELETE FROM webhooks_out WHERE id=:id RETURNING id"), {"id": webhook_id})
+            return bool(result.scalar_one_or_none())
+
+    async def list_webhook_deliveries(self, tenant_id: UUID, webhook_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT * FROM webhook_deliveries WHERE webhook_id=:id ORDER BY created_at DESC LIMIT 200"), {"id": webhook_id})
+            return [dict(row) for row in rows.mappings()]
+
+    async def queue_webhook_event(self, tenant_id: UUID, event: str, data: dict[str, Any]) -> int:
+        payload = {"id": f"evt_{uuid4().hex}", "type": event, "created_at": datetime.now(UTC).isoformat(), "tenant_id": str(tenant_id), "data": data}
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(
+                text("INSERT INTO webhook_deliveries(id,tenant_id,webhook_id,event,payload,status,next_retry_at) SELECT gen_random_uuid(),tenant_id,id,:event,CAST(:payload AS jsonb),'pending',now() FROM webhooks_out WHERE enabled AND (:event=ANY(events) OR '*'=ANY(events)) RETURNING id"),
+                {"event": event, "payload": json.dumps(payload)},
+            )
+            return len(result.scalars().all())
+
+    async def claim_webhook_deliveries(self, limit: int = 100) -> list[dict[str, Any]]:
+        async with self._internal_session() as db:
+            rows = await db.execute(
+                text("WITH picked AS (SELECT id FROM webhook_deliveries WHERE status IN ('pending','retrying') AND next_retry_at<=now() ORDER BY next_retry_at FOR UPDATE SKIP LOCKED LIMIT :limit) UPDATE webhook_deliveries d SET status='processing',attempts=attempts+1,updated_at=now() FROM picked WHERE d.id=picked.id RETURNING d.*"),
+                {"limit": limit},
+            )
+            deliveries = [dict(row) for row in rows.mappings()]
+            for item in deliveries:
+                endpoint = (await db.execute(text("SELECT w.url,s.ciphertext,s.kms_key_id FROM webhooks_out w JOIN secrets s ON s.id=w.secret_id WHERE w.id=:id AND w.enabled"), {"id": item["webhook_id"]})).mappings().first()
+                if endpoint:
+                    item.update(dict(endpoint))
+            return [item for item in deliveries if item.get("url")]
+
+    async def update_webhook_delivery(self, delivery_id: UUID, data: dict[str, Any]) -> None:
+        async with self._internal_session() as db:
+            await db.execute(
+                text("UPDATE webhook_deliveries SET status=:status,last_status_code=:code,next_retry_at=:retry,updated_at=now() WHERE id=:id"),
+                {"id": delivery_id, "status": data["status"], "code": data.get("last_status_code"), "retry": data.get("next_retry_at")},
+            )
+
+    async def retry_webhook_delivery(self, tenant_id: UUID, webhook_id: UUID, delivery_id: UUID) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(
+                text("UPDATE webhook_deliveries SET status='pending',attempts=0,next_retry_at=now(),updated_at=now() WHERE id=:id AND webhook_id=:webhook RETURNING id"),
+                {"id": delivery_id, "webhook": webhook_id},
+            )
+            return bool(result.scalar_one_or_none())
+
+    async def create_export(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text("INSERT INTO exports(id,tenant_id,type,filters,status,expires_at) VALUES(:id,:tenant,:type,CAST(:filters AS jsonb),'pending',now()+interval '7 days') RETURNING *"),
+                {"id": uuid4(), "tenant": tenant_id, "type": data["type"], "filters": json.dumps(data.get("filters", {}))},
+            )
+            return dict(row.mappings().one())
+
+    async def get_export(self, tenant_id: UUID, export_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("SELECT * FROM exports WHERE id=:id"), {"id": export_id})
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def claim_exports(self, limit: int = 20) -> list[dict[str, Any]]:
+        async with self._internal_session() as db:
+            rows = await db.execute(
+                text("WITH picked AS (SELECT id FROM exports WHERE status='pending' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT :limit) UPDATE exports e SET status='processing',updated_at=now() FROM picked WHERE e.id=picked.id RETURNING e.*"),
+                {"limit": limit},
+            )
+            exports = [dict(row) for row in rows.mappings()]
+            for item in exports:
+                if item["type"] == "calls":
+                    data = await db.execute(
+                        text("SELECT id,agent_id,end_user_id,channel,status,end_reason,started_at,ended_at,duration_s,billable_seconds,summary,outcome,variables,metadata FROM calls WHERE tenant_id=:tenant ORDER BY started_at DESC LIMIT 10000"),
+                        {"tenant": item["tenant_id"]},
+                    )
+                else:
+                    filters = dict(item.get("filters") or {})
+                    end_user_id = filters.get("id")
+                    data = await db.execute(
+                        text("SELECT id,external_id,phone,email,name,metadata,first_seen_at,last_seen_at FROM end_users WHERE tenant_id=:tenant AND (CAST(:id AS uuid) IS NULL OR id=CAST(:id AS uuid)) ORDER BY last_seen_at DESC LIMIT 10000"),
+                        {"tenant": item["tenant_id"], "id": end_user_id},
+                    )
+                item["rows"] = [dict(row) for row in data.mappings()]
+            return exports
+
+    async def complete_export(self, export_id: UUID, s3_key: str | None, error: bool = False) -> None:
+        async with self._internal_session() as db:
+            await db.execute(
+                text("UPDATE exports SET status=:status,s3_key=:key,updated_at=now() WHERE id=:id"),
+                {"id": export_id, "status": "failed" if error else "ready", "key": s3_key},
+            )
+
+    async def purge_retention(self) -> dict[str, Any]:
+        async with self._internal_session() as db:
+            recordings = await db.execute(text("DELETE FROM call_recordings WHERE expires_at<now() RETURNING s3_key"))
+            recording_keys = list(recordings.scalars())
+            turns = await db.execute(
+                text("UPDATE call_turns ct SET text='[retained-anonymized]',updated_at=now() FROM calls c JOIN tenants t ON t.id=c.tenant_id WHERE ct.call_id=c.id AND COALESCE((t.settings->>'anonymize_transcripts')::boolean,false) AND c.started_at<now()-make_interval(days=>COALESCE((t.settings->>'retention_days')::int,90)) AND ct.text<>'[retained-anonymized]' RETURNING ct.id")
+            )
+            document_rows = await db.execute(text("SELECT id,s3_key FROM documents WHERE deleted_at<now()-interval '30 days' FOR UPDATE"))
+            documents = [dict(row) for row in document_rows.mappings()]
+            if documents:
+                ids = [item["id"] for item in documents]
+                await db.execute(text("DELETE FROM chunks WHERE document_id=ANY(:ids)"), {"ids": ids})
+                await db.execute(text("DELETE FROM documents WHERE id=ANY(:ids)"), {"ids": ids})
+            return {"recording_keys": recording_keys, "document_keys": [item["s3_key"] for item in documents if item.get("s3_key")], "turns_anonymized": len(turns.scalars().all()), "documents_deleted": len(documents)}
+
+    async def analytics_overview(self, tenant_id: UUID, start: date, end: date, agent_id: UUID | None = None) -> dict[str, Any]:
+        params = {"start": start, "end": end + timedelta(days=1), "agent": agent_id}
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text("SELECT count(*)::int calls,COALESCE(sum(COALESCE(billable_seconds,duration_s,0))/60.0,0)::float minutes,COALESCE(avg(duration_s),0)::float avg_duration,COALESCE(avg(CASE WHEN outcome->>'resolved'='true' THEN 1.0 ELSE 0.0 END),0)::float resolution_rate,COALESCE(avg(CASE WHEN end_reason='transferred' THEN 1.0 ELSE 0.0 END),0)::float transfer_rate,COALESCE(avg(CASE WHEN status IN ('no_answer','busy','cancelled') THEN 1.0 ELSE 0.0 END),0)::float abandon_rate,COALESCE(avg((latency->>'ttfb_p50_ms')::float),0)::float latency_p50,COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY (latency->>'ttfb_p95_ms')::float) FILTER (WHERE latency?'ttfb_p95_ms'),0)::float latency_p95,COALESCE(sum((cost->>'total')::numeric),0)::float cost,COALESCE(avg(q.score)/20.0,0)::float csat FROM calls c LEFT JOIN call_qa q ON q.call_id=c.id WHERE c.started_at>=:start AND c.started_at<:end AND (CAST(:agent AS uuid) IS NULL OR c.agent_id=CAST(:agent AS uuid))"),
+                params,
+            )
+            result = dict(row.mappings().one())
+            daily = await db.execute(
+                text("SELECT date_trunc('day',started_at)::date date,count(*)::int calls,COALESCE(sum(COALESCE(billable_seconds,duration_s,0))/60.0,0)::float minutes FROM calls WHERE started_at>=:start AND started_at<:end AND (CAST(:agent AS uuid) IS NULL OR agent_id=CAST(:agent AS uuid)) GROUP BY 1 ORDER BY 1"),
+                params,
+            )
+            result["series"] = [dict(item) for item in daily.mappings()]
+            return result
+
+    async def analytics_tools(self, tenant_id: UUID, start: date, end: date) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(
+                text("SELECT name,count(*)::int calls,count(*) FILTER (WHERE status<>'ok')::int errors,COALESCE(avg(duration_ms),0)::float avg_duration_ms FROM call_tool_calls WHERE started_at>=:start AND started_at<:end GROUP BY name ORDER BY calls DESC,name"),
+                {"start": start, "end": end + timedelta(days=1)},
+            )
+            return [dict(item) for item in rows.mappings()]
+
+    async def admin_list_tenants(self) -> list[dict[str, Any]]:
+        async with self._internal_session() as db:
+            rows = await db.execute(
+                text("SELECT t.id,t.slug,t.name,t.status,t.settings,t.created_at,p.code plan_code,s.status subscription_status,count(DISTINCT a.id)::int agents_count,count(DISTINCT c.id)::int calls_count FROM tenants t LEFT JOIN subscriptions s ON s.tenant_id=t.id LEFT JOIN plans p ON p.id=s.plan_id LEFT JOIN agents a ON a.tenant_id=t.id AND a.deleted_at IS NULL LEFT JOIN calls c ON c.tenant_id=t.id WHERE t.deleted_at IS NULL GROUP BY t.id,p.code,s.status ORDER BY t.created_at DESC")
+            )
+            return [dict(item) for item in rows.mappings()]
+
+    async def admin_update_tenant(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        async with self._internal_session() as db:
+            if "status" in data:
+                updated = await db.execute(text("UPDATE tenants SET status=:status,updated_at=now() WHERE id=:id AND deleted_at IS NULL RETURNING id"), {"id": tenant_id, "status": data["status"]})
+                if not updated.scalar_one_or_none():
+                    return None
+            if plan_code := data.get("plan_code"):
+                plan_id = (await db.execute(text("SELECT id FROM plans WHERE code=:code"), {"code": plan_code})).scalar_one_or_none()
+                if not plan_id:
+                    return None
+                await db.execute(text("INSERT INTO subscriptions(id,tenant_id,plan_id,status) VALUES(gen_random_uuid(),:tenant,:plan,'active') ON CONFLICT(tenant_id) DO UPDATE SET plan_id=excluded.plan_id,updated_at=now()"), {"tenant": tenant_id, "plan": plan_id})
+            await db.execute(text("INSERT INTO events(id,tenant_id,actor_type,type,entity_type,entity_id,payload) VALUES(gen_random_uuid(),:tenant,'system','admin.tenant_updated','tenant',:tenant,CAST(:payload AS jsonb))"), {"tenant": tenant_id, "payload": json.dumps(data)})
+        return next((item for item in await self.admin_list_tenants() if item["id"] == tenant_id), None)
+
+    async def admin_metrics(self) -> dict[str, Any]:
+        async with self._internal_session() as db:
+            row = await db.execute(text("SELECT (SELECT count(*) FROM tenants WHERE deleted_at IS NULL)::int tenants,(SELECT count(*) FROM calls)::int calls,(SELECT COALESCE(sum(COALESCE(billable_seconds,duration_s,0))/60.0,0) FROM calls)::float minutes,(SELECT COALESCE(sum((cost->>'total')::numeric),0) FROM calls)::float cost,(SELECT count(*) FROM calls WHERE status IN ('queued','ringing','in_progress'))::int active_rooms"))
+            return dict(row.mappings().one())
+
 
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
@@ -2022,6 +2316,47 @@ class MemoryRepository:
         self.memory.end_users[item["id"]] = item
         return item
 
+    async def list_end_users(self, tenant_id: UUID, query: str | None = None) -> list[dict[str, Any]]:
+        needle = (query or "").lower()
+        result: list[dict[str, Any]] = []
+        for item in self.memory.end_users.values():
+            if item["tenant_id"] != tenant_id:
+                continue
+            if needle and needle not in " ".join(str(item.get(field) or "") for field in ("external_id", "phone", "email", "name")).lower():
+                continue
+            value = dict(item)
+            value["calls_count"] = sum(call.get("end_user_id") == item["id"] for call in self.memory.calls.values())
+            result.append(value)
+        return sorted(result, key=lambda item: item.get("last_seen_at") or item["created_at"], reverse=True)
+
+    async def get_end_user(self, tenant_id: UUID, end_user_id: UUID) -> dict[str, Any] | None:
+        item = self.memory.end_users.get(end_user_id)
+        if not item or item["tenant_id"] != tenant_id:
+            return None
+        result = dict(item)
+        result["calls"] = [dict(call) for call in self.memory.calls.values() if call.get("end_user_id") == end_user_id][-20:]
+        return result
+
+    async def update_end_user(self, tenant_id: UUID, end_user_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        item = self.memory.end_users.get(end_user_id)
+        if not item or item["tenant_id"] != tenant_id:
+            return None
+        item.update(data)
+        item["updated_at"] = datetime.now(UTC)
+        return dict(item)
+
+    async def anonymize_end_user(self, tenant_id: UUID, end_user_id: UUID) -> bool:
+        item = self.memory.end_users.get(end_user_id)
+        if not item or item["tenant_id"] != tenant_id:
+            return False
+        for call in self.memory.calls.values():
+            if call.get("end_user_id") == end_user_id:
+                call.update({"end_user_id": None, "from_number": None, "to_number": None, "summary": None, "variables": {}, "metadata": {}})
+                for turn in call.get("turns", []):
+                    turn["text"] = "[deleted]"
+        del self.memory.end_users[end_user_id]
+        return True
+
     async def create_call(
         self,
         tenant_id: UUID,
@@ -2111,8 +2446,18 @@ class MemoryRepository:
             "tool_calls": self.memory.call_tool_calls.get(call_id, []),
             "events": self.memory.call_events.get(call_id, []),
             "recording": self.memory.call_recordings.get(call_id),
-            "qa": None,
+            "qa": self.memory.call_qa.get(call_id),
         }
+
+    async def upsert_call_qa(self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        if not await self.get_call(tenant_id, call_id):
+            return None
+        now = datetime.now(UTC)
+        item = self.memory.call_qa.get(call_id, {"id": uuid4(), "tenant_id": tenant_id, "call_id": call_id, "created_at": now})
+        item.update(data)
+        item["updated_at"] = now
+        self.memory.call_qa[call_id] = item
+        return dict(item)
 
     async def update_call(
         self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]
@@ -2632,6 +2977,209 @@ class MemoryRepository:
         for record in self.memory.usage_records.values():
             if record["tenant_id"] == tenant_id and record["id"] in selected:
                 record["stripe_usage_record_id"] = stripe_id
+
+    async def billing_threshold_events(self) -> list[dict[str, Any]]:
+        period = datetime.now(UTC).date().replace(day=1)
+        events: list[dict[str, Any]] = []
+        for subscription in self.memory.subscriptions.values():
+            if subscription.get("status") not in {"active", "trialing"}:
+                continue
+            tenant_id = subscription["tenant_id"]
+            included = int(PLANS[str(subscription.get("plan_code", "trial"))]["included_minutes"])
+            minutes = sum(
+                (int(item["billable_seconds"]) + 59) // 60
+                for item in self.memory.usage_records.values()
+                if item["tenant_id"] == tenant_id and item["period"] == period
+            )
+            for threshold in (80, 100):
+                key = (tenant_id, period.isoformat(), threshold)
+                if included and minutes * 100 >= included * threshold and key not in self.memory.billing_usage_alerts:
+                    value = {"tenant_id": tenant_id, "period": period, "threshold": threshold, "minutes": minutes}
+                    self.memory.billing_usage_alerts[key] = value
+                    events.append(value)
+        return events
+
+    async def list_webhooks(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return [dict(item) for item in self.memory.webhooks.values() if item["tenant_id"] == tenant_id]
+
+    async def create_webhook(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        item = {"id": uuid4(), "tenant_id": tenant_id, **data, "created_at": now, "updated_at": now}
+        self.memory.webhooks[item["id"]] = item
+        return {key: value for key, value in item.items() if key != "secret_id"}
+
+    async def update_webhook(self, tenant_id: UUID, webhook_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        item = self.memory.webhooks.get(webhook_id)
+        if not item or item["tenant_id"] != tenant_id:
+            return None
+        item.update(data)
+        item["updated_at"] = datetime.now(UTC)
+        return dict(item)
+
+    async def delete_webhook(self, tenant_id: UUID, webhook_id: UUID) -> bool:
+        item = self.memory.webhooks.get(webhook_id)
+        if not item or item["tenant_id"] != tenant_id:
+            return False
+        del self.memory.webhooks[webhook_id]
+        return True
+
+    async def list_webhook_deliveries(self, tenant_id: UUID, webhook_id: UUID) -> list[dict[str, Any]]:
+        return [dict(item) for item in self.memory.webhook_deliveries.values() if item["tenant_id"] == tenant_id and item["webhook_id"] == webhook_id]
+
+    async def queue_webhook_event(self, tenant_id: UUID, event: str, data: dict[str, Any]) -> int:
+        count = 0
+        for endpoint in self.memory.webhooks.values():
+            if endpoint["tenant_id"] != tenant_id or not endpoint.get("enabled", True) or event not in endpoint["events"] and "*" not in endpoint["events"]:
+                continue
+            now = datetime.now(UTC)
+            item = {"id": uuid4(), "tenant_id": tenant_id, "webhook_id": endpoint["id"], "event": event, "payload": {"id": f"evt_{uuid4().hex}", "type": event, "created_at": now.isoformat(), "tenant_id": str(tenant_id), "data": data}, "status": "pending", "attempts": 0, "last_status_code": None, "next_retry_at": now, "created_at": now, "updated_at": now}
+            self.memory.webhook_deliveries[item["id"]] = item
+            count += 1
+        return count
+
+    async def claim_webhook_deliveries(self, limit: int = 100) -> list[dict[str, Any]]:
+        now = datetime.now(UTC)
+        result: list[dict[str, Any]] = []
+        for item in self.memory.webhook_deliveries.values():
+            if len(result) >= limit or item["status"] not in {"pending", "retrying"} or item["next_retry_at"] > now:
+                continue
+            endpoint = self.memory.webhooks.get(item["webhook_id"])
+            secret_id = endpoint.get("secret_id") if endpoint else None
+            secret = self.memory.secrets.get(secret_id) if isinstance(secret_id, UUID) else None
+            if not endpoint or not secret or not endpoint.get("enabled", True):
+                continue
+            item["status"] = "processing"
+            item["attempts"] += 1
+            result.append({**item, "url": endpoint["url"], "ciphertext": secret["ciphertext"], "kms_key_id": secret["kms_key_id"]})
+        return result
+
+    async def update_webhook_delivery(self, delivery_id: UUID, data: dict[str, Any]) -> None:
+        if item := self.memory.webhook_deliveries.get(delivery_id):
+            item.update(data)
+            item["updated_at"] = datetime.now(UTC)
+
+    async def retry_webhook_delivery(self, tenant_id: UUID, webhook_id: UUID, delivery_id: UUID) -> bool:
+        item = self.memory.webhook_deliveries.get(delivery_id)
+        if not item or item["tenant_id"] != tenant_id or item["webhook_id"] != webhook_id:
+            return False
+        item.update({"status": "pending", "attempts": 0, "next_retry_at": datetime.now(UTC)})
+        return True
+
+    async def create_export(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        item = {"id": uuid4(), "tenant_id": tenant_id, **data, "status": "pending", "s3_key": None, "expires_at": now + timedelta(days=7), "created_at": now, "updated_at": now}
+        self.memory.exports[item["id"]] = item
+        return dict(item)
+
+    async def get_export(self, tenant_id: UUID, export_id: UUID) -> dict[str, Any] | None:
+        item = self.memory.exports.get(export_id)
+        return dict(item) if item and item["tenant_id"] == tenant_id else None
+
+    async def claim_exports(self, limit: int = 20) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for item in self.memory.exports.values():
+            if len(result) >= limit or item["status"] != "pending":
+                continue
+            item["status"] = "processing"
+            rows = (
+                [dict(call) for call in self.memory.calls.values() if call["tenant_id"] == item["tenant_id"]]
+                if item["type"] == "calls"
+                else [dict(end_user) for end_user in self.memory.end_users.values() if end_user["tenant_id"] == item["tenant_id"] and (not item["filters"].get("id") or str(end_user["id"]) == str(item["filters"]["id"]))]
+            )
+            result.append({**item, "rows": rows})
+        return result
+
+    async def complete_export(self, export_id: UUID, s3_key: str | None, error: bool = False) -> None:
+        if item := self.memory.exports.get(export_id):
+            item.update({"status": "failed" if error else "ready", "s3_key": s3_key, "updated_at": datetime.now(UTC)})
+
+    async def purge_retention(self) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        recording_keys: list[str] = []
+        for call_id, recording in list(self.memory.call_recordings.items()):
+            if recording.get("expires_at") and recording["expires_at"] < now:
+                recording_keys.append(str(recording["s3_key"]))
+                del self.memory.call_recordings[call_id]
+        anonymized = 0
+        for call_id, turns in self.memory.call_turns.items():
+            call = self.memory.calls.get(call_id)
+            tenant_id = call.get("tenant_id") if call else None
+            tenant = self.memory.tenants.get(tenant_id) if isinstance(tenant_id, UUID) else None
+            settings = dict((tenant or {}).get("settings") or {})
+            cutoff = now - timedelta(days=int(settings.get("retention_days", 90)))
+            if settings.get("anonymize_transcripts") and call and call.get("started_at") and call["started_at"] < cutoff:
+                for turn in turns:
+                    if turn.get("text") != "[retained-anonymized]":
+                        turn["text"] = "[retained-anonymized]"
+                        anonymized += 1
+        documents = [doc_id for doc_id, doc in self.memory.documents.items() if doc.get("deleted_at") and doc["deleted_at"] < now - timedelta(days=30)]
+        document_keys = [str(self.memory.documents[doc_id]["s3_key"]) for doc_id in documents if self.memory.documents[doc_id].get("s3_key")]
+        for doc_id in documents:
+            del self.memory.documents[doc_id]
+            self.memory.chunks.pop(doc_id, None)
+        return {"recording_keys": recording_keys, "document_keys": document_keys, "turns_anonymized": anonymized, "documents_deleted": len(documents)}
+
+    async def analytics_overview(self, tenant_id: UUID, start: date, end: date, agent_id: UUID | None = None) -> dict[str, Any]:
+        calls = [call for call in self.memory.calls.values() if call["tenant_id"] == tenant_id and start <= (call.get("started_at") or call["created_at"]).date() <= end and (agent_id is None or call["agent_id"] == agent_id)]
+        count = len(calls)
+        daily: dict[str, dict[str, Any]] = {}
+        for call in calls:
+            day = (call.get("started_at") or call["created_at"]).date().isoformat()
+            point = daily.setdefault(day, {"date": day, "calls": 0, "minutes": 0.0})
+            point["calls"] += 1
+            point["minutes"] += float(call.get("billable_seconds") or call.get("duration_s") or 0) / 60
+        qa_scores = [float(self.memory.call_qa[call["id"]]["score"]) for call in calls if call["id"] in self.memory.call_qa]
+        return {
+            "calls": count,
+            "minutes": sum(float(call.get("billable_seconds") or call.get("duration_s") or 0) for call in calls) / 60,
+            "avg_duration": sum(float(call.get("duration_s") or 0) for call in calls) / count if count else 0,
+            "resolution_rate": sum(bool((call.get("outcome") or {}).get("resolved")) for call in calls) / count if count else 0,
+            "transfer_rate": sum(call.get("end_reason") == "transferred" for call in calls) / count if count else 0,
+            "abandon_rate": sum(call.get("status") in {"no_answer", "busy", "cancelled"} for call in calls) / count if count else 0,
+            "csat": sum(qa_scores) / len(qa_scores) / 20 if qa_scores else 0,
+            "latency_p50": sum(float((call.get("latency") or {}).get("ttfb_p50_ms", 0)) for call in calls) / count if count else 0,
+            "latency_p95": max((float((call.get("latency") or {}).get("ttfb_p95_ms", 0)) for call in calls), default=0),
+            "cost": sum(float((call.get("cost") or {}).get("total", 0)) for call in calls),
+            "series": [daily[key] for key in sorted(daily)],
+        }
+
+    async def analytics_tools(self, tenant_id: UUID, start: date, end: date) -> list[dict[str, Any]]:
+        grouped: dict[str, dict[str, Any]] = {}
+        for call_id, tools in self.memory.call_tool_calls.items():
+            call = self.memory.calls.get(call_id)
+            if not call or call["tenant_id"] != tenant_id or not start <= (call.get("started_at") or call["created_at"]).date() <= end:
+                continue
+            for tool in tools:
+                item = grouped.setdefault(str(tool["name"]), {"name": tool["name"], "calls": 0, "errors": 0, "total_duration_ms": 0})
+                item["calls"] += 1
+                item["errors"] += tool.get("status") != "ok"
+                item["total_duration_ms"] += int(tool.get("duration_ms") or 0)
+        return [{**item, "avg_duration_ms": item.pop("total_duration_ms") / item["calls"]} for item in grouped.values()]
+
+    async def admin_list_tenants(self) -> list[dict[str, Any]]:
+        result = []
+        for tenant in self.memory.tenants.values():
+            subscription = next((item for item in self.memory.subscriptions.values() if item["tenant_id"] == tenant["id"]), None)
+            result.append({**tenant, "plan_code": (subscription or {}).get("plan_code", "trial"), "subscription_status": (subscription or {}).get("status", "trialing"), "agents_count": sum(item["tenant_id"] == tenant["id"] for item in self.memory.agents.values()), "calls_count": sum(item["tenant_id"] == tenant["id"] for item in self.memory.calls.values())})
+        return result
+
+    async def admin_update_tenant(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+        tenant = self.memory.tenants.get(tenant_id)
+        if not tenant:
+            return None
+        if "status" in data:
+            tenant["status"] = data["status"]
+        if plan_code := data.get("plan_code"):
+            subscription = next((item for item in self.memory.subscriptions.values() if item["tenant_id"] == tenant_id), None)
+            if subscription:
+                subscription["plan_code"] = plan_code
+            else:
+                item = {"id": uuid4(), "tenant_id": tenant_id, "plan_code": plan_code, "status": "active", "created_at": datetime.now(UTC)}
+                self.memory.subscriptions[item["id"]] = item
+        return next((item for item in await self.admin_list_tenants() if item["id"] == tenant_id), None)
+
+    async def admin_metrics(self) -> dict[str, Any]:
+        return {"tenants": len(self.memory.tenants), "calls": len(self.memory.calls), "minutes": sum(float(item.get("billable_seconds") or item.get("duration_s") or 0) for item in self.memory.calls.values()) / 60, "cost": sum(float((item.get("cost") or {}).get("total", 0)) for item in self.memory.calls.values()), "active_rooms": sum(item.get("status") in {"queued", "ringing", "in_progress"} for item in self.memory.calls.values())}
 
     async def delete_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> bool:
         if not await self.get_knowledge_base(tenant_id, kb_id):

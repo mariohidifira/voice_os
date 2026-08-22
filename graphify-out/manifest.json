@@ -65,18 +65,18 @@
     "semantic_hash": ""
   },
   "apps/api/scripts/seed.py": {
-    "mtime": 1787373297.61161,
-    "ast_hash": "94472c5dabeb558155c65620a61c48a1",
+    "mtime": 1787402787.402057,
+    "ast_hash": "5850e1e3f67e965f7f6903f7b29a5c42",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/auth.py": {
-    "mtime": 1786990399.0798833,
-    "ast_hash": "d74264eb52da862e6d584ad46c95983e",
+    "mtime": 1787402331.6874378,
+    "ast_hash": "e3b7b99b76b7a7b6126bf0fc61e0f6bf",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/config.py": {
-    "mtime": 1787394014.8889484,
-    "ast_hash": "3c5b735292b4cd758ac1b67c9ff0184a",
+    "mtime": 1787398120.9575622,
+    "ast_hash": "86bdc5e33db8ab6ba9b3c2bf8de29003",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/db.py": {
@@ -90,8 +90,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/main.py": {
-    "mtime": 1787323556.1014535,
-    "ast_hash": "4827f4ef9d00ebc4b5732caca4401c31",
+    "mtime": 1787402444.693377,
+    "ast_hash": "4cc431446e7a9c61105f77e7c68f8a83",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/observability.py": {
@@ -100,23 +100,23 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/repository.py": {
-    "mtime": 1787396931.7274332,
-    "ast_hash": "7152a0b1bea01f0afe9cbaf7c5ee6b37",
+    "mtime": 1787402404.5381112,
+    "ast_hash": "fcc6fa319da68c29001891159a36a040",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787397587.1531534,
-    "ast_hash": "96c4073d1fed006d0037057aacb26443",
+    "mtime": 1787403085.204049,
+    "ast_hash": "b12e3f25ac8848ff985e00ec14c479be",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
-    "mtime": 1787397213.0898888,
-    "ast_hash": "a2b1f204d1c90377433cb6b777527955",
+    "mtime": 1787402334.946432,
+    "ast_hash": "bd66cfa81fcca6150660e925bff5704b",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/store.py": {
-    "mtime": 1787395128.7969995,
-    "ast_hash": "af5675d11f841c259a9da955da47040c",
+    "mtime": 1787401752.1639266,
+    "ast_hash": "618a9dceaf1dde68e8d05678c4bd5cec",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/__init__.py": {
@@ -195,8 +195,8 @@
     "semantic_hash": ""
   },
   "apps/worker/main.py": {
-    "mtime": 1787396654.3696716,
-    "ast_hash": "35220f0a9d348491b92bea09a3babf68",
+    "mtime": 1787401516.0711212,
+    "ast_hash": "3b8b3f25651f9ad32b40c0450e717a89",
     "semantic_hash": ""
   },
   "packages/shared-py/voiceos_shared/contracts.py": {
@@ -215,8 +215,8 @@
     "semantic_hash": ""
   },
   "packages/shared-ts/src/openapi.ts": {
-    "mtime": 1787397720.65988,
-    "ast_hash": "36b7c19c1b9cfdf988ed037c1e3e2f52",
+    "mtime": 1787402815.2259612,
+    "ast_hash": "97deec630ba4dceabce1e0bbfd60ba20",
     "semantic_hash": ""
   },
   "packages/widget/src/index.ts": {
@@ -305,8 +305,8 @@
     "semantic_hash": ""
   },
   "PHASE-3-REPORT.md": {
-    "mtime": 1786990618.488593,
-    "ast_hash": "75859b840b3bba7eef7c5bf0fed74330",
+    "mtime": 1787403114.9069028,
+    "ast_hash": "cae7d2c3c6384094bdc423b6c6add411",
     "semantic_hash": ""
   },
   "PHASE-4-REPORT.md": {
@@ -465,8 +465,8 @@
     "semantic_hash": ""
   },
   "infra/terraform/main.tf": {
-    "mtime": 1787394023.2291975,
-    "ast_hash": "cfe76361a1c2e8c1ec8801f34f7e443b",
+    "mtime": 1787399387.4589262,
+    "ast_hash": "dc5e333ba2299f37792ee1924b4f2aa8",
     "semantic_hash": ""
   },
   "infra/terraform/outputs.tf": {
@@ -485,8 +485,8 @@
     "semantic_hash": ""
   },
   "packages/shared-ts/openapi.json": {
-    "mtime": 1787397717.5185862,
-    "ast_hash": "7003253a30a4b55b09237e831c8bf1f6",
+    "mtime": 1787402810.8363426,
+    "ast_hash": "223e216125f4994dc10123a0e4333ca7",
     "semantic_hash": ""
   },
   "packages/shared-ts/package.json": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "tests/test_postgres_repository.py": {
-    "mtime": 1787396931.7240787,
-    "ast_hash": "d8ecdd720fb2162c7f8ccde057a655a7",
+    "mtime": 1787401271.2089498,
+    "ast_hash": "74802b35f2dd462d2ee992885a9b1d4f",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
@@ -535,8 +535,8 @@
     "semantic_hash": ""
   },
   ".github/workflows/deploy-staging.yml": {
-    "mtime": 1787394021.6111424,
-    "ast_hash": "272708f86aaddd975ecc880b129330d9",
+    "mtime": 1787399385.1252098,
+    "ast_hash": "a4d3ece47c7d98bbdc82bffdd30b2817",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/knowledge.py": {
@@ -575,13 +575,13 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/native_integrations.py": {
-    "mtime": 1787394018.284276,
-    "ast_hash": "21e82752e39a3e90e34a56157e8457a1",
+    "mtime": 1787402738.1614003,
+    "ast_hash": "069c146162193118351bed82174be709",
     "semantic_hash": ""
   },
   "tests/test_native_integrations.py": {
-    "mtime": 1787394048.3871915,
-    "ast_hash": "e1b57586d8a8c8a05ce8f0ec0ce7e30b",
+    "mtime": 1787402767.2205913,
+    "ast_hash": "22a67a4b16e84cc364ed44a6567ab10b",
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/api_client.py": {
@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/postprocessing.py": {
-    "mtime": 1787325185.6799884,
-    "ast_hash": "762c616cbb0a346f06fa245e317dcba3",
+    "mtime": 1787401715.212606,
+    "ast_hash": "6ddef134fcb12198e87e0412a6bdb06b",
     "semantic_hash": ""
   },
   "tests/test_accounting.py": {
@@ -645,23 +645,23 @@
     "semantic_hash": ""
   },
   "tests/test_postprocessing.py": {
-    "mtime": 1787325199.5836415,
-    "ast_hash": "db4772fa8ae5274788e85a78110ef7fe",
+    "mtime": 1787401910.9546647,
+    "ast_hash": "e1bcb7387c63be9fa6d09b508b6a723f",
     "semantic_hash": ""
   },
   "apps/web/app/api/voiceos/[...path]/route.ts": {
-    "mtime": 1787371951.636795,
-    "ast_hash": "3ff74c7d2f2a394df227b2f3697bb187",
+    "mtime": 1787402469.9160576,
+    "ast_hash": "17e4ffd27c8e31e45a08947ba18eb3ce",
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787397546.585536,
-    "ast_hash": "4f358b211cff0017d57a189dd7496a03",
+    "mtime": 1787402186.7870984,
+    "ast_hash": "e3238f073bf67fd8632bb4f3ebab7437",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
-    "mtime": 1787370588.2075217,
-    "ast_hash": "84dce32ac595deb157a3bd3e5794ab41",
+    "mtime": 1787402364.8247032,
+    "ast_hash": "3fb3c4ce01063ea1a46cfa4fee8f0aa4",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/livekit_sessions.py": {
@@ -790,8 +790,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/storage.py": {
-    "mtime": 1787373192.3717022,
-    "ast_hash": "7ad461de24a3e33600d853abd57d21e3",
+    "mtime": 1787401611.792077,
+    "ast_hash": "b32a3bb4c3df1741e99d680fa69bd540",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/prompt_improvement.py": {
@@ -867,6 +867,91 @@
   "tests/test_campaigns.py": {
     "mtime": 1787397911.2709947,
     "ast_hash": "6dbdf020b73967a3a1ac81b8c62fafd8",
+    "semantic_hash": ""
+  },
+  "apps/api/alembic/versions/0007_billing_stripe.py": {
+    "mtime": 1787398957.6370957,
+    "ast_hash": "79143520da1e6b50c86c7188d1fe3fa3",
+    "semantic_hash": ""
+  },
+  "apps/api/alembic/versions/0008_billing_meter_items.py": {
+    "mtime": 1787398959.6292164,
+    "ast_hash": "30511d3fb0fcb6bd8bd07db3391218aa",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/billing.py": {
+    "mtime": 1787399208.3404565,
+    "ast_hash": "e21d057c2f2bb8544e465f33ccabba19",
+    "semantic_hash": ""
+  },
+  "scripts/stripe_sync.py": {
+    "mtime": 1787398735.2265005,
+    "ast_hash": "44fa169777d21f68689496998f06345f",
+    "semantic_hash": ""
+  },
+  "tests/test_billing.py": {
+    "mtime": 1787401172.1515036,
+    "ast_hash": "032e25f513be8e7e32772374eb74ab60",
+    "semantic_hash": ""
+  },
+  "apps/api/alembic/versions/0009_billing_usage_alerts.py": {
+    "mtime": 1787401085.2139127,
+    "ast_hash": "9f6939be9c4c16a299ebd9a7f273ec81",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/outgoing_webhooks.py": {
+    "mtime": 1787400995.6827447,
+    "ast_hash": "c7d301bf6cb3d2a01a72531e79159405",
+    "semantic_hash": ""
+  },
+  "apps/web/app/admin/admin-dashboard.tsx": {
+    "mtime": 1787402501.9272687,
+    "ast_hash": "d8f579d8c624e8d72176ef7f8fa5dd27",
+    "semantic_hash": ""
+  },
+  "apps/web/app/admin/page.tsx": {
+    "mtime": 1787402499.547768,
+    "ast_hash": "9de093fc2a488cecfe43af5a96e79944",
+    "semantic_hash": ""
+  },
+  "infra/grafana/provisioning/voiceos-infra.json": {
+    "mtime": 1787402634.1298537,
+    "ast_hash": "7ae998833cbd3e7854ade065269ec76c",
+    "semantic_hash": ""
+  },
+  "infra/grafana/provisioning/voiceos-overview.json": {
+    "mtime": 1787402628.6597006,
+    "ast_hash": "fa0a9f3f5bd51a35ec07a3bef6edcfc5",
+    "semantic_hash": ""
+  },
+  "infra/grafana/provisioning/voiceos-pipeline.json": {
+    "mtime": 1787402630.5884323,
+    "ast_hash": "dbba55a1abc6fc18c155073b7baff4d5",
+    "semantic_hash": ""
+  },
+  "infra/grafana/provisioning/voiceos-tenant.json": {
+    "mtime": 1787402632.1826372,
+    "ast_hash": "4661e298eda231cced67959a2a5fc7fe",
+    "semantic_hash": ""
+  },
+  "tests/test_observability_provisioning.py": {
+    "mtime": 1787402681.9082189,
+    "ast_hash": "12dfeffa21953770273690a7b310f2e1",
+    "semantic_hash": ""
+  },
+  "tests/test_phase3_public_api.py": {
+    "mtime": 1787402714.5158222,
+    "ast_hash": "3085221d457b8b94bcc7030ac1908584",
+    "semantic_hash": ""
+  },
+  "infra/grafana/provisioning/alerts.yaml": {
+    "mtime": 1787402626.7674072,
+    "ast_hash": "32c9189aaf9451d068b576d0d10ab8c3",
+    "semantic_hash": ""
+  },
+  "infra/grafana/provisioning/dashboards.yaml": {
+    "mtime": 1787402624.9354439,
+    "ast_hash": "ebdb0ca9a1f48fe00252857ce597d10f",
     "semantic_hash": ""
   }
 }

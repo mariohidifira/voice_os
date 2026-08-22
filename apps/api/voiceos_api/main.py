@@ -8,10 +8,17 @@ from fastapi.responses import JSONResponse, Response
 from .config import get_settings
 from .health import HealthChecker, get_health_checker
 from .observability import configure_observability, logger
-from .routes import internal, v1, webhooks
+from .routes import admin, internal, v1, webhooks
 
-app = FastAPI(title="VoiceOS API", version="1.0.0", openapi_version="3.1.0")
+app = FastAPI(
+    title="VoiceOS API",
+    version="1.0.0",
+    openapi_version="3.1.0",
+    docs_url=None,
+    redoc_url="/docs",
+)
 app.include_router(v1)
+app.include_router(admin)
 app.include_router(internal)
 app.include_router(webhooks)
 configure_observability(app, get_settings())

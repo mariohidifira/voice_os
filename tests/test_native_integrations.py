@@ -103,3 +103,17 @@ async def test_twilio_sms_uses_tenant_sender_and_call_recipient() -> None:
         "Body": "Seu link: https://example.test/pay",
         "MessagingServiceSid": "MG123",
     }
+
+
+@pytest.mark.asyncio
+async def test_lookup_end_user_native_tool_is_tenant_scoped() -> None:
+    settings = Settings(app_env="test", auth_secret="x" * 32)
+    native = NativeIntegrations(settings)
+    repo = MemoryRepository(MemoryStore())
+    cipher = EnvelopeCipher(settings)
+    tenant_id = uuid4()
+    await repo.upsert_end_user(tenant_id, {"external_id": "crm-42", "email": "person@example.com", "name": "Pessoa"})
+    result = await native.execute("lookup_end_user", {"external_id": "crm-42"}, tenant_id, repo, cipher)
+    assert result["found"] and result["end_user"]["email"] == "person@example.com"
+    missing = await native.execute("lookup_end_user", {"external_id": "missing"}, uuid4(), repo, cipher)
+    assert missing == {"found": False, "end_user": None}

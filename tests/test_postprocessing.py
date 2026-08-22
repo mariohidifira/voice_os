@@ -24,6 +24,7 @@ async def test_postprocessor_sends_transcript_and_validates_structured_result() 
     result = await processor.process({"turns": [{"role": "user", "text": "Preciso cancelar"}]})
     assert result["summary"] == "Cliente pediu cancelamento."
     assert result["outcome"]["resolved"] is True
+    assert result["qa"]["score"] == 100
 
 
 @pytest.mark.asyncio

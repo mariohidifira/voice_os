@@ -73,6 +73,7 @@ async def seed() -> None:
         tools = [
             (UUID(int=200), "consultar_pedido", "webhook", None),
             (UUID(int=201), "transfer_call", "native", "transfer_call"),
+            (UUID(int=202), "lookup_end_user", "native", "lookup_end_user"),
         ]
         for tool_id, name, kind, native in tools:
             await db.execute(

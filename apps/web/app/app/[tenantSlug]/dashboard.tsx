@@ -82,6 +82,10 @@ type Section =
   | "numbers"
   | "members"
   | "billing"
+  | "analytics"
+  | "endUsers"
+  | "webhooks"
+  | "exports"
   | "settings";
 type AgentTab =
   | "prompt"
@@ -113,6 +117,10 @@ const sections: Array<[Section, string]> = [
   ["numbers", "Números"],
   ["members", "Membros"],
   ["billing", "Billing"],
+  ["analytics", "Analytics"],
+  ["endUsers", "End-users"],
+  ["webhooks", "Webhooks"],
+  ["exports", "Exports"],
   ["settings", "Configurações"],
 ];
 
@@ -555,6 +563,10 @@ export default function Dashboard({
   const [billingPlan, setBillingPlan] = useState<BillingPlan | null>(null);
   const [billingUsage, setBillingUsage] = useState<BillingUsage | null>(null);
   const [invoices, setInvoices] = useState<Item[]>([]);
+  const [endUsers, setEndUsers] = useState<Item[]>([]);
+  const [outgoingWebhooks, setOutgoingWebhooks] = useState<Item[]>([]);
+  const [analytics, setAnalytics] = useState<Record<string, unknown>>({});
+  const [latestExport, setLatestExport] = useState<Item | null>(null);
   const [tenant, setTenant] = useState<Item | null>(null);
   const [tenantId, setTenantId] = useState("");
   const [role, setRole] = useState("viewer");
@@ -602,7 +614,7 @@ export default function Dashboard({
     setLoading(true);
     try {
       const me = await api<{ tenant_id: string; role: string }>("me");
-      const [a, templates, c, tenantResult, planResult, usageResult, invoiceResult] = await Promise.all([
+      const [a, templates, c, tenantResult, planResult, usageResult, invoiceResult, endUserResult, analyticsResult] = await Promise.all([
         api<{ data: Item[] }>("agents"),
         api<{ data: AgentTemplate[] }>("agent-templates"),
         api<{ data: Call[] }>("calls"),
@@ -610,9 +622,11 @@ export default function Dashboard({
         api<BillingPlan>("billing/plan"),
         api<BillingUsage>("billing/usage"),
         api<{ data: Item[] }>("billing/invoices"),
+        api<{ data: Item[] }>("end-users"),
+        api<Record<string, unknown>>("analytics/overview"),
       ]);
       const canConfigure = ["owner", "admin"].includes(me.role);
-      const [k, t, keys, memberResult, voiceResult, secretResult, phoneResult, campaignResult] =
+      const [k, t, keys, memberResult, voiceResult, secretResult, phoneResult, campaignResult, webhookResult] =
         canConfigure
           ? await Promise.all([
               api<{ data: Item[] }>("knowledge-bases"),
@@ -623,14 +637,16 @@ export default function Dashboard({
               api<{ data: Item[] }>("secrets"),
               api<{ data: Item[] }>("phone-numbers"),
               api<{ data: Campaign[] }>("campaigns"),
+              api<{ data: Item[] }>("webhooks"),
             ])
           : [
               { data: [] },
               { data: [] },
               { data: [] },
               { data: [] },
-              { data: [] },
               { data: [], configured: false },
+              { data: [] },
+              { data: [] },
               { data: [] },
               { data: [] },
             ];
@@ -642,6 +658,9 @@ export default function Dashboard({
       setBillingPlan(planResult);
       setBillingUsage(usageResult);
       setInvoices(invoiceResult.data);
+      setEndUsers(endUserResult.data);
+      setAnalytics(analyticsResult);
+      setOutgoingWebhooks(webhookResult.data);
       setAgents(a.data);
       setAgentTemplates(templates.data);
       setCalls(c.data);
@@ -1201,7 +1220,8 @@ export default function Dashboard({
           settings: {
             timezone: form.get("timezone"),
             recording_enabled: form.get("recording_enabled") === "on",
-            retention_days: Number(form.get("retention_days")),
+          retention_days: Number(form.get("retention_days")),
+          anonymize_transcripts: form.get("anonymize_transcripts") === "on",
           },
         }),
       });
@@ -1410,6 +1430,58 @@ export default function Dashboard({
     try {
       const result = await api<{ url: string }>("billing/portal", { method: "POST" });
       window.location.assign(result.url);
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function createOutgoingWebhook(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      const item = await api<Item & { secret: string }>("webhooks", {
+        method: "POST",
+        body: JSON.stringify({
+          url: form.get("url"),
+          events: String(form.get("events") ?? "call.ended").split(",").map((value) => value.trim()).filter(Boolean),
+        }),
+      });
+      await refresh();
+      setNotice(`Webhook criado. Copie agora o secret: ${item.secret}`);
+      event.currentTarget.reset();
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function requestExport(type: "calls" | "end_user") {
+    try {
+      const item = await api<Item>("exports", {
+        method: "POST",
+        body: JSON.stringify({ type, filters: {} }),
+      });
+      setLatestExport(item);
+      setNotice("Export solicitado. Atualize o status em alguns segundos.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function refreshExport() {
+    if (!latestExport) return;
+    try {
+      setLatestExport(await api<Item>(`exports/${latestExport.id}`));
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function eraseEndUser(id: string) {
+    if (!window.confirm("Anonimizar definitivamente este end-user e suas chamadas?")) return;
+    try {
+      await api(`end-users/${id}`, { method: "DELETE" });
+      await refresh();
+      setNotice("End-user anonimizado conforme LGPD.");
     } catch (error) {
       setNotice(String(error));
     }
@@ -2769,6 +2841,33 @@ export default function Dashboard({
                 </section>
               </>
             )}
+            {section === "analytics" && (
+              <>
+                <section className="stats">
+                  <article className="card"><span className="muted">Chamadas</span><strong className="value">{Number(analytics.calls ?? 0)}</strong></article>
+                  <article className="card"><span className="muted">Minutos</span><strong className="value">{Number(analytics.minutes ?? 0).toFixed(1)}</strong></article>
+                  <article className="card"><span className="muted">ResoluÃ§Ã£o</span><strong className="value">{(Number(analytics.resolution_rate ?? 0) * 100).toFixed(1)}%</strong></article>
+                  <article className="card"><span className="muted">TTFB p95</span><strong className="value">{Number(analytics.latency_p95 ?? 0).toFixed(0)} ms</strong></article>
+                </section>
+                <article className="card"><h2>SÃ©rie diÃ¡ria</h2>{Array.isArray(analytics.series) && analytics.series.map((point, index) => { const row = point as Record<string, unknown>; return <div className="row" key={String(row.date ?? index)}><span><strong>{String(row.date)}</strong><small>{Number(row.minutes ?? 0).toFixed(1)} minutos</small></span><b>{Number(row.calls ?? 0)} chamadas</b></div>; })}</article>
+              </>
+            )}
+            {section === "endUsers" && (
+              <article className="card">
+                <h2>End-users</h2>
+                {endUsers.map((item) => <div className="row" key={item.id}><span><strong>{String(item.name ?? item.external_id ?? item.phone ?? item.email ?? item.id)}</strong><small>{String(item.email ?? item.phone ?? "Sem contato")} Â· {Number(item.calls_count ?? 0)} chamadas</small></span>{["owner", "admin"].includes(role) && <button className="danger" type="button" onClick={() => void eraseEndUser(item.id)}>Excluir LGPD</button>}</div>)}
+                {!endUsers.length && <Empty>Nenhum end-user identificado.</Empty>}
+              </article>
+            )}
+            {section === "webhooks" && (
+              <section className="split">
+                <article className="card"><h2>Endpoints</h2>{outgoingWebhooks.map((item) => <div className="row" key={item.id}><span><strong>{String(item.url)}</strong><small>{Array.isArray(item.events) ? item.events.join(", ") : ""}</small></span><b>{item.enabled ? "Ativo" : "Pausado"}</b></div>)}{!outgoingWebhooks.length && <Empty>Nenhum webhook configurado.</Empty>}</article>
+                <article className="card"><h2>Novo webhook</h2><form className="formGrid" onSubmit={createOutgoingWebhook}><Field label="URL HTTPS"><input name="url" type="url" required placeholder="https://cliente.example/webhooks" /></Field><Field label="Eventos separados por vÃ­rgula"><input name="events" required defaultValue="call.ended,usage.threshold" /></Field><button>Criar e gerar secret</button></form></article>
+              </section>
+            )}
+            {section === "exports" && (
+              <article className="card"><h2>Exports LGPD</h2><p className="muted">Arquivos CSV criptografados em repouso, disponÃ­veis por link temporÃ¡rio.</p><div className="actions"><button type="button" onClick={() => void requestExport("calls")}>Exportar chamadas</button><button type="button" onClick={() => void requestExport("end_user")}>Exportar end-users</button>{latestExport && <button className="secondary" type="button" onClick={() => void refreshExport()}>Atualizar status</button>}</div>{latestExport && <div className="row"><span><strong>{String(latestExport.status)}</strong><small>{latestExport.id}</small></span>{typeof latestExport.download_url === "string" && <a href={latestExport.download_url}>Baixar CSV</a>}</div>}</article>
+            )}
             {section === "settings" && (
               <section className="split">
                 <article className="card">
@@ -2810,6 +2909,17 @@ export default function Dashboard({
                         )}
                       />
                       Gravar chamadas
+                    </label>
+                    <label className="checkRow">
+                      <input
+                        name="anonymize_transcripts"
+                        type="checkbox"
+                        defaultChecked={Boolean(
+                          (tenant?.settings as Record<string, unknown>)
+                            ?.anonymize_transcripts ?? false,
+                        )}
+                      />
+                      Anonimizar transcriÃ§Ãµes apÃ³s a retenÃ§Ã£o
                     </label>
                     <button>Salvar configurações</button>
                   </form>

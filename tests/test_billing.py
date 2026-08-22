@@ -40,6 +40,7 @@ def reset(tenant_id: UUID) -> None:
     store.usage_records.clear()
     store.invoices.clear()
     store.phone_numbers.clear()
+    store.billing_usage_alerts.clear()
     store.tenants[tenant_id] = {
         "id": tenant_id,
         "status": "trial",
@@ -160,5 +161,10 @@ def test_hourly_meter_reports_only_overage_and_marks_records() -> None:
         headers={"X-Internal-Token": get_settings().internal_api_token},
     )
     assert response.status_code == 200
-    assert response.json() == {"tenants": 1, "records": 1, "phones": 1, "failed": 0}
+    assert response.json() == {"tenants": 1, "records": 1, "phones": 1, "alerts": 2, "failed": 0}
     assert str(store.usage_records[call_id]["stripe_usage_record_id"]).startswith("ur_test_")
+    repeated = client.post(
+        "/internal/billing/tick",
+        headers={"X-Internal-Token": get_settings().internal_api_token},
+    )
+    assert repeated.json()["alerts"] == 0

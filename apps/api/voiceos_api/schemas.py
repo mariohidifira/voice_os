@@ -15,6 +15,7 @@ class TenantSettingsPatch(BaseModel):
     locale: str | None = Field(default=None, min_length=2, max_length=20)
     recording_enabled: bool | None = None
     retention_days: int | None = Field(default=None, ge=1, le=3650)
+    anonymize_transcripts: bool | None = None
 
 
 class TenantPatch(BaseModel):
@@ -89,6 +90,42 @@ class CallTakeoverRequest(BaseModel):
 
 class BillingCheckoutRequest(BaseModel):
     plan_code: str = Field(pattern=r"^(starter|pro|business)$")
+
+
+class EndUserPatch(BaseModel):
+    external_id: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
+    email: str | None = Field(default=None, max_length=320)
+    name: str | None = Field(default=None, max_length=120)
+    metadata: dict[str, Any] | None = None
+
+
+class WebhookCreate(BaseModel):
+    url: str = Field(pattern=r"^https?://", max_length=2048)
+    events: list[str] = Field(min_length=1, max_length=20)
+    enabled: bool = True
+
+
+class WebhookPatch(BaseModel):
+    url: str | None = Field(default=None, pattern=r"^https?://", max_length=2048)
+    events: list[str] | None = Field(default=None, min_length=1, max_length=20)
+    enabled: bool | None = None
+
+
+class ExportCreate(BaseModel):
+    type: str = Field(pattern=r"^(calls|end_user)$")
+    filters: dict[str, Any] = Field(default_factory=dict)
+
+
+class CallQaPatch(BaseModel):
+    score: int = Field(ge=0, le=100)
+    rubric: dict[str, Any] = Field(default_factory=dict)
+    issues: list[str] = Field(default_factory=list, max_length=100)
+
+
+class AdminTenantPatch(BaseModel):
+    status: str | None = Field(default=None, pattern=r"^(trial|active|past_due|suspended|cancelled)$")
+    plan_code: str | None = Field(default=None, pattern=r"^(trial|starter|pro|business|enterprise)$")
 
 
 class CampaignCreate(BaseModel):

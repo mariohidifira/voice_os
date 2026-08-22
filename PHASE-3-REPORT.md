@@ -1,28 +1,33 @@
 # Relatório da Fase 3 — Billing, API pública, qualidade e LGPD
 
-Status: **em implementação**. A integração está pronta para Stripe test, mas as credenciais `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` permanecem **pendentes e não bloqueantes**; o ciclo externo só será aprovado após homologação.
+Status: **implementação local concluída; homologações externas pendentes e não bloqueantes**.
 
-## Billing implementado e validado localmente
+## Entregáveis concluídos
 
-- Catálogo dos cinco planos conforme o spec, em BRL, com minutos, excedente, agentes, concorrência e features.
-- Migration `0007` para prices Stripe e índices de reconciliação; migration `0008` para itens de excedente/números e controle de `past_due`.
-- Medição idempotente por chamada encerrada em `usage_records`, com arredondamento por chamada.
-- Endpoints de plano, uso em tempo real, faturas, checkout e Customer Portal.
-- Webhook Stripe com assinatura, checkout, subscription update/delete e invoice paid/failed.
-- Job horário de excedente incremental, quantidade de números e suspensão após sete dias em `past_due`.
-- Limites `402 plan_limit` para agentes, concorrência, feature telefone, trial de 14 dias e minutos.
-- Script `make stripe-sync` para produtos e prices fixo, metered e quantidade de números.
-- Painel Billing com plano, uso, excedente, upgrades, portal e faturas.
+- Billing: cinco planos, trial, limites `402`, checkout/portal, webhooks Stripe, medição idempotente, excedente, números por quantidade, suspensão por `past_due` e alertas únicos de 80/100%.
+- API pública: API keys secret/public, OpenAPI 3.1 gerado, Redoc em `/docs`, end-users, analytics, exports e webhooks de saída.
+- Webhooks de saída: secrets criptografados, assinatura `X-VoiceOS-Signature`, timeout de 10 s, fila persistida, cinco tentativas (1 min, 5 min, 30 min, 2 h e 12 h), replay manual e eventos `call.started`, `call.ended` e `usage.threshold`.
+- LGPD: CRUD de end-users, `lookup_end_user`, exclusão com anonimização de chamadas/transcrições, exports CSV em S3 com link temporário, retenção configurável e purga diária de gravações/documentos.
+- Qualidade: QA LLM gravado em `call_qa` para toda chamada pós-processada, fallback explícito em falha, avaliação manual, analytics overview/tools e painel correspondente.
+- Painel: billing, analytics, end-users, webhooks, exports, retenção/anônimização e `/admin` com tenants, planos, status e métricas globais.
+- Observabilidade: dashboards Grafana Overview, Pipeline, Tenant e Infra; regras para TTFB, erros de provider, fallback e API 5xx; teste de caos determinístico com provider primário inválido e fallback funcional.
+- Documentação LGPD: `docs/dpa.md`, `docs/subprocessors.md`, `docs/incident-lgpd.md` e `docs/privacy-policy-template.md`.
 
-## Evidências atuais
+## Evidências verificadas
 
-- Testes determinísticos de billing/Stripe: aprovados.
-- Reconciliação real em PostgreSQL de chamada → usage, assinatura e fatura: aprovada.
-- Alembic local: `0008 (head)`.
-- Stripe test real: **pendente de credenciais**.
+- `pytest -q`: **125 passed** (inclui PostgreSQL real, RLS, billing, Stripe, webhooks assinados/retry, exclusão LGPD, exports/retenção, QA, analytics, admin e caos).
+- `mypy --strict`: aprovado em 43 arquivos-fonte.
+- `ruff check .`: aprovado.
+- Vitest: **8 passed**.
+- TypeScript strict e build Next.js: aprovados, incluindo `/admin` e dashboard multi-tenant.
+- Terraform: configuração válida com binário local `.tools/terraform.exe`.
+- Alembic: `0009 (head)`.
+- OpenAPI e cliente TypeScript: regenerados.
 
-## Próximos itens da Fase 3
+## Pendências externas mantidas
 
-- Avisos 80/100%, e-mail e webhook de saída.
-- API pública/webhooks completos, analytics, exports, end-users e admin.
-- QA em 100% das chamadas, dashboards/alertas e documentação LGPD.
+- Stripe test real: executar ciclo trial → upgrade → uso → excedente → fatura → falha → suspensão → reativação quando `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` forem fornecidos.
+- Grafana Cloud/Slack/e-mail/PagerDuty: importar/provisionar e observar notificações reais quando as credenciais forem fornecidas.
+- Provedores de voz/telefonia e staging real permanecem conforme `PROVIDER-SETUP-CHECKLIST.md`.
+
+Essas pendências dependem exclusivamente de contas/credenciais externas e não bloqueiam as fases seguintes. Os adapters determinísticos, contratos, migrations, automações e testes locais estão concluídos.

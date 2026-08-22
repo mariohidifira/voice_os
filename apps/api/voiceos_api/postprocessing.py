@@ -29,7 +29,8 @@ class AnthropicPostprocessor:
         prompt = (
             "Analise a conversa abaixo. Retorne somente JSON válido com: "
             '"summary" (string curta) e "outcome" (objeto com resolved boolean, intent string, '
-            'sentiment "positive|neutral|negative", next_action string|null e tags array de strings).\n\n'
+            'sentiment "positive|neutral|negative", next_action string|null e tags array de strings), '
+            'e "qa" com score inteiro 0-100, rubric objeto e issues array de strings.\n\n'
             + transcript
         )
         error: Exception | None = None
@@ -55,7 +56,18 @@ class AnthropicPostprocessor:
                     result = json.loads(text.removeprefix("```json").removesuffix("```").strip())
                     if not isinstance(result.get("summary"), str) or not isinstance(result.get("outcome"), dict):
                         raise ValueError("invalid postprocessing schema")
-                    return {"summary": result["summary"][:2000], "outcome": result["outcome"]}
+                    qa = result.get("qa")
+                    if not isinstance(qa, dict):
+                        qa = {
+                            "score": 100 if result["outcome"].get("resolved") else 70,
+                            "rubric": {},
+                            "issues": [],
+                        }
+                    return {
+                        "summary": result["summary"][:2000],
+                        "outcome": result["outcome"],
+                        "qa": qa,
+                    }
             except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
                 error = exc
                 if attempt < 2:
