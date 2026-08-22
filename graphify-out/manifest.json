@@ -105,8 +105,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787341057.1447704,
-    "ast_hash": "75aef2f7e2fc9cba2a7f7a4367bfbad6",
+    "mtime": 1787363305.1699138,
+    "ast_hash": "dcd2add5d14454fa21f766c1a954b86f",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
@@ -165,8 +165,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/layout.tsx": {
-    "mtime": 1786990539.113653,
-    "ast_hash": "85336cadc93024500bdf3542b210add4",
+    "mtime": 1787363531.1039848,
+    "ast_hash": "d686b062849110d84d88e4572c1c726d",
     "semantic_hash": ""
   },
   "apps/web/app/page.tsx": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "apps/web/package.json": {
-    "mtime": 1787015789.5165775,
-    "ast_hash": "06080d378581a9b87ad5849047c67f09",
+    "mtime": 1787363404.5189273,
+    "ast_hash": "05b5b4f93736ae533152db2b802e43f0",
     "semantic_hash": ""
   },
   "apps/web/tsconfig.json": {
@@ -655,13 +655,28 @@
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787340916.2293336,
-    "ast_hash": "b43eca917c20a197fc1a06cd8b36e92b",
+    "mtime": 1787363955.1394515,
+    "ast_hash": "b59928822d286d8cc14c9880d6c3ceba",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
     "mtime": 1787336410.7426522,
     "ast_hash": "c6a3e5cc4878b1678122d840f0a73e9b",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/livekit_sessions.py": {
+    "mtime": 1787363303.7604864,
+    "ast_hash": "d65c6b8bb3ed2dca709183efc55bc74a",
+    "semantic_hash": ""
+  },
+  "apps/web/app/app/[tenantSlug]/voice-widget.tsx": {
+    "mtime": 1787363487.9049015,
+    "ast_hash": "c61e4d26901675638336cacc130cb0f0",
+    "semantic_hash": ""
+  },
+  "tests/test_livekit_sessions.py": {
+    "mtime": 1787363306.504022,
+    "ast_hash": "559dafe77e5a0ac56688a44723e4c71a",
     "semantic_hash": ""
   }
 }

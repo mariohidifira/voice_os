@@ -15,6 +15,7 @@ from .auth import Principal, internal_token, principal
 from .config import get_settings
 from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_embeddings
 from .live import EventBus, encode_sse, get_event_bus
+from .livekit_sessions import LiveKitSessions, get_livekit_sessions
 from .native_integrations import NativeIntegrations, get_native_integrations
 from .postprocessing import Postprocessor, get_postprocessor
 from .repository import Repository, get_repository
@@ -58,6 +59,7 @@ Embedder = Annotated[Embeddings, Depends(get_embeddings)]
 Cipher = Annotated[SecretCipher, Depends(get_secret_cipher)]
 Native = Annotated[NativeIntegrations, Depends(get_native_integrations)]
 Processor = Annotated[Postprocessor, Depends(get_postprocessor)]
+Rtc = Annotated[LiveKitSessions, Depends(get_livekit_sessions)]
 
 
 def _require_admin(auth: Principal) -> None:
@@ -289,7 +291,7 @@ async def rollback_agent(agent_id: UUID, body: AgentRollback, auth: Auth, repo: 
 
 
 @v1.post("/sessions", status_code=201)
-async def create_session(body: SessionCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+async def create_session(body: SessionCreate, auth: Auth, repo: Repo, rtc: Rtc) -> dict[str, Any]:
     agent = await repo.get_agent(auth.tenant_id, body.agent_id)
     if not agent or agent["status"] != "active":
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Active agent not found"})
@@ -301,7 +303,9 @@ async def create_session(body: SessionCreate, auth: Auth, repo: Repo) -> dict[st
             raise HTTPException(422, detail={"code": "invalid_end_user", "message": str(exc)}) from exc
     call = await repo.create_call(auth.tenant_id, body.agent_id, body.variables, body.metadata, agent_version_id=agent["current_version_id"], end_user_id=end_user["id"] if end_user else None)
     call_id = call["id"]
-    return {"session_id": call_id, "call_id": call_id, "livekit_url": get_settings().livekit_url, "token": f"dev_{call_id}", "expires_at": datetime.now(UTC) + timedelta(hours=1)}
+    session = await rtc.provision(call_id=call_id, agent_id=body.agent_id, version="current", variables=body.variables, end_user=body.end_user)
+    await repo.update_call(auth.tenant_id, call_id, {"livekit_room": session["room_name"]})
+    return {"session_id": call_id, "call_id": call_id, "livekit_url": get_settings().livekit_url, "token": session["token"], "expires_at": datetime.now(UTC) + timedelta(hours=1)}
 
 
 @v1.delete("/sessions/{session_id}", status_code=204)
@@ -312,7 +316,7 @@ async def delete_session(session_id: UUID, auth: Auth, repo: Repo) -> None:
 
 
 @v1.post("/agents/{agent_id}/test-session", status_code=201)
-async def create_test_session(agent_id: UUID, body: SessionCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+async def create_test_session(agent_id: UUID, body: SessionCreate, auth: Auth, repo: Repo, rtc: Rtc) -> dict[str, Any]:
     if body.agent_id != agent_id:
         raise HTTPException(422, detail={"code": "agent_mismatch", "message": "Path and body agent_id must match"})
     agent = await repo.get_agent(auth.tenant_id, agent_id)
@@ -322,7 +326,9 @@ async def create_test_session(agent_id: UUID, body: SessionCreate, auth: Auth, r
     metadata = {**body.metadata, "test_session": True}
     call = await repo.create_call(auth.tenant_id, agent_id, body.variables, metadata, agent_version_id=agent["draft_version_id"], end_user_id=end_user["id"] if end_user else None)
     call_id = call["id"]
-    return {"session_id": call_id, "call_id": call_id, "livekit_url": get_settings().livekit_url, "token": f"dev_{call_id}", "expires_at": datetime.now(UTC) + timedelta(hours=1)}
+    session = await rtc.provision(call_id=call_id, agent_id=agent_id, version="draft", variables=body.variables, end_user=body.end_user)
+    await repo.update_call(auth.tenant_id, call_id, {"livekit_room": session["room_name"]})
+    return {"session_id": call_id, "call_id": call_id, "livekit_url": get_settings().livekit_url, "token": session["token"], "expires_at": datetime.now(UTC) + timedelta(hours=1)}
 
 
 @v1.get("/calls")

@@ -1,0 +1,13 @@
+.modal{position:fixed;z-index:20;inset:0;display:grid;place-items:center;padding:20px;background:#030609cc;backdrop-filter:blur(8px)}
+.voiceWidget{width:min(460px,100%);text-align:center;box-shadow:0 30px 100px #000}
+.voiceWidget .editorHead{text-align:left}
+.close{background:transparent;color:var(--muted);font-size:25px;padding:0 8px}
+.orb{--level:.05;display:grid;place-items:center;width:150px;height:150px;margin:35px auto 20px;border-radius:50%;background:radial-gradient(circle,#64e2b7 0 24%,#287c68 25% 36%,#10251f 37%);box-shadow:0 0 calc(25px + var(--level)*90px) rgba(100,226,183,calc(.2 + var(--level)));transition:box-shadow .1s,transform .1s;transform:scale(calc(1 + var(--level)*.18))}
+.orb span{width:18px;height:28px;border:3px solid #052219;border-radius:12px}
+.orb.connecting{animation:pulse 1.2s infinite}
+.orb.error{filter:hue-rotate(130deg)}
+.voiceState{font-weight:700}
+.voiceActions{display:flex;justify-content:center;gap:10px;margin:22px}
+.danger{background:#e75d67;color:white}
+.remoteAudio{position:absolute;width:1px;height:1px;overflow:hidden}
+@keyframes pulse{50%{transform:scale(1.08);opacity:.75}}
