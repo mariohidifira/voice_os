@@ -104,11 +104,40 @@ test("criar agente, publicar, testar e ver chamada", async ({
   await page.getByLabel("Velocidade", { exact: true }).fill("1.1");
   await page.getByLabel("Keywords STT (vírgulas)").fill("VoiceOS, agendamento");
   await page
+    .getByLabel("Frases de encerramento (separadas por |)")
+    .fill("Obrigado pelo contato. | Até logo.");
+  await page.getByLabel("Aplicar horário de funcionamento").check();
+  await page
+    .getByLabel("Mensagem fora do horário")
+    .fill("Estamos fechados agora; posso registrar seu contato.");
+  await page
     .getByRole("button", { name: "Salvar configuração avançada" })
     .click();
   await expect(page.getByRole("status")).toContainText(
     "Configuração avançada salva",
   );
+  await expect(
+    page.getByLabel("Aplicar horário de funcionamento"),
+  ).toBeChecked();
+  await expect(page.getByLabel("Mensagem fora do horário")).toHaveValue(
+    "Estamos fechados agora; posso registrar seu contato.",
+  );
+  await page.getByRole("tab", { name: "Conhecimento" }).click();
+  await page
+    .getByLabel("Base de conhecimento")
+    .selectOption({ label: "Base Demo" });
+  await page.getByLabel("Top K da busca").fill("7");
+  await page.getByRole("button", { name: "Salvar rascunho" }).click();
+  await expect(page.getByLabel("Top K da busca")).toHaveValue("7");
+  await page.getByRole("button", { name: "Testar busca" }).click();
+  await expect(page.getByRole("heading", { name: "Base Demo" })).toBeVisible();
+  await page.getByRole("button", { name: "Agentes", exact: true }).click();
+  await page.getByRole("tab", { name: "Tools" }).click();
+  await page.getByRole("button", { name: "Criar tool" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Novo webhook" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Agentes", exact: true }).click();
   await page.getByRole("button", { name: "Publicar" }).click();
   await expect(page.getByRole("status")).toContainText("Versão publicada");
 

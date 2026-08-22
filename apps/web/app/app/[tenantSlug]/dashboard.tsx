@@ -212,13 +212,17 @@ function AgentAdvancedPanel({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     let variables: Record<string, unknown>;
+    let businessHours: Record<string, unknown>;
     try {
       variables = JSON.parse(String(form.get("variables") || "{}")) as Record<
         string,
         unknown
       >;
+      businessHours = JSON.parse(
+        String(form.get("business_hours") || "{}"),
+      ) as Record<string, unknown>;
     } catch {
-      throw new Error("Variáveis devem ser um objeto JSON válido.");
+      throw new Error("Variáveis e horário devem ser objetos JSON válidos.");
     }
     const preset = String(form.get("turn_preset"));
     const presetValues =
@@ -269,6 +273,14 @@ function AgentAdvancedPanel({
           .split("|")
           .map((value) => value.trim())
           .filter(Boolean),
+        end_call_phrases: String(form.get("end_call_phrases") || "")
+          .split("|")
+          .map((value) => value.trim())
+          .filter(Boolean),
+        silence_prompt: String(form.get("silence_prompt") || ""),
+        business_hours:
+          form.get("business_hours_enabled") === "on" ? businessHours : null,
+        out_of_hours_message: String(form.get("out_of_hours_message") || ""),
         transfer_number: String(form.get("transfer_number") || "") || null,
       },
       variables,
@@ -402,6 +414,57 @@ function AgentAdvancedPanel({
             }
           />
         </Field>
+        <Field label="Frases de encerramento (separadas por |)">
+          <input
+            name="end_call_phrases"
+            defaultValue={
+              Array.isArray(behavior.end_call_phrases)
+                ? behavior.end_call_phrases.join(" | ")
+                : "Obrigado pelo contato. | Até logo. | Tenha um ótimo dia."
+            }
+          />
+        </Field>
+        <Field label="Prompt após silêncio">
+          <input
+            name="silence_prompt"
+            defaultValue={String(
+              behavior.silence_prompt ??
+                "Você ainda está aí? Posso ajudar em mais alguma coisa?",
+            )}
+          />
+        </Field>
+        <label className="check">
+          <input
+            type="checkbox"
+            name="business_hours_enabled"
+            defaultChecked={Boolean(behavior.business_hours)}
+          />{" "}
+          Aplicar horário de funcionamento
+        </label>
+        <Field label="Horário de funcionamento (JSON)">
+          <textarea
+            name="business_hours"
+            rows={5}
+            defaultValue={JSON.stringify(
+              behavior.business_hours ?? {
+                timezone: "America/Sao_Paulo",
+                weekdays: { mon_fri: [["09:00", "18:00"]] },
+              },
+              null,
+              2,
+            )}
+          />
+        </Field>
+        <Field label="Mensagem fora do horário">
+          <textarea
+            name="out_of_hours_message"
+            rows={2}
+            defaultValue={String(
+              behavior.out_of_hours_message ??
+                "Nosso atendimento humano está fechado agora. Posso registrar seu contato para retorno?",
+            )}
+          />
+        </Field>
         <Field label="Número de transferência">
           <input
             name="transfer_number"
@@ -461,6 +524,7 @@ export default function Dashboard({
   const [greetingValue, setGreetingValue] = useState("");
   const [voicePreviewUrl, setVoicePreviewUrl] = useState("");
   const [previewingVoice, setPreviewingVoice] = useState(false);
+  const [agentKnowledgeId, setAgentKnowledgeId] = useState("");
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [toolTestResult, setToolTestResult] = useState("");
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
@@ -585,6 +649,12 @@ export default function Dashboard({
       ),
     );
     setVoicePreviewUrl("");
+    setAgentKnowledgeId(
+      String(
+        (detail.draft as Record<string, unknown> | undefined)
+          ?.knowledge_base_id ?? "",
+      ),
+    );
     setAgentTab(nextTab);
     setSection("agents");
   }
@@ -595,6 +665,9 @@ export default function Dashboard({
     const existingTts = ((
       selectedAgent.draft as Record<string, unknown> | undefined
     )?.tts ?? {}) as Record<string, unknown>;
+    const existingRag = ((
+      selectedAgent.draft as Record<string, unknown> | undefined
+    )?.rag ?? {}) as Record<string, unknown>;
     const body = {
       system_prompt: String(form.get("system_prompt")),
       greeting: String(form.get("greeting")),
@@ -615,7 +688,12 @@ export default function Dashboard({
         silence_timeout_s: Number(form.get("silence_timeout")),
       },
       knowledge_base_id: form.get("knowledge_base_id") || null,
-      rag: { enabled: Boolean(form.get("knowledge_base_id")) },
+      rag: {
+        ...existingRag,
+        enabled: Boolean(form.get("knowledge_base_id")),
+        top_k: Number(form.get("rag_top_k")),
+        min_score: Number(form.get("rag_min_score")),
+      },
     };
     try {
       await Promise.all([
@@ -1310,9 +1388,10 @@ export default function Dashboard({
                           <Field label="Base de conhecimento">
                             <select
                               name="knowledge_base_id"
-                              defaultValue={String(
-                                draft.knowledge_base_id ?? "",
-                              )}
+                              value={agentKnowledgeId}
+                              onChange={(event) =>
+                                setAgentKnowledgeId(event.target.value)
+                              }
                             >
                               <option value="">Sem base</option>
                               {knowledge.map((kb) => (
@@ -1322,6 +1401,56 @@ export default function Dashboard({
                               ))}
                             </select>
                           </Field>
+                          <div className="two">
+                            <Field label="Top K da busca">
+                              <input
+                                name="rag_top_k"
+                                type="number"
+                                min="1"
+                                max="20"
+                                defaultValue={String(
+                                  (
+                                    draft.rag as
+                                      | Record<string, unknown>
+                                      | undefined
+                                  )?.top_k ?? 5,
+                                )}
+                              />
+                            </Field>
+                            <Field label="Score mínimo">
+                              <input
+                                name="rag_min_score"
+                                type="number"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                defaultValue={String(
+                                  (
+                                    draft.rag as
+                                      | Record<string, unknown>
+                                      | undefined
+                                  )?.min_score ?? 0.65,
+                                )}
+                              />
+                            </Field>
+                          </div>
+                          <button
+                            type="button"
+                            className="secondary"
+                            disabled={!agentKnowledgeId}
+                            onClick={() => {
+                              const kb = knowledge.find(
+                                (item) => item.id === agentKnowledgeId,
+                              );
+                              if (kb) {
+                                void openKnowledge(kb).then(() =>
+                                  setSection("knowledge"),
+                                );
+                              }
+                            }}
+                          >
+                            Testar busca
+                          </button>
                         </fieldset>
                         <fieldset
                           className="tabPanel"
@@ -1354,6 +1483,13 @@ export default function Dashboard({
                               </small>
                             )}
                           </fieldset>
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => setSection("tools")}
+                          >
+                            Criar tool
+                          </button>
                         </fieldset>
                         <fieldset
                           className="tabPanel"
