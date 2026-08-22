@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .campaigns import retry_at
 from .db import SessionFactory
 from .store import MemoryStore, store
 
@@ -156,6 +157,11 @@ class Repository(Protocol):
         self, tenant_id: UUID, phone: str, reason: str | None
     ) -> dict[str, Any]: ...
     async def remove_do_not_call(self, tenant_id: UUID, phone: str) -> bool: ...
+    async def claim_campaign_contacts(self, limit: int = 100) -> list[dict[str, Any]]: ...
+    async def update_campaign_contact_internal(
+        self, contact_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None: ...
+    async def get_plan_concurrency(self, tenant_id: UUID) -> int: ...
 
 
 class PostgresRepository:
@@ -706,7 +712,7 @@ class PostgresRepository:
     ) -> list[dict[str, Any]]:
         filters = filters or {}
         clauses, params = [], {}
-        for field in ("agent_id", "channel", "status", "end_user_id"):
+        for field in ("agent_id", "channel", "status", "end_user_id", "campaign_id"):
             if filters.get(field) is not None:
                 clauses.append(f"{field}=:{field}")
                 params[field] = filters[field]
@@ -841,9 +847,72 @@ class PostgresRepository:
             tenant_id = (
                 await db.execute(text("SELECT tenant_id FROM calls WHERE id=:id"), {"id": call_id})
             ).scalar_one_or_none()
-        return (
+        call = (
             await self._update_call(tenant_id, call_id, data, internal=True) if tenant_id else None
         )
+        if (
+            call
+            and call.get("campaign_id")
+            and call.get("status") in {"completed", "no_answer", "busy", "failed", "cancelled"}
+        ):
+            async with self._internal_session() as db:
+                row = await db.execute(
+                    text(
+                        "SELECT cc.id,cc.attempts,c.schedule FROM campaign_contacts cc "
+                        "JOIN campaigns c ON c.id=cc.campaign_id WHERE cc.last_call_id=:call_id"
+                    ),
+                    {"call_id": call_id},
+                )
+                contact = row.mappings().first()
+            if contact:
+                status = str(call["status"])
+                policy = dict(contact["schedule"] or {}).get("retry_policy", {})
+                next_attempt = retry_at(
+                    status, int(contact["attempts"]), policy, now=datetime.now(UTC)
+                )
+                await self.update_campaign_contact_internal(
+                    contact["id"],
+                    {
+                        "status": "retry"
+                        if next_attempt
+                        else ("done" if status == "completed" else status),
+                        "next_attempt_at": next_attempt,
+                    },
+                )
+                async with self._internal_session() as db:
+                    totals = (
+                        (
+                            await db.execute(
+                                text(
+                                    "SELECT campaign_id,count(*) AS total,count(*) FILTER (WHERE status IN ('pending','retry','calling')) AS remaining,"
+                                    "count(*) FILTER (WHERE status='done') AS done,count(*) FILTER (WHERE status NOT IN ('pending','retry','calling','done')) AS failed "
+                                    "FROM campaign_contacts WHERE campaign_id=(SELECT campaign_id FROM campaign_contacts WHERE id=:id) GROUP BY campaign_id"
+                                ),
+                                {"id": contact["id"]},
+                            )
+                        )
+                        .mappings()
+                        .first()
+                    )
+                    if totals:
+                        await db.execute(
+                            text(
+                                "UPDATE campaigns SET stats=CAST(:stats AS jsonb),status=CASE WHEN :remaining=0 THEN 'completed' ELSE status END,updated_at=now() WHERE id=:id"
+                            ),
+                            {
+                                "id": totals["campaign_id"],
+                                "remaining": totals["remaining"],
+                                "stats": json.dumps(
+                                    {
+                                        "total": totals["total"],
+                                        "done": totals["done"],
+                                        "failed": totals["failed"],
+                                        "remaining": totals["remaining"],
+                                    }
+                                ),
+                            },
+                        )
+        return call
 
     async def _call_tenant(self, db: AsyncSession, call_id: UUID) -> UUID | None:
         return (
@@ -1457,6 +1526,55 @@ class PostgresRepository:
             )
             return result.first() is not None
 
+    async def claim_campaign_contacts(self, limit: int = 100) -> list[dict[str, Any]]:
+        async with self._internal_session() as db:
+            rows = await db.execute(
+                text(
+                    "WITH candidates AS ("
+                    " SELECT cc.id FROM campaign_contacts cc JOIN campaigns c ON c.id=cc.campaign_id"
+                    " WHERE c.status='running' AND cc.status IN ('pending','retry')"
+                    " AND (cc.next_attempt_at IS NULL OR cc.next_attempt_at<=now())"
+                    " AND NOT EXISTS (SELECT 1 FROM do_not_call d WHERE d.tenant_id=cc.tenant_id AND d.phone=cc.phone)"
+                    " ORDER BY cc.next_attempt_at NULLS FIRST,cc.created_at FOR UPDATE OF cc SKIP LOCKED LIMIT :limit"
+                    ") UPDATE campaign_contacts cc SET status='calling',attempts=attempts+1,updated_at=now()"
+                    " FROM candidates x,campaigns c WHERE cc.id=x.id AND c.id=cc.campaign_id"
+                    " RETURNING cc.*,c.agent_id,c.schedule,c.stats"
+                ),
+                {"limit": limit},
+            )
+            return [dict(row) for row in rows.mappings()]
+
+    async def update_campaign_contact_internal(
+        self, contact_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        allowed = {"status", "last_call_id", "next_attempt_at"}
+        values = {key: value for key, value in data.items() if key in allowed}
+        if not values:
+            return None
+        params: dict[str, Any] = {"id": contact_id, **values}
+        assignments = ",".join(f"{key}=:{key}" for key in values)
+        async with self._internal_session() as db:
+            row = await db.execute(
+                text(
+                    f"UPDATE campaign_contacts SET {assignments},updated_at=now() WHERE id=:id RETURNING *"
+                ),
+                params,
+            )
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def get_plan_concurrency(self, tenant_id: UUID) -> int:
+        async with self._internal_session() as db:
+            value = await db.execute(
+                text(
+                    "SELECT COALESCE(p.max_concurrent_calls,1) FROM subscriptions s "
+                    "JOIN plans p ON p.id=s.plan_id WHERE s.tenant_id=:tenant "
+                    "AND s.status IN ('active','trialing') ORDER BY s.created_at DESC LIMIT 1"
+                ),
+                {"tenant": tenant_id},
+            )
+            return int(value.scalar_one_or_none() or 1)
+
 
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
@@ -1758,7 +1876,7 @@ class MemoryRepository:
                 return timestamp.date()
             return timestamp if isinstance(timestamp, date) else date.min
 
-        for field in ("agent_id", "channel", "status", "end_user_id"):
+        for field in ("agent_id", "channel", "status", "end_user_id", "campaign_id"):
             if filters.get(field) is not None:
                 calls = [call for call in calls if call.get(field) == filters[field]]
         if filters.get("from") is not None:
@@ -1833,7 +1951,58 @@ class MemoryRepository:
         self, call_id: UUID, data: dict[str, Any]
     ) -> dict[str, Any] | None:
         call = self.memory.calls.get(call_id)
-        return await self.update_call(call["tenant_id"], call_id, data) if call else None
+        updated = await self.update_call(call["tenant_id"], call_id, data) if call else None
+        if (
+            updated
+            and updated.get("campaign_id")
+            and updated.get("status") in {"completed", "no_answer", "busy", "failed", "cancelled"}
+        ):
+            contact = next(
+                (
+                    item
+                    for item in self.memory.campaign_contacts.values()
+                    if item.get("last_call_id") == call_id
+                ),
+                None,
+            )
+            if contact:
+                status = str(updated["status"])
+                campaign = self.memory.campaigns[contact["campaign_id"]]
+                next_attempt = retry_at(
+                    status,
+                    int(contact["attempts"]),
+                    campaign["schedule"].get("retry_policy", {}),
+                    now=datetime.now(UTC),
+                )
+                await self.update_campaign_contact_internal(
+                    contact["id"],
+                    {
+                        "status": "retry"
+                        if next_attempt
+                        else ("done" if status == "completed" else status),
+                        "next_attempt_at": next_attempt,
+                    },
+                )
+                contacts = [
+                    item
+                    for item in self.memory.campaign_contacts.values()
+                    if item["campaign_id"] == contact["campaign_id"]
+                ]
+                remaining = sum(
+                    item["status"] in {"pending", "retry", "calling"} for item in contacts
+                )
+                campaign["stats"] = {
+                    "total": len(contacts),
+                    "done": sum(item["status"] == "done" for item in contacts),
+                    "failed": sum(
+                        item["status"] not in {"pending", "retry", "calling", "done"}
+                        for item in contacts
+                    ),
+                    "remaining": remaining,
+                }
+                if not remaining:
+                    campaign["status"] = "completed"
+        return updated
 
     async def append_call_events(self, call_id: UUID, events: list[dict[str, Any]]) -> int:
         if call_id not in self.memory.calls:
@@ -2072,6 +2241,48 @@ class MemoryRepository:
 
     async def remove_do_not_call(self, tenant_id: UUID, phone: str) -> bool:
         return self.memory.do_not_call.pop((tenant_id, phone), None) is not None
+
+    async def claim_campaign_contacts(self, limit: int = 100) -> list[dict[str, Any]]:
+        now = datetime.now(UTC)
+        claimed: list[dict[str, Any]] = []
+        for contact in self.memory.campaign_contacts.values():
+            campaign = self.memory.campaigns.get(contact["campaign_id"])
+            if not campaign or campaign["status"] != "running":
+                continue
+            if contact["status"] not in {"pending", "retry"}:
+                continue
+            if contact.get("next_attempt_at") and contact["next_attempt_at"] > now:
+                continue
+            if (contact["tenant_id"], contact["phone"]) in self.memory.do_not_call:
+                continue
+            contact["status"] = "calling"
+            contact["attempts"] += 1
+            contact["updated_at"] = now
+            claimed.append(
+                {
+                    **contact,
+                    "agent_id": campaign["agent_id"],
+                    "schedule": campaign["schedule"],
+                    "stats": campaign["stats"],
+                }
+            )
+            if len(claimed) >= limit:
+                break
+        return claimed
+
+    async def update_campaign_contact_internal(
+        self, contact_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        contact = self.memory.campaign_contacts.get(contact_id)
+        if not contact:
+            return None
+        contact.update(data)
+        contact["updated_at"] = datetime.now(UTC)
+        return contact
+
+    async def get_plan_concurrency(self, tenant_id: UUID) -> int:
+        tenant = self.memory.tenants.get(tenant_id) or {}
+        return int((tenant.get("plan") or {}).get("max_concurrent_calls", 50))
 
     async def delete_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> bool:
         if not await self.get_knowledge_base(tenant_id, kb_id):

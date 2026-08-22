@@ -17,7 +17,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from .agent_templates import get_agent_template, list_agent_templates
 from .auth import Principal, internal_token, principal
-from .campaigns import transition_status
+from .campaigns import dialing_allowed, transition_status
 from .config import get_settings
 from .idempotency import IdempotencyStore, get_idempotency_store
 from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_embeddings
@@ -1484,6 +1484,99 @@ async def runtime(agent_id: UUID, repo: Repo, version: str = "current") -> dict[
 @internal.post("/calls", status_code=201)
 async def create_internal_call(body: InternalCallCreate, repo: Repo) -> dict[str, Any]:
     return await repo.create_internal_call(body.model_dump())
+
+
+@internal.post("/campaigns/tick")
+async def campaign_runner_tick(repo: Repo, rtc: Rtc, phone: Phone) -> dict[str, int]:
+    now = datetime.now(UTC)
+    claimed = await repo.claim_campaign_contacts()
+    dispatched = deferred = failed = 0
+    for contact in claimed:
+        contact_id = contact["id"]
+        tenant_id = contact["tenant_id"]
+        schedule = dict(contact.get("schedule") or {})
+        timezone = dict(contact.get("variables") or {}).get("timezone")
+        if not dialing_allowed(schedule, now=now, contact_timezone=timezone):
+            await repo.update_campaign_contact_internal(
+                contact_id, {"status": "retry", "next_attempt_at": now + timedelta(minutes=5)}
+            )
+            deferred += 1
+            continue
+        all_calls = await repo.list_calls(tenant_id)
+        active = [
+            call for call in all_calls if call.get("status") in {"queued", "ringing", "in_progress"}
+        ]
+        campaign_active = [
+            call for call in active if call.get("campaign_id") == contact["campaign_id"]
+        ]
+        plan_limit = await repo.get_plan_concurrency(tenant_id)
+        campaign_limit = min(int(schedule.get("max_concurrency", plan_limit)), plan_limit)
+        if len(active) >= plan_limit or len(campaign_active) >= campaign_limit:
+            await repo.update_campaign_contact_internal(
+                contact_id, {"status": "retry", "next_attempt_at": now + timedelta(seconds=30)}
+            )
+            deferred += 1
+            continue
+        agent = await repo.get_agent(tenant_id, contact["agent_id"])
+        assigned = next(
+            (
+                item
+                for item in await repo.list_phone_numbers(tenant_id)
+                if item.get("agent_id") == contact["agent_id"]
+                and item.get("status") == "active"
+                and bool((item.get("capabilities") or {}).get("voice"))
+            ),
+            None,
+        )
+        if not agent or agent.get("status") != "active" or not assigned or phone.outbound is None:
+            await repo.update_campaign_contact_internal(
+                contact_id, {"status": "failed", "next_attempt_at": None}
+            )
+            failed += 1
+            continue
+        variables = {**dict(contact.get("variables") or {}), "campaign_contact_id": str(contact_id)}
+        end_user_data = {"phone": contact["phone"], "name": contact.get("name")}
+        try:
+            end_user = await repo.upsert_end_user(tenant_id, end_user_data)
+            call = await repo.create_call(
+                tenant_id,
+                contact["agent_id"],
+                variables,
+                {"campaign_contact_id": str(contact_id)},
+                agent_version_id=agent["current_version_id"],
+                end_user_id=end_user["id"],
+                channel="phone_outbound",
+                from_number=str(assigned["e164"]),
+                to_number=contact["phone"],
+                campaign_id=contact["campaign_id"],
+            )
+            session = await rtc.provision(
+                call_id=call["id"],
+                agent_id=contact["agent_id"],
+                version="current",
+                variables=variables,
+                end_user=end_user_data,
+                channel="phone_outbound",
+                from_number=str(assigned["e164"]),
+                to_number=contact["phone"],
+            )
+            await repo.update_call(tenant_id, call["id"], {"livekit_room": session["room_name"]})
+            await repo.update_campaign_contact_internal(
+                contact_id,
+                {"status": "calling", "last_call_id": call["id"], "next_attempt_at": None},
+            )
+            dispatched += 1
+        except Exception:
+            await repo.update_campaign_contact_internal(
+                contact_id, {"status": "retry", "next_attempt_at": now + timedelta(minutes=5)}
+            )
+            failed += 1
+    return {
+        "claimed": len(claimed),
+        "dispatched": dispatched,
+        "deferred": deferred,
+        "failed": failed,
+    }
 
 
 @internal.patch("/calls/{call_id}")

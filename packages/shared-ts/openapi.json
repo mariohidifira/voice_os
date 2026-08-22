@@ -2473,11 +2473,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": true
-                  },
+                  "type": "object",
+                  "additionalProperties": true,
                   "title": "Response List Campaigns V1 Campaigns Get"
                 }
               }
@@ -3044,11 +3041,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": true
-                  },
+                  "type": "object",
+                  "additionalProperties": true,
                   "title": "Response List Do Not Call V1 Do Not Call Get"
                 }
               }
@@ -5525,6 +5519,56 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Create Internal Call Internal Calls Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/campaigns/tick": {
+      "post": {
+        "summary": "Campaign Runner Tick",
+        "operationId": "campaign_runner_tick_internal_campaigns_tick_post",
+        "parameters": [
+          {
+            "name": "x-internal-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Campaign Runner Tick Internal Campaigns Tick Post"
                 }
               }
             }

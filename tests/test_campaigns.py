@@ -6,13 +6,32 @@ from fastapi.testclient import TestClient
 from voiceos_api.campaigns import dialing_allowed, retry_at, select_dispatchable
 from voiceos_api.config import get_settings
 from voiceos_api.idempotency import MemoryIdempotencyStore, get_idempotency_store
+from voiceos_api.livekit_sessions import get_livekit_sessions
 from voiceos_api.main import app
 from voiceos_api.repository import MemoryRepository, get_repository
 from voiceos_api.store import store
+from voiceos_api.telephony import (
+    DevNumberProvider,
+    DevSipDispatch,
+    DevSipOutbound,
+    Telephony,
+    get_telephony,
+)
 
 app.dependency_overrides[get_repository] = lambda: MemoryRepository(store)
 idempotency = MemoryIdempotencyStore()
 app.dependency_overrides[get_idempotency_store] = lambda: idempotency
+
+
+class FakeRtc:
+    async def provision(self, **kwargs: object) -> dict[str, str]:
+        return {"room_name": f"voiceos_{kwargs['call_id']}", "token": "test"}
+
+
+app.dependency_overrides[get_livekit_sessions] = FakeRtc
+app.dependency_overrides[get_telephony] = lambda: Telephony(
+    DevNumberProvider(), DevSipDispatch(), DevSipOutbound()
+)
 client = TestClient(app)
 
 
@@ -188,3 +207,66 @@ def test_runner_selection_honors_concurrency_due_dnc_and_retry_policy() -> None:
     )
     assert retry_at("completed", 1, {}, now=now) is None
     assert retry_at("failed", 3, {"max_attempts": 3}, now=now) is None
+
+
+def test_periodic_tick_dispatches_and_call_result_reconciles_contact() -> None:
+    reset()
+    tenant = uuid4()
+    agent = store.create_agent(tenant, "Runner agent")
+    agent["status"] = "active"
+    agent["current_version_id"] = agent["draft_version_id"]
+    number_id = uuid4()
+    store.phone_numbers[number_id] = {
+        "id": number_id,
+        "tenant_id": tenant,
+        "agent_id": agent["id"],
+        "e164": "+551130000000",
+        "status": "active",
+        "capabilities": {"voice": True},
+        "created_at": datetime.now(UTC),
+    }
+    headers = auth(tenant)
+    campaign = client.post(
+        "/v1/campaigns",
+        json={
+            "agent_id": str(agent["id"]),
+            "name": "Runner",
+            "schedule": {
+                "timezone": "America/Sao_Paulo",
+                "days": [0, 1, 2, 3, 4, 5, 6],
+                "window": {"start": "08:00", "end": "20:00"},
+                "retry_policy": {"max_attempts": 2, "delays_s": [60]},
+            },
+        },
+        headers=headers,
+    ).json()
+    contact = client.post(
+        f"/v1/campaigns/{campaign['id']}/contacts",
+        json={"contacts": [{"phone": "+5511999991234", "name": "Ana"}]},
+        headers=headers,
+    ).json()[0]
+    assert client.post(f"/v1/campaigns/{campaign['id']}/start", headers=headers).status_code == 200
+    internal_headers = {"X-Internal-Token": get_settings().internal_api_token}
+    response = client.post("/internal/campaigns/tick", headers=internal_headers)
+    assert response.status_code == 200
+    assert response.json()["dispatched"] == 1
+    stored = store.campaign_contacts[UUID(contact["id"])]
+    assert stored["status"] == "calling"
+    call_id = stored["last_call_id"]
+    assert (
+        client.patch(
+            f"/internal/calls/{call_id}", json={"status": "busy"}, headers=internal_headers
+        ).status_code
+        == 200
+    )
+    assert stored["status"] == "retry"
+    assert stored["next_attempt_at"] is not None
+    stored["next_attempt_at"] = datetime.now(UTC)
+    assert client.post("/internal/campaigns/tick", headers=internal_headers).json()["dispatched"] == 1
+    second_call_id = stored["last_call_id"]
+    assert second_call_id != call_id
+    assert client.patch(f"/internal/calls/{second_call_id}", json={"status": "completed"}, headers=internal_headers).status_code == 200
+    assert stored["status"] == "done"
+    finished = store.campaigns[UUID(campaign["id"])]
+    assert finished["status"] == "completed"
+    assert finished["stats"] == {"total": 1, "done": 1, "failed": 0, "remaining": 0}

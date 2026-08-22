@@ -118,6 +118,74 @@ async def test_postgres_phone_numbers_are_tenant_scoped_and_persist_assignment()
 
 
 @pytest.mark.asyncio(loop_scope="module")
+async def test_postgres_campaign_claim_and_result_reconciliation() -> None:
+    repo = PostgresRepository()
+    agent = await repo.create_agent(TENANT, "Campaign repository", str(USER))
+    campaign: dict[str, Any] | None = None
+    contact_id: UUID | None = None
+    call_id: UUID | None = None
+    try:
+        published = await repo.publish_agent(TENANT, agent["id"])
+        assert published
+        campaign = await repo.create_campaign(
+            TENANT,
+            {
+                "agent_id": agent["id"],
+                "name": f"Campaign {uuid4().hex[:8]}",
+                "schedule": {
+                    "timezone": "UTC",
+                    "days": list(range(7)),
+                    "window": {"start": "08:00", "end": "20:00"},
+                    "retry_policy": {"max_attempts": 2, "delays_s": [60]},
+                },
+            },
+        )
+        await repo.update_campaign(TENANT, campaign["id"], {"status": "running"})
+        contact = (
+            await repo.add_campaign_contacts(
+                TENANT, campaign["id"], [{"phone": "+551199990001", "variables": {}}]
+            )
+        )[0]
+        contact_id = contact["id"]
+        claimed = await repo.claim_campaign_contacts(10)
+        claimed_contact = next(item for item in claimed if item["id"] == contact_id)
+        assert claimed_contact["status"] == "calling"
+        call = await repo.create_call(
+            TENANT,
+            agent["id"],
+            {},
+            {},
+            agent_version_id=published["current_version_id"],
+            channel="phone_outbound",
+            campaign_id=campaign["id"],
+            to_number=contact["phone"],
+        )
+        call_id = call["id"]
+        await repo.update_campaign_contact_internal(contact_id, {"last_call_id": call_id})
+        await repo.update_internal_call(call_id, {"status": "completed"})
+        reconciled = (await repo.list_campaign_contacts(TENANT, campaign["id"]))[0]
+        assert reconciled["status"] == "done"
+        finished = await repo.get_campaign(TENANT, campaign["id"])
+        assert finished and finished["status"] == "completed"
+        assert finished["stats"]["done"] == 1
+    finally:
+        async with SessionFactory() as db, db.begin():
+            await db.execute(text("SET LOCAL row_security = off"))
+            if call_id:
+                await db.execute(text("DELETE FROM calls WHERE id=:id"), {"id": call_id})
+            if contact_id:
+                await db.execute(
+                    text("DELETE FROM campaign_contacts WHERE id=:id"), {"id": contact_id}
+                )
+            if campaign:
+                await db.execute(text("DELETE FROM campaigns WHERE id=:id"), {"id": campaign["id"]})
+            await db.execute(
+                text("DELETE FROM agent_versions WHERE agent_id=:id"), {"id": agent["id"]}
+            )
+            await db.execute(text("DELETE FROM agents WHERE id=:id"), {"id": agent["id"]})
+
+
+@pytest.mark.asyncio(loop_scope="module")
 async def test_postgres_agent_and_call_lifecycle() -> None:
     repo = PostgresRepository()
     agent = await repo.create_agent(TENANT, "Repository coverage", str(USER))

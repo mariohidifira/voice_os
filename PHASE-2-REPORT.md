@@ -23,15 +23,17 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 - Horário de funcionamento por timezone/dias/janela e mensagem `out_of_hours_message` em inbound.
 - Campanhas com CRUD, contatos JSON/CSV, idempotência, transições de execução e painel operacional.
 - Compliance local com do-not-call/opt-out, janela legal 08h–20h, concorrência limitada pelo plano e retry somente para `busy|no_answer|failed`.
+- `campaign_runner` executado a cada 30 s pelo worker, com claim concorrente `FOR UPDATE SKIP LOCKED`, criação outbound, reconciliação do contato e conclusão/estatísticas da campanha.
 
 ## Evidências locais
 
 - Terraform `fmt -check` e `validate`: aprovado.
 - Ruff e mypy: aprovados.
-- Suíte Python: 107 testes de regressão aprovados; último gate de cobertura global 82,15% (mínimo 80%).
+- Suíte Python: 109 testes de regressão aprovados; último gate de cobertura global 82,15% (mínimo 80%).
 - Testes JavaScript: 8 aprovados; lint, typecheck e builds aprovados.
 - Testes de API/provedor: busca/compra/atribuição/liberação e outbound aprovados.
 - Teste PostgreSQL de persistência e isolamento: aprovado.
+- Teste PostgreSQL real de claim concorrente, reconciliação do contato, estatísticas e conclusão de campanha: aprovado.
 - Teste Redis real de idempotência: aprovado.
 - Testes do worker para sucesso e falha SIP outbound: aprovados.
 - Testes determinísticos de DTMF, transferência cold/warm e SMS: aprovados.
@@ -43,7 +45,6 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 
 - Trunks Twilio/LiveKit e validação real inbound/outbound.
 - Ajustes adicionais do pipeline e validação de AMD/voicemail com áudio real.
-- Executor periódico de campanhas integrado ao outbound e atualização automática do contato após o resultado da chamada.
 - Painel de canais e `/live`; templates 5 e 6; métricas de rede/MOS.
 - Ensaios de latência, barge-in, voicemail e carga de 50 salas.
 

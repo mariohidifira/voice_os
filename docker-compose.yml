@@ -42,6 +42,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://voiceos:voiceos@db:5432/voiceos
       REDIS_URL: redis://redis:6379/0
+      WORKER_API_URL: http://api:8000
     depends_on: [api, redis]
   mock:
     build: {context: ., dockerfile: infra/docker/python-worker.Dockerfile}
