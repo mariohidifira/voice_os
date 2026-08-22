@@ -53,10 +53,16 @@ type AvailableNumber = {
   region?: string;
   capabilities?: Record<string, boolean>;
 };
+type Campaign = Item & {
+  agent_id?: string;
+  schedule?: Record<string, unknown>;
+  stats?: Record<string, number>;
+};
 type Section =
   | "overview"
   | "agents"
   | "calls"
+  | "campaigns"
   | "knowledge"
   | "tools"
   | "numbers"
@@ -78,6 +84,7 @@ const sections: Array<[Section, string]> = [
   ["overview", "Visão geral"],
   ["agents", "Agentes"],
   ["calls", "Chamadas"],
+  ["campaigns", "Campanhas"],
   ["knowledge", "Conhecimento"],
   ["tools", "Ferramentas"],
   ["numbers", "Números"],
@@ -505,6 +512,8 @@ export default function Dashboard({
   const [agentTemplates, setAgentTemplates] = useState<AgentTemplate[]>([]);
   const [newAgentTemplate, setNewAgentTemplate] = useState("receptionist");
   const [calls, setCalls] = useState<Call[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaignContacts, setCampaignContacts] = useState<Record<string, string>>({});
   const [knowledge, setKnowledge] = useState<Item[]>([]);
   const [selectedKnowledge, setSelectedKnowledge] = useState<Item | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -561,7 +570,7 @@ export default function Dashboard({
         api<Item>(`tenants/${me.tenant_id}`),
       ]);
       const canConfigure = ["owner", "admin"].includes(me.role);
-      const [k, t, keys, memberResult, voiceResult, secretResult, phoneResult] =
+      const [k, t, keys, memberResult, voiceResult, secretResult, phoneResult, campaignResult] =
         canConfigure
           ? await Promise.all([
               api<{ data: Item[] }>("knowledge-bases"),
@@ -571,8 +580,10 @@ export default function Dashboard({
               api<{ data: Item[]; configured: boolean }>("voices"),
               api<{ data: Item[] }>("secrets"),
               api<{ data: Item[] }>("phone-numbers"),
+              api<{ data: Campaign[] }>("campaigns"),
             ])
           : [
+              { data: [] },
               { data: [] },
               { data: [] },
               { data: [] },
@@ -593,8 +604,9 @@ export default function Dashboard({
       setTools(t.data);
       setSecrets(secretResult.data);
       setPhoneNumbers(phoneResult.data);
+      setCampaigns(campaignResult.data);
       setVoices(voiceResult.data);
-      setVoiceProviderConfigured(voiceResult.configured);
+      setVoiceProviderConfigured(Boolean(voiceResult.configured));
       setNotice("");
     } catch (error) {
       setNotice(
@@ -1278,6 +1290,65 @@ export default function Dashboard({
     }
   }
 
+  async function createCampaign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    try {
+      await api("campaigns", {
+        method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({
+          name: form.get("name"),
+          agent_id: form.get("agent_id"),
+          schedule: {
+            timezone: form.get("timezone"),
+            days: [0, 1, 2, 3, 4],
+            window: { start: form.get("start"), end: form.get("end") },
+            max_concurrency: Number(form.get("max_concurrency") ?? 1),
+            retry_policy: { max_attempts: 3, delays_s: [300, 1800, 7200] },
+          },
+        }),
+      });
+      formElement.reset();
+      await refresh();
+      setNotice("Campanha criada como rascunho.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function importCampaignContacts(campaignId: string, raw: string) {
+    const contacts = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [phone, name] = line.split(",").map((part) => part.trim());
+        return { phone, name: name || undefined, variables: {} };
+      });
+    try {
+      await api(`campaigns/${campaignId}/contacts`, {
+        method: "POST",
+        body: JSON.stringify({ contacts }),
+      });
+      await refresh();
+      setNotice(`${contacts.length} contato(s) importado(s).`);
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
+  async function campaignAction(campaignId: string, action: string) {
+    try {
+      await api(`campaigns/${campaignId}/${action}`, { method: "POST" });
+      await refresh();
+      setNotice(`AÃ§Ã£o ${action} aplicada Ã  campanha.`);
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
   const draft = (selectedAgent?.draft ?? {}) as Record<string, unknown>;
   const stats = useMemo(
     () => [
@@ -1811,6 +1882,51 @@ export default function Dashboard({
                   ) : (
                     <Empty>Selecione um agente ou crie um novo.</Empty>
                   )}
+                </article>
+              </section>
+            )}
+            {section === "campaigns" && (
+              <section className="workspace">
+                <aside className="list card">
+                  <h2>Nova campanha</h2>
+                  <form onSubmit={createCampaign}>
+                    <Field label="Nome"><input name="name" required /></Field>
+                    <Field label="Agente">
+                      <select name="agent_id" required defaultValue="">
+                        <option value="" disabled>Selecione</option>
+                        {agents.filter((agent) => agent.status === "active").map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Fuso"><input name="timezone" defaultValue="America/Sao_Paulo" required /></Field>
+                    <div className="two">
+                      <Field label="InÃ­cio"><input name="start" type="time" defaultValue="08:00" required /></Field>
+                      <Field label="Fim"><input name="end" type="time" defaultValue="20:00" required /></Field>
+                    </div>
+                    <Field label="ConcorrÃªncia"><input name="max_concurrency" type="number" min="1" max="50" defaultValue="2" /></Field>
+                    <button>Criar campanha</button>
+                  </form>
+                </aside>
+                <article className="card editor">
+                  <div className="eyebrow">discagem em lote</div>
+                  <h2>Campanhas</h2>
+                  {campaigns.map((campaign) => (
+                    <div className="card" key={campaign.id}>
+                      <div className="row">
+                        <span><strong>{campaign.name}</strong><small>{campaign.status}</small></span>
+                      </div>
+                      <Field label="Contatos (um por linha: +E164,nome)">
+                        <textarea value={campaignContacts[campaign.id] ?? ""} onChange={(event) => setCampaignContacts((items) => ({ ...items, [campaign.id]: event.target.value }))} placeholder="+5511999999999,Ana" />
+                      </Field>
+                      <div className="actions">
+                        <button type="button" className="secondary" disabled={!campaignContacts[campaign.id]?.trim()} onClick={() => void importCampaignContacts(campaign.id, campaignContacts[campaign.id] ?? "")}>Importar</button>
+                        {campaign.status === "draft" && <button type="button" onClick={() => void campaignAction(campaign.id, "start")}>Iniciar</button>}
+                        {campaign.status === "running" && <button type="button" className="secondary" onClick={() => void campaignAction(campaign.id, "pause")}>Pausar</button>}
+                        {campaign.status === "paused" && <button type="button" onClick={() => void campaignAction(campaign.id, "resume")}>Retomar</button>}
+                        {["draft", "running", "paused"].includes(campaign.status ?? "") && <button type="button" className="danger" onClick={() => void campaignAction(campaign.id, "cancel")}>Cancelar</button>}
+                      </div>
+                    </div>
+                  ))}
+                  {!campaigns.length && <Empty>Nenhuma campanha criada.</Empty>}
                 </article>
               </section>
             )}

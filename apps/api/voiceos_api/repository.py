@@ -132,15 +132,30 @@ class Repository(Protocol):
         self, tenant_id: UUID, provider: str, data: dict[str, Any]
     ) -> dict[str, Any]: ...
     async def list_phone_numbers(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
-    async def get_phone_number(
-        self, tenant_id: UUID, number_id: UUID
-    ) -> dict[str, Any] | None: ...
+    async def get_phone_number(self, tenant_id: UUID, number_id: UUID) -> dict[str, Any] | None: ...
     async def create_phone_number(
         self, tenant_id: UUID, data: dict[str, Any]
     ) -> dict[str, Any]: ...
     async def update_phone_number(
         self, tenant_id: UUID, number_id: UUID, data: dict[str, Any]
     ) -> dict[str, Any] | None: ...
+    async def list_campaigns(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def create_campaign(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def get_campaign(self, tenant_id: UUID, campaign_id: UUID) -> dict[str, Any] | None: ...
+    async def update_campaign(
+        self, tenant_id: UUID, campaign_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None: ...
+    async def add_campaign_contacts(
+        self, tenant_id: UUID, campaign_id: UUID, contacts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]: ...
+    async def list_campaign_contacts(
+        self, tenant_id: UUID, campaign_id: UUID, status: str | None = None
+    ) -> list[dict[str, Any]]: ...
+    async def list_do_not_call(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
+    async def add_do_not_call(
+        self, tenant_id: UUID, phone: str, reason: str | None
+    ) -> dict[str, Any]: ...
+    async def remove_do_not_call(self, tenant_id: UUID, phone: str) -> bool: ...
 
 
 class PostgresRepository:
@@ -221,14 +236,10 @@ class PostgresRepository:
 
     async def list_phone_numbers(self, tenant_id: UUID) -> list[dict[str, Any]]:
         async with self.tenant_session(tenant_id) as db:
-            rows = await db.execute(
-                text("SELECT * FROM phone_numbers ORDER BY created_at DESC")
-            )
+            rows = await db.execute(text("SELECT * FROM phone_numbers ORDER BY created_at DESC"))
             return [dict(row) for row in rows.mappings()]
 
-    async def get_phone_number(
-        self, tenant_id: UUID, number_id: UUID
-    ) -> dict[str, Any] | None:
+    async def get_phone_number(self, tenant_id: UUID, number_id: UUID) -> dict[str, Any] | None:
         async with self.tenant_session(tenant_id) as db:
             row = await db.execute(
                 text("SELECT * FROM phone_numbers WHERE id=:id"), {"id": number_id}
@@ -236,9 +247,7 @@ class PostgresRepository:
             mapping = row.mappings().first()
             return dict(mapping) if mapping else None
 
-    async def create_phone_number(
-        self, tenant_id: UUID, data: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def create_phone_number(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
         async with self.tenant_session(tenant_id) as db:
             row = await db.execute(
                 text(
@@ -1335,6 +1344,119 @@ class PostgresRepository:
                 )
             return dict(row.mappings().one())
 
+    async def list_campaigns(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT * FROM campaigns ORDER BY created_at DESC"))
+            return [dict(row) for row in rows.mappings()]
+
+    async def create_campaign(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(
+                    "INSERT INTO campaigns(id,tenant_id,agent_id,name,status,schedule,stats) VALUES(:id,:tenant,:agent,:name,'draft',CAST(:schedule AS jsonb),'{}'::jsonb) RETURNING *"
+                ),
+                {
+                    "id": uuid4(),
+                    "tenant": tenant_id,
+                    "agent": data["agent_id"],
+                    "name": data["name"],
+                    "schedule": json.dumps(data["schedule"]),
+                },
+            )
+            return dict(row.mappings().one())
+
+    async def get_campaign(self, tenant_id: UUID, campaign_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text("SELECT * FROM campaigns WHERE id=:id"), {"id": campaign_id}
+            )
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def update_campaign(
+        self, tenant_id: UUID, campaign_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        allowed = {"name", "status", "schedule", "stats"}
+        values = {key: value for key, value in data.items() if key in allowed}
+        if not values:
+            return await self.get_campaign(tenant_id, campaign_id)
+        assignments: list[str] = []
+        params: dict[str, Any] = {"id": campaign_id}
+        for key, value in values.items():
+            if key in {"schedule", "stats"}:
+                assignments.append(f"{key}=CAST(:{key} AS jsonb)")
+                params[key] = json.dumps(value)
+            else:
+                assignments.append(f"{key}=:{key}")
+                params[key] = value
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(
+                    f"UPDATE campaigns SET {','.join(assignments)},updated_at=now() WHERE id=:id RETURNING *"
+                ),
+                params,
+            )
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def add_campaign_contacts(
+        self, tenant_id: UUID, campaign_id: UUID, contacts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        created: list[dict[str, Any]] = []
+        async with self.tenant_session(tenant_id) as db:
+            for contact in contacts:
+                row = await db.execute(
+                    text(
+                        "INSERT INTO campaign_contacts(id,tenant_id,campaign_id,phone,name,variables,status,attempts) VALUES(:id,:tenant,:campaign,:phone,:name,CAST(:variables AS jsonb),'pending',0) RETURNING *"
+                    ),
+                    {
+                        "id": uuid4(),
+                        "tenant": tenant_id,
+                        "campaign": campaign_id,
+                        "phone": contact["phone"],
+                        "name": contact.get("name"),
+                        "variables": json.dumps(contact.get("variables", {})),
+                    },
+                )
+                created.append(dict(row.mappings().one()))
+        return created
+
+    async def list_campaign_contacts(
+        self, tenant_id: UUID, campaign_id: UUID, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM campaign_contacts WHERE campaign_id=:id"
+        params: dict[str, Any] = {"id": campaign_id}
+        if status:
+            query += " AND status=:status"
+            params["status"] = status
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text(query + " ORDER BY created_at,id"), params)
+            return [dict(row) for row in rows.mappings()]
+
+    async def list_do_not_call(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        async with self.tenant_session(tenant_id) as db:
+            rows = await db.execute(text("SELECT * FROM do_not_call ORDER BY created_at DESC"))
+            return [dict(row) for row in rows.mappings()]
+
+    async def add_do_not_call(
+        self, tenant_id: UUID, phone: str, reason: str | None
+    ) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(
+                    "INSERT INTO do_not_call(id,tenant_id,phone,reason) VALUES(:id,:tenant,:phone,:reason) ON CONFLICT(tenant_id,phone) DO UPDATE SET reason=EXCLUDED.reason RETURNING *"
+                ),
+                {"id": uuid4(), "tenant": tenant_id, "phone": phone, "reason": reason},
+            )
+            return dict(row.mappings().one())
+
+    async def remove_do_not_call(self, tenant_id: UUID, phone: str) -> bool:
+        async with self.tenant_session(tenant_id) as db:
+            result = await db.execute(
+                text("DELETE FROM do_not_call WHERE phone=:phone RETURNING id"), {"phone": phone}
+            )
+            return result.first() is not None
+
 
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
@@ -1859,6 +1981,98 @@ class MemoryRepository:
         item["updated_at"] = datetime.now(UTC)
         return item
 
+    async def list_campaigns(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return sorted(
+            [item for item in self.memory.campaigns.values() if item["tenant_id"] == tenant_id],
+            key=lambda item: item["created_at"],
+            reverse=True,
+        )
+
+    async def create_campaign(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        item = {
+            "id": uuid4(),
+            "tenant_id": tenant_id,
+            **data,
+            "status": "draft",
+            "stats": {},
+            "created_at": now,
+            "updated_at": now,
+        }
+        self.memory.campaigns[item["id"]] = item
+        return item
+
+    async def get_campaign(self, tenant_id: UUID, campaign_id: UUID) -> dict[str, Any] | None:
+        item = self.memory.campaigns.get(campaign_id)
+        return item if item and item["tenant_id"] == tenant_id else None
+
+    async def update_campaign(
+        self, tenant_id: UUID, campaign_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        item = await self.get_campaign(tenant_id, campaign_id)
+        if not item:
+            return None
+        item.update(data)
+        item["updated_at"] = datetime.now(UTC)
+        return item
+
+    async def add_campaign_contacts(
+        self, tenant_id: UUID, campaign_id: UUID, contacts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        now = datetime.now(UTC)
+        created = []
+        for contact in contacts:
+            item = {
+                "id": uuid4(),
+                "tenant_id": tenant_id,
+                "campaign_id": campaign_id,
+                **contact,
+                "status": "pending",
+                "attempts": 0,
+                "last_call_id": None,
+                "next_attempt_at": None,
+                "created_at": now,
+                "updated_at": now,
+            }
+            self.memory.campaign_contacts[item["id"]] = item
+            created.append(item)
+        return created
+
+    async def list_campaign_contacts(
+        self, tenant_id: UUID, campaign_id: UUID, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        return [
+            item
+            for item in self.memory.campaign_contacts.values()
+            if item["tenant_id"] == tenant_id
+            and item["campaign_id"] == campaign_id
+            and (not status or item["status"] == status)
+        ]
+
+    async def list_do_not_call(self, tenant_id: UUID) -> list[dict[str, Any]]:
+        return [item for item in self.memory.do_not_call.values() if item["tenant_id"] == tenant_id]
+
+    async def add_do_not_call(
+        self, tenant_id: UUID, phone: str, reason: str | None
+    ) -> dict[str, Any]:
+        key = (tenant_id, phone)
+        item = self.memory.do_not_call.get(key)
+        if item:
+            item["reason"] = reason
+            return item
+        item = {
+            "id": uuid4(),
+            "tenant_id": tenant_id,
+            "phone": phone,
+            "reason": reason,
+            "created_at": datetime.now(UTC),
+        }
+        self.memory.do_not_call[key] = item
+        return item
+
+    async def remove_do_not_call(self, tenant_id: UUID, phone: str) -> bool:
+        return self.memory.do_not_call.pop((tenant_id, phone), None) is not None
+
     async def delete_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> bool:
         if not await self.get_knowledge_base(tenant_id, kb_id):
             return False
@@ -2033,24 +2247,16 @@ class MemoryRepository:
 
     async def list_phone_numbers(self, tenant_id: UUID) -> list[dict[str, Any]]:
         return sorted(
-            [
-                item
-                for item in self.memory.phone_numbers.values()
-                if item["tenant_id"] == tenant_id
-            ],
+            [item for item in self.memory.phone_numbers.values() if item["tenant_id"] == tenant_id],
             key=lambda item: item["created_at"],
             reverse=True,
         )
 
-    async def get_phone_number(
-        self, tenant_id: UUID, number_id: UUID
-    ) -> dict[str, Any] | None:
+    async def get_phone_number(self, tenant_id: UUID, number_id: UUID) -> dict[str, Any] | None:
         item = self.memory.phone_numbers.get(number_id)
         return item if item and item["tenant_id"] == tenant_id else None
 
-    async def create_phone_number(
-        self, tenant_id: UUID, data: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def create_phone_number(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
         if any(
             item["e164"] == data["e164"] and item["status"] == "active"
             for item in self.memory.phone_numbers.values()

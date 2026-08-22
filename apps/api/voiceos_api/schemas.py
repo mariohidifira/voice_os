@@ -83,6 +83,32 @@ class OutboundCallCreate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class CampaignCreate(BaseModel):
+    agent_id: UUID
+    name: str = Field(min_length=1, max_length=120)
+    schedule: dict[str, Any]
+
+
+class CampaignPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    schedule: dict[str, Any] | None = None
+
+
+class CampaignContactCreate(BaseModel):
+    phone: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
+    name: str | None = Field(default=None, max_length=120)
+    variables: dict[str, Any] = Field(default_factory=dict)
+
+
+class CampaignContactsCreate(BaseModel):
+    contacts: list[CampaignContactCreate] = Field(min_length=1, max_length=10_000)
+
+
+class DoNotCallCreate(BaseModel):
+    phone: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
+    reason: str | None = Field(default=None, max_length=300)
+
+
 class ToolCreate(BaseModel):
     name: str
     description: str = Field(max_length=300)

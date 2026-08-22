@@ -1,4 +1,6 @@
+import csv
 import hashlib
+import io
 import json
 import secrets
 from datetime import UTC, date, datetime, timedelta
@@ -15,6 +17,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from .agent_templates import get_agent_template, list_agent_templates
 from .auth import Principal, internal_token, principal
+from .campaigns import transition_status
 from .config import get_settings
 from .idempotency import IdempotencyStore, get_idempotency_store
 from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_embeddings
@@ -35,7 +38,12 @@ from .schemas import (
     CallPatch,
     CallToolCallCreate,
     CallTurnBatch,
+    CampaignContactCreate,
+    CampaignContactsCreate,
+    CampaignCreate,
+    CampaignPatch,
     DocumentCreate,
+    DoNotCallCreate,
     InternalCallCreate,
     InternalRagQuery,
     InternalToolExecute,
@@ -555,9 +563,7 @@ async def purchase_phone_number(
     try:
         purchased = await phone.numbers.purchase(body.e164)
         if body.agent_id:
-            rule_id = await phone.dispatch.create(
-                auth.tenant_id, body.agent_id, purchased.e164
-            )
+            rule_id = await phone.dispatch.create(auth.tenant_id, body.agent_id, purchased.e164)
         return await repo.create_phone_number(
             auth.tenant_id,
             {
@@ -623,9 +629,7 @@ async def assign_phone_number(
     new_rule = None
     try:
         if body.agent_id:
-            new_rule = await phone.dispatch.create(
-                auth.tenant_id, body.agent_id, str(item["e164"])
-            )
+            new_rule = await phone.dispatch.create(auth.tenant_id, body.agent_id, str(item["e164"]))
         updated = await repo.update_phone_number(
             auth.tenant_id,
             number_id,
@@ -645,9 +649,7 @@ async def assign_phone_number(
 
 
 @v1.delete("/phone-numbers/{number_id}", status_code=204)
-async def release_phone_number(
-    number_id: UUID, auth: Auth, repo: Repo, phone: Phone
-) -> Response:
+async def release_phone_number(number_id: UUID, auth: Auth, repo: Repo, phone: Phone) -> Response:
     _require_admin(auth)
     item = await repo.get_phone_number(auth.tenant_id, number_id)
     if not item or item["status"] != "active":
@@ -768,9 +770,7 @@ async def create_outbound_call(
         json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
     if idempotency_key:
-        cached = await idempotency.reserve(
-            auth.tenant_id, operation, idempotency_key, fingerprint
-        )
+        cached = await idempotency.reserve(auth.tenant_id, operation, idempotency_key, fingerprint)
         if cached:
             if cached.get("_conflict"):
                 raise HTTPException(
@@ -856,6 +856,198 @@ async def create_outbound_call(
         if idempotency_key:
             await idempotency.release(auth.tenant_id, operation, idempotency_key)
         raise
+
+
+@v1.get("/campaigns")
+async def list_campaigns(auth: Auth, repo: Repo) -> dict[str, Any]:
+    return {"data": await repo.list_campaigns(auth.tenant_id)}
+
+
+@v1.post("/campaigns", status_code=201)
+async def create_campaign(
+    body: CampaignCreate,
+    auth: Auth,
+    repo: Repo,
+    idempotency: Idempotency,
+    idempotency_key: Annotated[
+        str | None, Header(alias="Idempotency-Key", min_length=1, max_length=200)
+    ] = None,
+) -> dict[str, Any]:
+    agent = await repo.get_agent(auth.tenant_id, body.agent_id)
+    if not agent:
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    fingerprint = hashlib.sha256(body.model_dump_json().encode()).hexdigest()
+    if idempotency_key:
+        cached = await idempotency.reserve(
+            auth.tenant_id, "campaigns:create", idempotency_key, fingerprint
+        )
+        if cached:
+            if cached.get("_conflict"):
+                raise HTTPException(
+                    409,
+                    detail={
+                        "code": "idempotency_key_reused",
+                        "message": "This Idempotency-Key was already used with another payload",
+                    },
+                )
+            if cached.get("_pending"):
+                raise HTTPException(
+                    409,
+                    detail={
+                        "code": "idempotency_in_progress",
+                        "message": "A request with this Idempotency-Key is still in progress",
+                    },
+                )
+            return cached
+    campaign = await repo.create_campaign(auth.tenant_id, body.model_dump())
+    response = {
+        **campaign,
+        "id": str(campaign["id"]),
+        "agent_id": str(campaign["agent_id"]),
+        "tenant_id": str(campaign["tenant_id"]),
+    }
+    if idempotency_key:
+        await idempotency.complete(
+            auth.tenant_id, "campaigns:create", idempotency_key, fingerprint, response
+        )
+    return response
+
+
+@v1.get("/campaigns/{campaign_id}")
+async def get_campaign(campaign_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    campaign = await repo.get_campaign(auth.tenant_id, campaign_id)
+    if not campaign:
+        raise HTTPException(
+            404, detail={"code": "campaign_not_found", "message": "Campaign not found"}
+        )
+    return campaign
+
+
+@v1.patch("/campaigns/{campaign_id}")
+async def patch_campaign(
+    campaign_id: UUID, body: CampaignPatch, auth: Auth, repo: Repo
+) -> dict[str, Any]:
+    campaign = await repo.get_campaign(auth.tenant_id, campaign_id)
+    if not campaign:
+        raise HTTPException(
+            404, detail={"code": "campaign_not_found", "message": "Campaign not found"}
+        )
+    if campaign["status"] not in {"draft", "paused"}:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "campaign_not_editable",
+                "message": "Only draft or paused campaigns can be edited",
+            },
+        )
+    return (
+        await repo.update_campaign(auth.tenant_id, campaign_id, body.model_dump(exclude_none=True))
+    ) or campaign
+
+
+@v1.post("/campaigns/{campaign_id}/contacts", status_code=201)
+async def add_campaign_contacts(
+    campaign_id: UUID, request: Request, auth: Auth, repo: Repo
+) -> list[dict[str, Any]]:
+    campaign = await repo.get_campaign(auth.tenant_id, campaign_id)
+    if not campaign:
+        raise HTTPException(
+            404, detail={"code": "campaign_not_found", "message": "Campaign not found"}
+        )
+    try:
+        if request.headers.get("content-type", "").startswith("multipart/form-data"):
+            form = await request.form()
+            upload = form.get("file")
+            if upload is None or not hasattr(upload, "read"):
+                raise ValueError("multipart field 'file' is required")
+            raw = await upload.read()
+            rows = list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
+            payload = CampaignContactsCreate(
+                contacts=[
+                    CampaignContactCreate(
+                        phone=row.get("phone", ""),
+                        name=row.get("name") or None,
+                        variables={
+                            key[4:]: value
+                            for key, value in row.items()
+                            if key.startswith("var.") and value
+                        },
+                    )
+                    for row in rows
+                ]
+            )
+        else:
+            payload = CampaignContactsCreate.model_validate(await request.json())
+    except (ValueError, UnicodeDecodeError, PydanticValidationError) as exc:
+        raise HTTPException(422, detail={"code": "invalid_contacts", "message": str(exc)}) from exc
+    blocked = {item["phone"] for item in await repo.list_do_not_call(auth.tenant_id)}
+    contacts = [item.model_dump() for item in payload.contacts if item.phone not in blocked]
+    if not contacts:
+        raise HTTPException(
+            422,
+            detail={
+                "code": "all_contacts_blocked",
+                "message": "All contacts are on the do-not-call list",
+            },
+        )
+    return await repo.add_campaign_contacts(auth.tenant_id, campaign_id, contacts)
+
+
+@v1.get("/campaigns/{campaign_id}/contacts")
+async def list_campaign_contacts(
+    campaign_id: UUID, auth: Auth, repo: Repo, status: str | None = None
+) -> list[dict[str, Any]]:
+    if not await repo.get_campaign(auth.tenant_id, campaign_id):
+        raise HTTPException(
+            404, detail={"code": "campaign_not_found", "message": "Campaign not found"}
+        )
+    return await repo.list_campaign_contacts(auth.tenant_id, campaign_id, status)
+
+
+@v1.post("/campaigns/{campaign_id}/{action}")
+async def campaign_action(campaign_id: UUID, action: str, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if action not in {"start", "pause", "resume", "cancel"}:
+        raise HTTPException(
+            404, detail={"code": "action_not_found", "message": "Campaign action not found"}
+        )
+    campaign = await repo.get_campaign(auth.tenant_id, campaign_id)
+    if not campaign:
+        raise HTTPException(
+            404, detail={"code": "campaign_not_found", "message": "Campaign not found"}
+        )
+    if action == "start" and not await repo.list_campaign_contacts(auth.tenant_id, campaign_id):
+        raise HTTPException(
+            409,
+            detail={
+                "code": "campaign_empty",
+                "message": "Import at least one contact before starting",
+            },
+        )
+    try:
+        target = transition_status(str(campaign["status"]), action)
+    except ValueError as exc:
+        raise HTTPException(
+            409, detail={"code": "invalid_campaign_transition", "message": str(exc)}
+        ) from exc
+    return (await repo.update_campaign(auth.tenant_id, campaign_id, {"status": target})) or campaign
+
+
+@v1.get("/do-not-call")
+async def list_do_not_call(auth: Auth, repo: Repo) -> dict[str, Any]:
+    return {"data": await repo.list_do_not_call(auth.tenant_id)}
+
+
+@v1.post("/do-not-call", status_code=201)
+async def add_do_not_call(body: DoNotCallCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    return await repo.add_do_not_call(auth.tenant_id, body.phone, body.reason)
+
+
+@v1.delete("/do-not-call/{phone}", status_code=204)
+async def delete_do_not_call(phone: str, auth: Auth, repo: Repo) -> None:
+    if not await repo.remove_do_not_call(auth.tenant_id, phone):
+        raise HTTPException(
+            404, detail={"code": "do_not_call_not_found", "message": "Phone not found"}
+        )
 
 
 @v1.post("/agents/{agent_id}/test-session", status_code=201)
