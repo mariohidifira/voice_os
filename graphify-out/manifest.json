@@ -300,8 +300,8 @@
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
-    "mtime": 1787394463.5701523,
-    "ast_hash": "b8ba85db765fe5e95d869d944ea03db7",
+    "mtime": 1787394831.897996,
+    "ast_hash": "f4847b66eefbe2940049d69a6fdf414f",
     "semantic_hash": ""
   },
   "PHASE-3-REPORT.md": {
@@ -610,13 +610,13 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/livekit_worker.py": {
-    "mtime": 1787394373.4966722,
-    "ast_hash": "bc42a07965e8878276f5f64147a16fe0",
+    "mtime": 1787394815.4713337,
+    "ast_hash": "0e7ed40d6a580d34d2758c2ed227b819",
     "semantic_hash": ""
   },
   "tests/test_livekit_worker.py": {
-    "mtime": 1787394337.6819074,
-    "ast_hash": "38f725d6f39448b1af2b2a4cfe9c9408",
+    "mtime": 1787394818.1077116,
+    "ast_hash": "58a6befd1466c0f0fd5d5aea2f23ecc9",
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/recording.py": {
@@ -847,6 +847,16 @@
   "tests/test_idempotency.py": {
     "mtime": 1787393468.851585,
     "ast_hash": "736ff32234b5fa3cea93fa8ee700eb56",
+    "semantic_hash": ""
+  },
+  "apps/agent-worker/voiceos_voice/phone_runtime.py": {
+    "mtime": 1787394796.873816,
+    "ast_hash": "3f264f18f3bd67e46bda2ec02e6e2d6d",
+    "semantic_hash": ""
+  },
+  "tests/test_phone_runtime.py": {
+    "mtime": 1787394758.9747348,
+    "ast_hash": "c5446de3ee9966fc00c28e8265439919",
     "semantic_hash": ""
   }
 }

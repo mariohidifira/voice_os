@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from google.protobuf.duration_pb2 import Duration
 from livekit import api as livekit_api
 from livekit.agents import (
     Agent,
@@ -30,6 +31,11 @@ from livekit.plugins import anthropic, cartesia, deepgram, elevenlabs, openai, s
 
 from .accounting import CallAccounting
 from .api_client import RedisRuntimeCache, WorkerAPI
+from .phone_runtime import (
+    AnthropicAMDClassifier,
+    HeuristicAMDClassifier,
+    business_hours_open,
+)
 from .prompting import build_system_prompt
 from .recording import start_room_recording
 
@@ -154,13 +160,22 @@ async def dial_outbound(
                 wait_until_answered=True,
                 play_dialtone=False,
                 krisp_enabled=True,
+                ringing_timeout=Duration(seconds=30),
             )
         )
-    except Exception:
+    except Exception as exc:
+        message = str(exc).casefold()
+        status = (
+            "busy"
+            if "busy" in message or "486" in message
+            else "no_answer"
+            if "timeout" in message or "deadline" in message or "no answer" in message
+            else "failed"
+        )
         await api.update_call(
             call_id,
             {
-                "status": "failed",
+                "status": status,
                 "end_reason": "error",
                 "ended_at": datetime.now(UTC).isoformat(),
             },
@@ -511,6 +526,7 @@ async def voiceos_agent(ctx: JobContext) -> None:
     pipeline = provider_pipeline(runtime)
     turn = runtime.get("turn") or {}
     behavior = runtime.get("behavior") or {}
+    amd_transcript: list[str] = []
     session_ref: dict[str, AgentSession[Any]] = {}
     tools = dynamic_tools(
         api,
@@ -548,7 +564,12 @@ async def voiceos_agent(ctx: JobContext) -> None:
         str(behavior.get("silence_prompt") or "Você ainda está aí?"),
         int(behavior.get("max_call_duration_s", 900)),
     )
-    session.on("user_input_transcribed", lambda event: bridge.spawn(bridge.user_transcript(event)))
+    def user_transcribed(event: UserInputTranscribedEvent) -> None:
+        bridge.spawn(bridge.user_transcript(event))
+        if metadata.get("channel") == "phone_outbound" and event.is_final:
+            amd_transcript.append(event.transcript)
+
+    session.on("user_input_transcribed", user_transcribed)
     session.on("conversation_item_added", lambda event: bridge.spawn(bridge.conversation_item(event)))
     session.on("metrics_collected", lambda event: bridge.spawn(bridge.metric(event)))
     session.on("session_usage_updated", lambda event: bridge.spawn(bridge.usage(event)))
@@ -564,6 +585,13 @@ async def voiceos_agent(ctx: JobContext) -> None:
     await ctx.connect()
     greeting = str(runtime.get("greeting") or "Olá! Como posso ajudar?")
     tenant_settings = dict(runtime.get("tenant_settings") or {})
+    if metadata.get("channel") == "phone_inbound" and not business_hours_open(
+        dict(behavior.get("business_hours") or {}), datetime.now(UTC)
+    ):
+        greeting = str(
+            behavior.get("out_of_hours_message")
+            or "Nosso atendimento está fora do horário. Deixe sua mensagem após o sinal."
+        )
     if tenant_settings.get("recording_enabled"):
         try:
             egress_id, key = await start_room_recording(
@@ -579,6 +607,34 @@ async def voiceos_agent(ctx: JobContext) -> None:
         if tenant_settings.get("recording_notice"):
             notice = str(tenant_settings.get("recording_notice_text") or "Esta ligação pode ser gravada.")
             greeting = f"{notice} {greeting}"
+    if metadata.get("channel") == "phone_outbound":
+        await asyncio.sleep(4)
+        transcript = " ".join(amd_transcript)
+        classifier = (
+            AnthropicAMDClassifier(
+                os.environ["ANTHROPIC_API_KEY"],
+                os.getenv("ANTHROPIC_POSTPROCESS_MODEL", "claude-haiku-4-5"),
+            )
+            if os.getenv("ANTHROPIC_API_KEY") and transcript
+            else HeuristicAMDClassifier()
+        )
+        try:
+            classification = await classifier.classify(transcript)
+        except Exception:
+            classification = await HeuristicAMDClassifier().classify(transcript)
+        await bridge.persist_event(
+            "amd.classified", {"classification": classification, "transcript": transcript[:500]}
+        )
+        if classification == "voicemail":
+            await asyncio.sleep(1.5)
+            voicemail = str(
+                behavior.get("voicemail_message")
+                or "Olá. Tentamos entrar em contato. Por favor, retorne quando puder."
+            )
+            await session.say(voicemail, allow_interruptions=False).wait_for_playout()
+            bridge.end_reason = "voicemail_left"
+            session.shutdown(drain=True)
+            return
     await session.say(greeting, allow_interruptions=True)
 
 

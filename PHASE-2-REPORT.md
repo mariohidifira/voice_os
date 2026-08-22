@@ -18,6 +18,9 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 - Tool `dtmf` executada localmente pelo worker via LiveKit RTC, com validação de `0-9`, `*`, `#`, `A-D` e evento persistido.
 - Tool `transfer_call` cold via SIP REFER e warm via nova perna SIP na mesma sala, resumo falado ao operador e eventos requested/completed.
 - Tool `send_sms` via Twilio, remetente SMS-capable validado por tenant, destino derivado da chamada e Messaging Service opcional.
+- AMD nos primeiros 4 s do outbound com classificação Haiku `human|voicemail|ivr` e fallback heurístico; voicemail aguarda 1,5 s, deixa a mensagem configurada e encerra como `voicemail_left`.
+- Janela de ring de 30 s e mapeamento de erro SIP para `busy|no_answer|failed`.
+- Horário de funcionamento por timezone/dias/janela e mensagem `out_of_hours_message` em inbound.
 
 ## Evidências locais
 
@@ -30,13 +33,14 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 - Teste Redis real de idempotência: aprovado.
 - Testes do worker para sucesso e falha SIP outbound: aprovados.
 - Testes determinísticos de DTMF, transferência cold/warm e SMS: aprovados.
+- Testes determinísticos de AMD Haiku/heurística e horário comercial: aprovados.
 - Playwright: 3 fluxos aprovados, incluindo compra → atribuição → liberação.
 - Alembic local: `0006 (head)`.
 
 ## Itens ainda em implementação
 
 - Trunks Twilio/LiveKit e validação real inbound/outbound.
-- Pipeline de telefone além da discagem base e AMD/voicemail.
+- Ajustes adicionais do pipeline e validação de AMD/voicemail com áudio real.
 - Horário de funcionamento e mensagem fora do horário.
 - Campanhas, janela, concorrência, retry, opt-out e do-not-call.
 - Painel de campanhas, canais e `/live`; templates 5 e 6; métricas de rede/MOS.

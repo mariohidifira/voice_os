@@ -102,6 +102,11 @@
   "100": "0006_phone_number_lifecycle.py",
   "101": ".get_tenant",
   "102": "TelephonyProviderError",
+  "103": "TwilioNumberProvider",
   "104": "FakeEventBus",
-  "105": "FakeVoicePreview"
+  "105": "FakeVoicePreview",
+  "106": "test_phone_numbers.py",
+  "107": "SessionGuards",
+  "108": "SipDispatch",
+  "109": "test_agent_versions.py"
 }

@@ -64,6 +64,7 @@ async def test_dial_outbound_maps_sip_lifecycle(monkeypatch: pytest.MonkeyPatch)
     assert sip_requests[0].sip_trunk_id == "ST_OUT"
     assert sip_requests[0].sip_call_to == "+5511999990001"
     assert sip_requests[0].wait_until_answered is True
+    assert sip_requests[0].ringing_timeout.seconds == 30
 
 
 @pytest.mark.asyncio
