@@ -43,9 +43,30 @@ test("criar agente, publicar, testar e ver chamada", async ({
   await page.getByPlaceholder("Nome do agente").fill(agentName);
   await page.getByPlaceholder("Nome do agente").press("Enter");
   await expect(page.getByRole("heading", { name: agentName })).toBeVisible();
+  await page.route("**/draft/improve-prompt", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        improved_prompt:
+          "Você é {{ agent.name }} e atende testes E2E com respostas curtas e objetivas.",
+      }),
+    });
+  });
   await page
     .getByLabel("Prompt do sistema")
-    .fill("Você atende testes E2E com respostas objetivas.");
+    .fill(
+      "Você é {{ agent.name }} e atende testes E2E com respostas objetivas.",
+    );
+  await expect(page.getByLabel("Variáveis detectadas")).toContainText(
+    "{{ agent.name }}",
+  );
+  await expect(page.getByText(/\d+ \/ 6\.000 caracteres/)).toBeVisible();
+  await page.getByRole("button", { name: "Melhorar com IA" }).click();
+  await expect(page.getByLabel("Prompt do sistema")).toHaveValue(
+    /respostas curtas e objetivas/,
+  );
+  await expect(page.getByRole("status")).toContainText("Sugestão gerada");
   await page.getByRole("button", { name: "Salvar rascunho" }).click();
   await expect(page.getByRole("status")).toContainText(
     "Rascunho e ferramentas salvos",

@@ -25,6 +25,7 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 - Detalhe de chamada: player autenticado por URL S3 assinada e tenant-scoped, download, transcrição clicável sincronizada, custo, TTFB, reação ao barge-in, tools, eventos, resultado e variáveis coletadas.
 - Editor avançado: modelo/temperatura/tokens, voz/velocidade/estabilidade, presets de turno, interrupções, backchannels, keywords STT, filler, transferência, variáveis e JSON read-only; persistência coberta no E2E.
 - Editor organizado em seis abas acessíveis e funcionais (Prompt, Voz, Conversa, Conhecimento, Tools e Avançado), com navegação e persistência cobertas no E2E.
+- Aba Prompt com limite/contador de 6.000 caracteres, detecção de variáveis Jinja e preview “Melhorar com IA”; o serviço Anthropic preserva variáveis, aplica timeout/retry e só persiste após revisão e salvamento explícito.
 - Ciclo administrativo do agente: pausar, reativar e excluir pelo painel.
 - Conversas determinísticas: 40 casos texto + 10 casos áudio sintético, 100% aprovados.
 - Barge-in determinístico: 4/4 casos aprovados; backchannels isolados também cobertos.

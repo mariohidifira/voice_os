@@ -263,6 +263,22 @@ small {
 .tabPanel[hidden] {
   display: none;
 }
+.promptMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.variablePanel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #0b1017;
+}
 .formGrid {
   display: grid;
   gap: 15px;

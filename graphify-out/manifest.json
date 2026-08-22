@@ -105,13 +105,13 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787373083.7899323,
-    "ast_hash": "7edc21d9ad657301c0f64fcd6485c9eb",
+    "mtime": 1787374574.7409642,
+    "ast_hash": "b4383ac3f770c94ac34a774d7e66f2d2",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
-    "mtime": 1787367365.221923,
-    "ast_hash": "ccbbcc6b0282867c5a2793d2f66c3157",
+    "mtime": 1787374437.6984475,
+    "ast_hash": "80cb61e389d2a1e9166863f9d9e8f375",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/store.py": {
@@ -250,8 +250,8 @@
     "semantic_hash": ""
   },
   "tests/test_api.py": {
-    "mtime": 1787373297.6240442,
-    "ast_hash": "4aa3a2e524eae0f44e67b55382172568",
+    "mtime": 1787374574.7419612,
+    "ast_hash": "09c96d9654467888a5af40cedda78aac",
     "semantic_hash": ""
   },
   "tests/test_health.py": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1787373863.63089,
-    "ast_hash": "012da22b1e5acfa7388b045f006570ab",
+    "mtime": 1787374748.0878456,
+    "ast_hash": "f39dc3149de6bdeddaf69e79374897d2",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
@@ -485,8 +485,8 @@
     "semantic_hash": ""
   },
   "packages/shared-ts/openapi.json": {
-    "mtime": 1787020618.9038925,
-    "ast_hash": "61e614f25ac1dbccd1cfc8365965cdda",
+    "mtime": 1787374579.771861,
+    "ast_hash": "4f9b66c5384ded766487533536798059",
     "semantic_hash": ""
   },
   "packages/shared-ts/package.json": {
@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/dashboard.tsx": {
-    "mtime": 1787373800.8166852,
-    "ast_hash": "252e99ce01c32737b12894e27b6f70bd",
+    "mtime": 1787374576.8330631,
+    "ast_hash": "8c2590683659cef7b67946f33a373b28",
     "semantic_hash": ""
   },
   "apps/web/lib/api-token.ts": {
@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "apps/web/e2e/essential-flow.spec.ts": {
-    "mtime": 1787373800.9351544,
-    "ast_hash": "d424d391cead38c997a050bb0a64352d",
+    "mtime": 1787374677.4872997,
+    "ast_hash": "1890a0b0cef6f43f1c6624cf15c9a23f",
     "semantic_hash": ""
   },
   "apps/web/playwright.config.ts": {
@@ -792,6 +792,26 @@
   "apps/api/voiceos_api/storage.py": {
     "mtime": 1787373192.3717022,
     "ast_hash": "7ad461de24a3e33600d853abd57d21e3",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/prompt_improvement.py": {
+    "mtime": 1787374574.7409642,
+    "ast_hash": "0ae9f7c38f728fdb972831c7e621338e",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/prompt-utils.test.ts": {
+    "mtime": 1787374576.9249437,
+    "ast_hash": "f4868f0fa953aa38799a0f2d7092efde",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/prompt-utils.ts": {
+    "mtime": 1787374508.3435142,
+    "ast_hash": "18b2e50dcaeda281a5230fca6b4483ff",
+    "semantic_hash": ""
+  },
+  "tests/test_prompt_improvement.py": {
+    "mtime": 1787374574.7419612,
+    "ast_hash": "a7a71d467423cb8c734fa8f712211f7c",
     "semantic_hash": ""
   }
 }

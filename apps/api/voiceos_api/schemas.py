@@ -34,6 +34,10 @@ class AgentRollback(BaseModel):
     version_id: UUID
 
 
+class PromptImproveRequest(BaseModel):
+    prompt: str = Field(min_length=20, max_length=6000)
+
+
 class AgentToolsSet(BaseModel):
     tool_ids: list[UUID]
 

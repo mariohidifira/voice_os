@@ -6,6 +6,7 @@ from voiceos_api.config import get_settings
 from voiceos_api.health import get_health_checker
 from voiceos_api.live import get_event_bus
 from voiceos_api.main import app
+from voiceos_api.prompt_improvement import get_prompt_improver
 from voiceos_api.repository import MemoryRepository, get_repository
 from voiceos_api.storage import get_recording_storage
 from voiceos_api.store import store
@@ -49,6 +50,14 @@ class FakeRecordingStorage:
 
 
 app.dependency_overrides[get_recording_storage] = FakeRecordingStorage
+
+
+class FakePromptImprover:
+    async def improve(self, prompt: str) -> str:
+        return prompt + " Responda de forma curta e natural."
+
+
+app.dependency_overrides[get_prompt_improver] = FakePromptImprover
 
 
 def headers(tenant: str, role: str = "owner") -> dict[str, str]:
@@ -425,6 +434,28 @@ def test_publish_rejects_untested_webhook_tool() -> None:
     rejected = client.post(f"/v1/agents/{agent['id']}/publish", headers=auth)
     assert rejected.status_code == 422
     assert "must pass a test" in rejected.json()["error"]["details"]["errors"][0]
+
+
+def test_prompt_improvement_is_preview_only_and_admin_scoped() -> None:
+    store.agents.clear()
+    store.agent_versions.clear()
+    tenant = str(uuid4())
+    owner = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Prompt helper"}, headers=owner).json()
+    original = "Você atende como {{ agent.name }} e nunca inventa informações."
+    improved = client.post(
+        f"/v1/agents/{agent['id']}/draft/improve-prompt", json={"prompt": original}, headers=owner
+    )
+    assert improved.status_code == 200
+    assert improved.json()["improved_prompt"].endswith("curta e natural.")
+    detail = client.get(f"/v1/agents/{agent['id']}", headers=owner).json()
+    assert detail["draft"]["system_prompt"] != improved.json()["improved_prompt"]
+    viewer = client.post(
+        f"/v1/agents/{agent['id']}/draft/improve-prompt",
+        json={"prompt": original},
+        headers=headers(tenant, "viewer"),
+    )
+    assert viewer.status_code == 403
 
 
 def test_call_lifecycle_internal_batches_and_detail() -> None:

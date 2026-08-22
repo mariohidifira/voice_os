@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { extractPromptVariables } from "../../../lib/prompt-utils";
 import VoiceWidget from "./voice-widget";
 
 type Item = Record<string, unknown> & {
@@ -452,6 +453,8 @@ export default function Dashboard({
   );
   const [selectedAgent, setSelectedAgent] = useState<Item | null>(null);
   const [agentTab, setAgentTab] = useState<AgentTab>("prompt");
+  const [promptValue, setPromptValue] = useState("");
+  const [improvingPrompt, setImprovingPrompt] = useState(false);
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [toolTestResult, setToolTestResult] = useState("");
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
@@ -546,6 +549,12 @@ export default function Dashboard({
     ]);
     setSelectedAgent(detail);
     setSelectedToolIds(linked.data.map((tool) => tool.id));
+    setPromptValue(
+      String(
+        (detail.draft as Record<string, unknown> | undefined)?.system_prompt ??
+          "",
+      ),
+    );
     setAgentTab(nextTab);
     setSection("agents");
   }
@@ -601,6 +610,22 @@ export default function Dashboard({
       setNotice("Versão publicada.");
     } catch (error) {
       setNotice(String(error));
+    }
+  }
+  async function improvePrompt() {
+    if (!selectedAgent || promptValue.trim().length < 20) return;
+    setImprovingPrompt(true);
+    try {
+      const result = await api<{ improved_prompt: string }>(
+        `agents/${selectedAgent.id}/draft/improve-prompt`,
+        { method: "POST", body: JSON.stringify({ prompt: promptValue }) },
+      );
+      setPromptValue(result.improved_prompt);
+      setNotice("Sugestão gerada. Revise e salve o rascunho para aplicar.");
+    } catch (error) {
+      setNotice(String(error));
+    } finally {
+      setImprovingPrompt(false);
     }
   }
   async function saveAdvanced(patch: Record<string, unknown>) {
@@ -1037,10 +1062,50 @@ export default function Dashboard({
                           <Field label="Prompt do sistema">
                             <textarea
                               name="system_prompt"
-                              defaultValue={String(draft.system_prompt ?? "")}
+                              value={promptValue}
+                              onChange={(event) =>
+                                setPromptValue(event.target.value)
+                              }
+                              maxLength={6000}
                               rows={8}
                             />
                           </Field>
+                          <div className="promptMeta">
+                            <small>
+                              {promptValue.length.toLocaleString("pt-BR")} /
+                              6.000 caracteres
+                            </small>
+                            <button
+                              type="button"
+                              className="secondary compact"
+                              disabled={
+                                improvingPrompt ||
+                                promptValue.trim().length < 20
+                              }
+                              onClick={() => void improvePrompt()}
+                            >
+                              {improvingPrompt
+                                ? "Melhorando…"
+                                : "Melhorar com IA"}
+                            </button>
+                          </div>
+                          <div
+                            className="variablePanel"
+                            aria-label="Variáveis detectadas"
+                          >
+                            <b>Variáveis detectadas</b>
+                            {extractPromptVariables(promptValue).map(
+                              (variable) => (
+                                <span
+                                  className="pill ok"
+                                  key={variable}
+                                >{`{{ ${variable} }}`}</span>
+                              ),
+                            )}
+                            {!extractPromptVariables(promptValue).length && (
+                              <small>Nenhuma variável Jinja detectada.</small>
+                            )}
+                          </div>
                           <Field label="Saudação">
                             <textarea
                               name="greeting"
