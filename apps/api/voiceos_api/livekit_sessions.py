@@ -79,6 +79,25 @@ class LiveKitSessions:
         )
         return {"room_name": room_name, "token": token}
 
+    def operator_token(self, room_name: str, operator_id: str) -> str:
+        return (
+            livekit_api.AccessToken(self.settings.livekit_api_key, self.settings.livekit_api_secret)
+            .with_identity(f"operator_{operator_id}")
+            .with_name("VoiceOS Operator")
+            .with_metadata(json.dumps({"role": "operator"}, separators=(",", ":")))
+            .with_ttl(timedelta(hours=1))
+            .with_grants(
+                livekit_api.VideoGrants(
+                    room_join=True,
+                    room=room_name,
+                    can_publish=True,
+                    can_subscribe=True,
+                    can_publish_data=True,
+                )
+            )
+            .to_jwt()
+        )
+
 
 def get_livekit_sessions() -> LiveKitSessions:
     return LiveKitSessions(get_settings())

@@ -101,9 +101,7 @@ def test_phone_number_search_purchase_assignment_release_and_isolation() -> None
     e164 = available.json()["data"][0]["e164"]
     assert client.get("/v1/phone-numbers", headers=auth(tenant_a, "viewer")).status_code == 403
 
-    purchased = client.post(
-        "/v1/phone-numbers", json={"e164": e164}, headers=auth(tenant_a)
-    )
+    purchased = client.post("/v1/phone-numbers", json={"e164": e164}, headers=auth(tenant_a))
     assert purchased.status_code == 201
     number_id = purchased.json()["id"]
     assert purchased.json()["agent_id"] is None
@@ -219,6 +217,18 @@ def test_outbound_call_is_tenant_scoped_and_idempotent() -> None:
     assert call["from_number"] == "+551140008888"
     assert call["to_number"] == "+5511999990001"
     assert call["livekit_room"].startswith("voiceos_")
+    takeover = client.post(
+        f"/v1/calls/{call['id']}/takeover",
+        json={"operator_extension": "+5511988887777"},
+        headers=auth(tenant, "operator"),
+    )
+    assert takeover.status_code == 200
+    assert takeover.json()["mode"] == "phone"
+    assert outbound.calls[-1] == (
+        call["livekit_room"],
+        "+5511988887777",
+        "+551140008888",
+    )
 
     conflict = client.post(
         "/v1/calls/outbound",
@@ -227,7 +237,7 @@ def test_outbound_call_is_tenant_scoped_and_idempotent() -> None:
     )
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "idempotency_key_reused"
-    assert outbound.calls == []
+    assert len(outbound.calls) == 1
 
 
 def test_outbound_requires_sip_dialer_configuration() -> None:
@@ -249,9 +259,7 @@ def test_outbound_requires_sip_dialer_configuration() -> None:
     try:
         response = client.post("/v1/calls/outbound", json=payload, headers=headers)
     finally:
-        app.dependency_overrides[get_telephony] = lambda: Telephony(
-            numbers, dispatch, outbound
-        )
+        app.dependency_overrides[get_telephony] = lambda: Telephony(numbers, dispatch, outbound)
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "sip_not_configured"

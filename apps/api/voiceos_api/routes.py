@@ -36,6 +36,7 @@ from .schemas import (
     ApiKeyCreate,
     CallEventBatch,
     CallPatch,
+    CallTakeoverRequest,
     CallToolCallCreate,
     CallTurnBatch,
     CampaignContactCreate,
@@ -1153,6 +1154,77 @@ async def live_call(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@v1.post("/calls/{call_id}/takeover")
+async def takeover_call(
+    call_id: UUID,
+    body: CallTakeoverRequest,
+    auth: Auth,
+    repo: Repo,
+    rtc: Rtc,
+    phone: Phone,
+    bus: Bus,
+) -> dict[str, Any]:
+    if auth.role not in {"owner", "admin", "operator"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Operator role required"})
+    call = await repo.get_call(auth.tenant_id, call_id)
+    if not call:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    if call.get("status") not in {"queued", "ringing", "in_progress"} or not call.get(
+        "livekit_room"
+    ):
+        raise HTTPException(409, detail={"code": "call_not_live", "message": "Call is not active"})
+    event = {
+        "type": "operator.takeover",
+        "payload": {
+            "operator_id": auth.user_id,
+            "mode": "phone" if call["channel"].startswith("phone") else "web",
+        },
+        "at": datetime.now(UTC),
+    }
+    response: dict[str, Any]
+    if call["channel"].startswith("phone"):
+        if not body.operator_extension:
+            raise HTTPException(
+                422,
+                detail={
+                    "code": "operator_extension_required",
+                    "message": "Operator extension is required for phone takeover",
+                },
+            )
+        if phone.outbound is None:
+            raise HTTPException(
+                503,
+                detail={"code": "sip_not_configured", "message": "Outbound SIP is not configured"},
+            )
+        business_number = (
+            call.get("from_number")
+            if call["channel"] == "phone_outbound"
+            else call.get("to_number")
+        )
+        if not business_number:
+            raise HTTPException(
+                409,
+                detail={
+                    "code": "business_number_missing",
+                    "message": "Call has no business phone number",
+                },
+            )
+        leg_sid = await phone.outbound.dial(
+            str(call["livekit_room"]), body.operator_extension, str(business_number)
+        )
+        response = {"mode": "phone", "operator_leg_sid": leg_sid}
+    else:
+        response = {
+            "mode": "web",
+            "livekit_url": get_settings().livekit_url,
+            "room_name": call["livekit_room"],
+            "token": rtc.operator_token(str(call["livekit_room"]), auth.user_id),
+        }
+    await repo.append_call_events(call_id, [event])
+    await bus.publish(auth.tenant_id, call_id, event)
+    return response
 
 
 @v1.post("/calls/{call_id}/hangup")

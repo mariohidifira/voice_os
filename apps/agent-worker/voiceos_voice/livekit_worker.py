@@ -39,12 +39,24 @@ from .phone_runtime import (
 from .prompting import build_system_prompt
 from .recording import start_room_recording
 
-DTMF_CODES = {**{str(value): value for value in range(10)}, "*": 10, "#": 11, "A": 12, "B": 13, "C": 14, "D": 15}
+DTMF_CODES = {
+    **{str(value): value for value in range(10)},
+    "*": 10,
+    "#": 11,
+    "A": 12,
+    "B": 13,
+    "C": 14,
+    "D": 15,
+}
 
 
 async def send_dtmf(participant: Any, digits: str) -> None:
     normalized = digits.upper()
-    if not normalized or len(normalized) > 32 or any(digit not in DTMF_CODES for digit in normalized):
+    if (
+        not normalized
+        or len(normalized) > 32
+        or any(digit not in DTMF_CODES for digit in normalized)
+    ):
         raise ValueError("digits must contain 1-32 DTMF symbols: 0-9, *, #, A-D")
     for index, digit in enumerate(normalized):
         await participant.publish_dtmf(code=DTMF_CODES[digit], digit=digit)
@@ -199,7 +211,9 @@ def _jsonable(value: Any) -> Any:
     if hasattr(value, "model_dump"):
         return value.model_dump(mode="json")
     if hasattr(value, "__dict__"):
-        return {key: _jsonable(item) for key, item in vars(value).items() if not key.startswith("_")}
+        return {
+            key: _jsonable(item) for key, item in vars(value).items() if not key.startswith("_")
+        }
     return value
 
 
@@ -232,13 +246,24 @@ class LiveKitCallBridge:
     async def user_transcript(self, event: UserInputTranscribedEvent) -> None:
         await self.persist_event(
             "stt.final" if event.is_final else "stt.interim",
-            {"text": event.transcript, "is_final": event.is_final, "language": str(event.language or "")},
+            {
+                "text": event.transcript,
+                "is_final": event.is_final,
+                "language": str(event.language or ""),
+            },
         )
         if event.is_final and event.transcript.strip():
             self.accounting.turns += 1
             await self.api.append_turns(
                 self.call_id,
-                [{"ordinal": self.ordinal, "role": "user", "text": event.transcript, "started_at": datetime.now(UTC).isoformat()}],
+                [
+                    {
+                        "ordinal": self.ordinal,
+                        "role": "user",
+                        "text": event.transcript,
+                        "started_at": datetime.now(UTC).isoformat(),
+                    }
+                ],
             )
             self.ordinal += 1
 
@@ -258,13 +283,31 @@ class LiveKitCallBridge:
         self.accounting.observe_e2e_latency(e2e_latency)
         await self.api.append_turns(
             self.call_id,
-            [{"ordinal": self.ordinal, "role": "assistant", "text": text, "started_at": datetime.now(UTC).isoformat()}],
+            [
+                {
+                    "ordinal": self.ordinal,
+                    "role": "assistant",
+                    "text": text,
+                    "started_at": datetime.now(UTC).isoformat(),
+                }
+            ],
         )
         self.ordinal += 1
         self.accounting.turns += 1
 
     async def metric(self, event: MetricsCollectedEvent) -> None:
         self.accounting.observe_metric(event)
+        metric = event.metrics
+        packet_loss = getattr(metric, "packet_loss_percentage", None)
+        if packet_loss is None:
+            packet_loss = getattr(metric, "packet_loss", None)
+        jitter = getattr(metric, "jitter", None)
+        rtt = getattr(metric, "round_trip_time", None)
+        if packet_loss is not None and jitter is not None and rtt is not None:
+            loss_pct = float(packet_loss) * 100 if float(packet_loss) <= 1 else float(packet_loss)
+            jitter_ms = float(jitter) * 1000 if float(jitter) <= 5 else float(jitter)
+            rtt_ms = float(rtt) * 1000 if float(rtt) <= 10 else float(rtt)
+            self.accounting.observe_network(loss_pct, jitter_ms, rtt_ms)
         await self.persist_event("pipeline.metric", {"metric": _jsonable(event.metrics)})
 
     async def usage(self, event: SessionUsageUpdatedEvent) -> None:
@@ -310,7 +353,10 @@ class SessionGuards:
     async def enforce_duration(self) -> None:
         await asyncio.sleep(self.max_duration_s)
         self.bridge.end_reason = "max_duration"
-        speech = self.session.say("Atingimos o tempo máximo desta conversa. Obrigado pelo contato.", allow_interruptions=False)
+        speech = self.session.say(
+            "Atingimos o tempo máximo desta conversa. Obrigado pelo contato.",
+            allow_interruptions=False,
+        )
         await speech.wait_for_playout()
         self.session.shutdown(drain=True)
 
@@ -323,7 +369,9 @@ class SessionGuards:
             await self.session.say(self.silence_prompt, allow_interruptions=True).wait_for_playout()
         else:
             self.bridge.end_reason = "silence"
-            await self.session.say("Vou encerrar por falta de resposta. Até logo!", allow_interruptions=False).wait_for_playout()
+            await self.session.say(
+                "Vou encerrar por falta de resposta. Até logo!", allow_interruptions=False
+            ).wait_for_playout()
             self.session.shutdown(drain=True)
 
     def cancel(self) -> None:
@@ -358,7 +406,11 @@ def dynamic_tools(
             if tool_kind == "set_variable":
                 variables[str(raw_arguments["name"])] = raw_arguments.get("value")
                 await bridge.persist_event("variable.set", {"name": raw_arguments["name"]})
-                return {"status": "ok", "name": raw_arguments["name"], "value": raw_arguments.get("value")}
+                return {
+                    "status": "ok",
+                    "name": raw_arguments["name"],
+                    "value": raw_arguments.get("value"),
+                }
             if tool_kind == "end_call":
                 bridge.end_reason = str(raw_arguments.get("reason") or "agent_hangup")
                 farewell = str(raw_arguments.get("farewell") or "Obrigado pelo contato. Até logo!")
@@ -397,9 +449,11 @@ def dynamic_tools(
                         raw_arguments.get("summary")
                         or f"Transferência solicitada. Motivo: {raw_arguments.get('reason', 'atendimento humano')}."
                     )
-                    await session_ref["session"].say(
-                        summary, allow_interruptions=False
-                    ).wait_for_playout()
+                    await (
+                        session_ref["session"]
+                        .say(summary, allow_interruptions=False)
+                        .wait_for_playout()
+                    )
                 session_ref["session"].shutdown(drain=True)
                 return transferred
             return await api.execute_tool(
@@ -446,15 +500,21 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
         endpointing_ms=int(stt_config.get("endpointing_ms", 300)),
         utterance_end_ms=int(stt_config.get("utterance_end_ms", 1000)),
     )
-    fallback_stt = openai.STT(model=str(stt_config.get("fallback_model") or "whisper-1"), language=language)
+    fallback_stt = openai.STT(
+        model=str(stt_config.get("fallback_model") or "whisper-1"), language=language
+    )
     primary_llm = anthropic.LLM(
         model=str(llm_config.get("model") or "claude-sonnet-4-6"),
         temperature=float(llm_config.get("temperature", 0.3)),
         max_tokens=int(llm_config.get("max_tokens", 350)),
         max_retries=1,
     )
-    fallback_llm = openai.LLM(model=str(llm_config.get("fallback_model") or "gpt-4.1"), temperature=0.3)
-    voice = str(tts_config.get("voice_id") or os.getenv("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL")
+    fallback_llm = openai.LLM(
+        model=str(llm_config.get("fallback_model") or "gpt-4.1"), temperature=0.3
+    )
+    voice = str(
+        tts_config.get("voice_id") or os.getenv("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL"
+    )
     primary_tts = elevenlabs.TTS(
         voice_id=voice,
         model=str(tts_config.get("model") or "eleven_flash_v2_5"),
@@ -467,12 +527,18 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
         language=language,
     )
     return {
-        "stt": stt.FallbackAdapter([primary_stt, fallback_stt], attempt_timeout=3, max_retry_per_stt=1),
-        "llm": llm.FallbackAdapter([primary_llm, fallback_llm], attempt_timeout=8, max_retry_per_llm=1),
+        "stt": stt.FallbackAdapter(
+            [primary_stt, fallback_stt], attempt_timeout=3, max_retry_per_stt=1
+        ),
+        "llm": llm.FallbackAdapter(
+            [primary_llm, fallback_llm], attempt_timeout=8, max_retry_per_llm=1
+        ),
         "tts": tts.FallbackAdapter([primary_tts, fallback_tts], max_retry_per_tts=1),
         "vad": silero.VAD.load(
             min_speech_duration=0.05,
-            min_silence_duration=float((runtime.get("turn") or {}).get("min_silence_duration", 0.55)),
+            min_silence_duration=float(
+                (runtime.get("turn") or {}).get("min_silence_duration", 0.55)
+            ),
             activation_threshold=0.5,
         ),
     }
@@ -491,14 +557,23 @@ async def voiceos_agent(ctx: JobContext) -> None:
         os.getenv("INTERNAL_API_TOKEN", ""),
         RedisRuntimeCache(os.getenv("REDIS_URL", "redis://redis:6379/0")),
     )
-    runtime = await api.runtime(UUID(str(metadata["agent_id"])), str(metadata.get("version") or "current"))
+    runtime = await api.runtime(
+        UUID(str(metadata["agent_id"])), str(metadata.get("version") or "current")
+    )
     variables = {**runtime.get("variables", {}), **dict(metadata.get("variables") or {})}
     if metadata.get("call_id"):
         call_id = UUID(str(metadata["call_id"]))
         if metadata.get("channel") == "phone_outbound":
             await dial_outbound(api, call_id, ctx.room.name, metadata)
         else:
-            await api.update_call(call_id, {"status": "in_progress", "livekit_room": ctx.room.name, "answered_at": datetime.now(UTC).isoformat()})
+            await api.update_call(
+                call_id,
+                {
+                    "status": "in_progress",
+                    "livekit_room": ctx.room.name,
+                    "answered_at": datetime.now(UTC).isoformat(),
+                },
+            )
     else:
         created = await api.create_call(
             {
@@ -512,7 +587,9 @@ async def voiceos_agent(ctx: JobContext) -> None:
             }
         )
         call_id = UUID(str(created["id"]))
-        await api.update_call(call_id, {"status": "in_progress", "answered_at": datetime.now(UTC).isoformat()})
+        await api.update_call(
+            call_id, {"status": "in_progress", "answered_at": datetime.now(UTC).isoformat()}
+        )
     bridge = LiveKitCallBridge(api, call_id, variables)
     prompt = build_system_prompt(
         {"id": runtime["tenant_id"]},
@@ -539,11 +616,7 @@ async def voiceos_agent(ctx: JobContext) -> None:
         (lambda digits: send_dtmf(ctx.room.local_participant, digits))
         if str(metadata.get("channel") or "web").startswith("phone_")
         else None,
-        (
-            lambda arguments: transfer_phone_call(
-                ctx.room, metadata, behavior, arguments
-            )
-        )
+        (lambda arguments: transfer_phone_call(ctx.room, metadata, behavior, arguments))
         if str(metadata.get("channel") or "web").startswith("phone_")
         else None,
     )
@@ -564,13 +637,16 @@ async def voiceos_agent(ctx: JobContext) -> None:
         str(behavior.get("silence_prompt") or "Você ainda está aí?"),
         int(behavior.get("max_call_duration_s", 900)),
     )
+
     def user_transcribed(event: UserInputTranscribedEvent) -> None:
         bridge.spawn(bridge.user_transcript(event))
         if metadata.get("channel") == "phone_outbound" and event.is_final:
             amd_transcript.append(event.transcript)
 
     session.on("user_input_transcribed", user_transcribed)
-    session.on("conversation_item_added", lambda event: bridge.spawn(bridge.conversation_item(event)))
+    session.on(
+        "conversation_item_added", lambda event: bridge.spawn(bridge.conversation_item(event))
+    )
     session.on("metrics_collected", lambda event: bridge.spawn(bridge.metric(event)))
     session.on("session_usage_updated", lambda event: bridge.spawn(bridge.usage(event)))
     session.on("user_state_changed", lambda event: bridge.spawn(guards.user_state(event)))
@@ -605,7 +681,9 @@ async def voiceos_agent(ctx: JobContext) -> None:
         except Exception as exc:
             await bridge.persist_event("recording.failed", {"error": type(exc).__name__})
         if tenant_settings.get("recording_notice"):
-            notice = str(tenant_settings.get("recording_notice_text") or "Esta ligação pode ser gravada.")
+            notice = str(
+                tenant_settings.get("recording_notice_text") or "Esta ligação pode ser gravada."
+            )
             greeting = f"{notice} {greeting}"
     if metadata.get("channel") == "phone_outbound":
         await asyncio.sleep(4)

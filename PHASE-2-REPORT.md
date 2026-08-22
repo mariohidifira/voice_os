@@ -24,6 +24,9 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 - Campanhas com CRUD, contatos JSON/CSV, idempotência, transições de execução e painel operacional.
 - Compliance local com do-not-call/opt-out, janela legal 08h–20h, concorrência limitada pelo plano e retry somente para `busy|no_answer|failed`.
 - `campaign_runner` executado a cada 30 s pelo worker, com claim concorrente `FOR UPDATE SKIP LOCKED`, criação outbound, reconciliação do contato e conclusão/estatísticas da campanha.
+- `/live` no painel com SSE, alerta de `transfer.requested` e takeover: microfone entra na room web ou ramal telefônico é adicionado por SIP.
+- Aba Canais por agente e catálogo completo dos seis templates oficiais, incluindo pesquisa outbound e cobrança amigável.
+- Métricas RTP agregadas em `calls.latency.network` com packet loss, jitter, RTT e MOS estimado.
 
 ## Evidências locais
 
@@ -38,6 +41,7 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 - Testes do worker para sucesso e falha SIP outbound: aprovados.
 - Testes determinísticos de DTMF, transferência cold/warm e SMS: aprovados.
 - Testes determinísticos de AMD Haiku/heurística e horário comercial: aprovados.
+- Testes determinísticos de takeover web/telefone, autorização de operador e MOS: aprovados.
 - Playwright: 3 fluxos aprovados, incluindo compra → atribuição → liberação.
 - Alembic local: `0006 (head)`.
 
@@ -45,7 +49,6 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 
 - Trunks Twilio/LiveKit e validação real inbound/outbound.
 - Ajustes adicionais do pipeline e validação de AMD/voicemail com áudio real.
-- Painel de canais e `/live`; templates 5 e 6; métricas de rede/MOS.
 - Ensaios de latência, barge-in, voicemail e carga de 50 salas.
 
 ## Pendências de provedores

@@ -264,7 +264,14 @@ def test_required_agent_templates_create_configured_drafts() -> None:
     templates = client.get("/v1/agent-templates", headers=auth)
     assert templates.status_code == 200
     by_id = {item["id"]: item for item in templates.json()["data"]}
-    assert set(by_id) == {"receptionist", "scheduling", "order_support"}
+    assert set(by_id) == {
+        "receptionist",
+        "scheduling",
+        "lead_qualification",
+        "order_support",
+        "satisfaction_survey",
+        "friendly_collections",
+    }
     assert by_id["scheduling"]["suggested_tools"] == [
         "set_variable",
         "google_calendar_check",
@@ -657,6 +664,17 @@ def test_call_lifecycle_internal_batches_and_detail() -> None:
         ).status_code
         == 404
     )
+
+    takeover = client.post(
+        f"/v1/calls/{call_id}/takeover",
+        json={},
+        headers=headers(tenant, "operator"),
+    )
+    assert takeover.status_code == 200
+    assert takeover.json()["mode"] == "web"
+    assert takeover.json()["room_name"].startswith("voiceos_")
+    assert takeover.json()["token"]
+    assert event_bus.events[-1][2]["type"] == "operator.takeover"
 
     ended = client.post(f"/v1/calls/{call_id}/hangup", headers=auth)
     assert ended.json()["end_reason"] == "agent_hangup"

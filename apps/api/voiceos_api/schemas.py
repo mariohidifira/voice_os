@@ -83,6 +83,10 @@ class OutboundCallCreate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class CallTakeoverRequest(BaseModel):
+    operator_extension: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
+
+
 class CampaignCreate(BaseModel):
     agent_id: UUID
     name: str = Field(min_length=1, max_length=120)

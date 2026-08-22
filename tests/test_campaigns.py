@@ -27,6 +27,9 @@ class FakeRtc:
     async def provision(self, **kwargs: object) -> dict[str, str]:
         return {"room_name": f"voiceos_{kwargs['call_id']}", "token": "test"}
 
+    def operator_token(self, room_name: str, operator_id: str) -> str:
+        return f"operator-token:{room_name}:{operator_id}"
+
 
 app.dependency_overrides[get_livekit_sessions] = FakeRtc
 app.dependency_overrides[get_telephony] = lambda: Telephony(

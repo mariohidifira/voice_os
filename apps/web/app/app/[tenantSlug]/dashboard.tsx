@@ -62,6 +62,7 @@ type Section =
   | "overview"
   | "agents"
   | "calls"
+  | "live"
   | "campaigns"
   | "knowledge"
   | "tools"
@@ -69,7 +70,13 @@ type Section =
   | "members"
   | "settings";
 type AgentTab =
-  "prompt" | "voice" | "conversation" | "knowledge" | "tools" | "advanced";
+  | "prompt"
+  | "voice"
+  | "conversation"
+  | "knowledge"
+  | "tools"
+  | "channels"
+  | "advanced";
 
 const agentTabs: Array<[AgentTab, string]> = [
   ["prompt", "Prompt"],
@@ -77,6 +84,7 @@ const agentTabs: Array<[AgentTab, string]> = [
   ["conversation", "Conversa"],
   ["knowledge", "Conhecimento"],
   ["tools", "Tools"],
+  ["channels", "Canais"],
   ["advanced", "Avançado"],
 ];
 
@@ -84,6 +92,7 @@ const sections: Array<[Section, string]> = [
   ["overview", "Visão geral"],
   ["agents", "Agentes"],
   ["calls", "Chamadas"],
+  ["live", "Ao vivo"],
   ["campaigns", "Campanhas"],
   ["knowledge", "Conhecimento"],
   ["tools", "Ferramentas"],
@@ -549,9 +558,21 @@ export default function Dashboard({
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [toolTestResult, setToolTestResult] = useState("");
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [liveEvents, setLiveEvents] = useState<Array<Record<string, unknown>>>([]);
+  const [watchedCallId, setWatchedCallId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const callAudio = useRef<HTMLAudioElement>(null);
+  const liveSource = useRef<EventSource | null>(null);
+  const operatorRoom = useRef<{ disconnect: () => Promise<void> | void } | null>(null);
+
+  useEffect(
+    () => () => {
+      liveSource.current?.close();
+      void operatorRoom.current?.disconnect();
+    },
+    [],
+  );
 
   function seekCall(offsetMs = 0) {
     if (!callAudio.current) return;
@@ -1349,6 +1370,49 @@ export default function Dashboard({
     }
   }
 
+  function watchLive(callId: string) {
+    liveSource.current?.close();
+    setWatchedCallId(callId);
+    setLiveEvents([]);
+    const source = new EventSource(`/api/voiceos/calls/${callId}/live`);
+    source.onmessage = (event) => {
+      const item = JSON.parse(event.data) as Record<string, unknown>;
+      setLiveEvents((events) => [...events.slice(-99), item]);
+      if (item.type === "transfer.requested") {
+        const context = new AudioContext();
+        const oscillator = context.createOscillator();
+        oscillator.connect(context.destination);
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.18);
+      }
+    };
+    source.onerror = () => setNotice("A transmissÃ£o ao vivo foi interrompida; reconecte para continuar.");
+    liveSource.current = source;
+  }
+
+  async function takeoverCall(call: Call) {
+    try {
+      const phoneChannel = call.channel?.startsWith("phone");
+      const extension = phoneChannel ? window.prompt("Ramal do operador em formato +E164") : null;
+      if (phoneChannel && !extension) return;
+      const result = await api<{ mode: string; livekit_url?: string; token?: string }>(
+        `calls/${call.id}/takeover`,
+        { method: "POST", body: JSON.stringify({ operator_extension: extension || null }) },
+      );
+      if (result.mode === "web" && result.livekit_url && result.token) {
+        await operatorRoom.current?.disconnect();
+        const { Room } = await import("livekit-client");
+        const room = new Room();
+        await room.connect(result.livekit_url, result.token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+        operatorRoom.current = room;
+      }
+      setNotice(phoneChannel ? "Ramal conectado Ã  sala da chamada." : "Microfone do operador conectado Ã  chamada.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+
   const draft = (selectedAgent?.draft ?? {}) as Record<string, unknown>;
   const stats = useMemo(
     () => [
@@ -1876,12 +1940,75 @@ export default function Dashboard({
                             Permitir interrupções (barge-in)
                           </label>
                         </fieldset>
+                        <fieldset
+                          className="tabPanel"
+                          hidden={agentTab !== "channels"}
+                        >
+                          <legend>Canais vinculados</legend>
+                          {phoneNumbers
+                            .filter(
+                              (number) =>
+                                number.agent_id === selectedAgent.id,
+                            )
+                            .map((number) => (
+                              <div className="row" key={number.id}>
+                                <span>
+                                  <strong>{String(number.e164)}</strong>
+                                  <small>
+                                    Telefone · {number.status}
+                                  </small>
+                                </span>
+                              </div>
+                            ))}
+                          {!phoneNumbers.some(
+                            (number) => number.agent_id === selectedAgent.id,
+                          ) && <small>Nenhum número vinculado.</small>}
+                          <p className="muted">
+                            Web widget: disponível na Fase 5. WhatsApp:
+                            integração prevista para a Fase 4.
+                          </p>
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => setSection("numbers")}
+                          >
+                            Gerenciar números
+                          </button>
+                        </fieldset>
                         <button className="save">Salvar rascunho</button>
                       </form>
                     </>
                   ) : (
                     <Empty>Selecione um agente ou crie um novo.</Empty>
                   )}
+                </article>
+              </section>
+            )}
+            {section === "live" && (
+              <section className="workspace">
+                <aside className="list card">
+                  <h2>Chamadas em andamento</h2>
+                  {calls.filter((call) => ["queued", "ringing", "in_progress"].includes(call.status ?? "")).map((call) => (
+                    <div className={`row ${watchedCallId === call.id ? "selected" : ""}`} key={call.id}>
+                      <span><strong>{call.channel} Â· {call.status}</strong><small>{call.id}</small></span>
+                      <div className="actions">
+                        <button type="button" className="secondary" onClick={() => watchLive(call.id)}>Acompanhar</button>
+                        <button type="button" onClick={() => void takeoverCall(call)}>Assumir</button>
+                      </div>
+                    </div>
+                  ))}
+                  {!calls.some((call) => ["queued", "ringing", "in_progress"].includes(call.status ?? "")) && <Empty>Nenhuma chamada ativa.</Empty>}
+                </aside>
+                <article className="card editor">
+                  <div className="eyebrow">SSE em tempo real</div>
+                  <h2>TranscriÃ§Ã£o e eventos</h2>
+                  {liveEvents.map((event, index) => (
+                    <div className="row" key={index}>
+                      <span><strong>{String(event.type ?? "evento")}</strong><small>{JSON.stringify(event.payload ?? event)}</small></span>
+                    </div>
+                  ))}
+                  {!liveEvents.length && <Empty>Selecione “Acompanhar” em uma chamada ativa.</Empty>}
+                  {operatorRoom.current && <button type="button" className="danger" onClick={() => { void operatorRoom.current?.disconnect(); operatorRoom.current = null; setNotice("Operador desconectado."); }}>Sair da chamada</button>}
                 </article>
               </section>
             )}

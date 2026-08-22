@@ -3677,6 +3677,91 @@
         }
       }
     },
+    "/v1/calls/{call_id}/takeover": {
+      "post": {
+        "summary": "Takeover Call",
+        "operationId": "takeover_call_v1_calls__call_id__takeover_post",
+        "parameters": [
+          {
+            "name": "call_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Call Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallTakeoverRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Takeover Call V1 Calls  Call Id  Takeover Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/calls/{call_id}/hangup": {
       "post": {
         "summary": "Hangup Call",
@@ -6568,6 +6653,24 @@
         },
         "type": "object",
         "title": "CallPatch"
+      },
+      "CallTakeoverRequest": {
+        "properties": {
+          "operator_extension": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\+[1-9]\\d{7,14}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Extension"
+          }
+        },
+        "type": "object",
+        "title": "CallTakeoverRequest"
       },
       "CallToolCallCreate": {
         "properties": {
