@@ -33,3 +33,16 @@ def test_accounting_aggregates_latency_usage_and_cost(monkeypatch: object) -> No
     assert cost["tts_usd"] == 0.05
     assert cost["livekit_usd"] == 0.01
     assert cost["total_usd"] == 4.5648
+
+
+def test_representative_web_minute_cost_model_is_within_rnf_09() -> None:
+    accounting = CallAccounting(
+        usage=[
+            {"type": "stt_usage", "provider": "deepgram", "audio_duration": 60},
+            {"type": "llm_usage", "provider": "anthropic", "input_tokens": 1000, "output_tokens": 200},
+            {"type": "tts_usage", "provider": "elevenlabs", "characters_count": 500},
+        ]
+    )
+    cost = accounting.cost(60)
+    assert cost["total_usd"] == 0.0458
+    assert cost["total_usd"] <= 0.08

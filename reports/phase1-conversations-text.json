@@ -1,9 +1,13 @@
 {
   "mode": "text",
-  "cases": 26,
-  "passed": 26,
+  "cases": 40,
+  "passed": 40,
   "pass_rate": 1.0,
-  "ttfb_p50_ms": 0.2269999822601676,
-  "ttfb_p95_ms": 0.4849000833928585,
+  "measurement_scope": "deterministic_local_not_provider_latency",
+  "simulated_turn_p50_ms": 0.15850004274398088,
+  "simulated_turn_p95_ms": 0.382099999114871,
+  "barge_in_cases": 2,
+  "barge_in_passed": 2,
+  "barge_in_pass_rate": 1.0,
   "failures": []
 }

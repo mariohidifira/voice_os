@@ -15,5 +15,5 @@ def test_conversation_case_minimums_and_unique_ids() -> None:
 async def test_conversation_acceptance_suite(mode: str) -> None:
     report = await run_suite(mode)
     assert report["pass_rate"] >= 0.95, report["failures"]
-    assert report["ttfb_p95_ms"] < 1500
-
+    assert report["simulated_turn_p95_ms"] < 1500
+    assert report["barge_in_pass_rate"] == 1.0

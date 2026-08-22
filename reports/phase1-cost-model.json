@@ -1,0 +1,21 @@
+{
+  "scope": "representative_local_cost_model_not_provider_invoice",
+  "channel": "web",
+  "duration_s": 60,
+  "usage": {
+    "stt_audio_s": 60,
+    "llm_input_tokens": 1000,
+    "llm_output_tokens": 200,
+    "tts_characters": 500,
+    "livekit_participant_minutes": 1
+  },
+  "components_usd": {
+    "stt": 0.0048,
+    "llm": 0.006,
+    "tts": 0.025,
+    "livekit": 0.01
+  },
+  "total_usd_per_minute": 0.0458,
+  "rnf_09_limit_usd_per_minute": 0.08,
+  "within_modelled_limit": true
+}

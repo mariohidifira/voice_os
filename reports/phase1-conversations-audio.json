@@ -3,7 +3,11 @@
   "cases": 10,
   "passed": 10,
   "pass_rate": 1.0,
-  "ttfb_p50_ms": 0.26700005400925875,
-  "ttfb_p95_ms": 0.3879999276250601,
+  "measurement_scope": "deterministic_local_not_provider_latency",
+  "simulated_turn_p50_ms": 0.2503999276086688,
+  "simulated_turn_p95_ms": 0.7215999066829681,
+  "barge_in_cases": 2,
+  "barge_in_passed": 2,
+  "barge_in_pass_rate": 1.0,
   "failures": []
 }

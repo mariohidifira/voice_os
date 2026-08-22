@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1786990616.5808475,
-    "ast_hash": "e0e9f02c9bbbc31916ee311c2130787b",
+    "mtime": 1787368555.7843258,
+    "ast_hash": "d7f03918c1d15f6fa3ddf92162b97907",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1787101096.8328936,
-    "ast_hash": "51e3d6a0c911e7bf235ed40b5ab2445f",
+    "mtime": 1787368611.9962084,
+    "ast_hash": "240ea31e1337985a9a6994d9a8e7c95e",
     "semantic_hash": ""
   },
   ".github/workflows/deploy-staging.yml": {
@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "tests/test_accounting.py": {
-    "mtime": 1787324065.009071,
-    "ast_hash": "9836087091601b9da815d5fba754dd46",
+    "mtime": 1787368552.7988088,
+    "ast_hash": "52e890791287a3805bf9cd5913443097",
     "semantic_hash": ""
   },
   "tests/test_postprocessing.py": {
@@ -695,13 +695,13 @@
     "semantic_hash": ""
   },
   "reports/phase1-conversations-audio.json": {
-    "mtime": 1787367790.6232543,
-    "ast_hash": "bf30eb15e7fa66ccc568e0cb5fc688a9",
+    "mtime": 1787368517.9676828,
+    "ast_hash": "d10ce75a81ede37ca861de3fe00e0d6a",
     "semantic_hash": ""
   },
   "reports/phase1-conversations-text.json": {
-    "mtime": 1787367790.12667,
-    "ast_hash": "d97e14246cffc61233c9ea6b4ce5045d",
+    "mtime": 1787368517.0861506,
+    "ast_hash": "8455932ca8c2e3aa73d6982af84510c1",
     "semantic_hash": ""
   },
   "scripts/__init__.py": {
@@ -710,13 +710,13 @@
     "semantic_hash": ""
   },
   "scripts/conversation_suite.py": {
-    "mtime": 1787367775.7846305,
-    "ast_hash": "9a1b2f08a5f3e2208f316dd803ff0562",
+    "mtime": 1787368468.726806,
+    "ast_hash": "73097f58bbe7cea707154808825b678c",
     "semantic_hash": ""
   },
   "tests/test_conversation_suite.py": {
-    "mtime": 1787367632.889913,
-    "ast_hash": "c14fa1de23a105ffffd5cd722e6057b8",
+    "mtime": 1787368470.7736943,
+    "ast_hash": "9a42be55ff29bcb7b3eea3cb8aa9264c",
     "semantic_hash": ""
   },
   "tests/conversations/audio.yaml": {
@@ -725,8 +725,13 @@
     "semantic_hash": ""
   },
   "tests/conversations/text.yaml": {
-    "mtime": 1787367634.8285112,
-    "ast_hash": "6d783d12d8d86569b84bed69898da5ea",
+    "mtime": 1787368419.892403,
+    "ast_hash": "9f1b16ecaf1fc04be48ad308fab4aee0",
+    "semantic_hash": ""
+  },
+  "reports/phase1-cost-model.json": {
+    "mtime": 1787368554.3846352,
+    "ast_hash": "9ac4b7b4fa52ccc78a48f0905107115d",
     "semantic_hash": ""
   }
 }

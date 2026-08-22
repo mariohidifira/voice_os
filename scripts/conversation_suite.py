@@ -99,16 +99,24 @@ async def run_case(case: dict[str, Any], mode: str) -> CaseResult:
 
 
 async def run_suite(mode: str) -> dict[str, Any]:
-    results = [await run_case(case, mode) for case in load_cases(mode)]
+    cases = load_cases(mode)
+    results = [await run_case(case, mode) for case in cases]
     elapsed = sorted(result.elapsed_ms for result in results)
     passed = sum(result.passed for result in results)
+    by_id = {result.case_id: result for result in results}
+    interruption_cases = [case for case in cases if case.get("interrupt")]
+    interruption_passed = sum(by_id[str(case["id"])].passed for case in interruption_cases)
     report = {
         "mode": mode,
         "cases": len(results),
         "passed": passed,
         "pass_rate": passed / len(results),
-        "ttfb_p50_ms": elapsed[len(elapsed) // 2],
-        "ttfb_p95_ms": elapsed[min(len(elapsed) - 1, int(len(elapsed) * 0.95))],
+        "measurement_scope": "deterministic_local_not_provider_latency",
+        "simulated_turn_p50_ms": elapsed[len(elapsed) // 2],
+        "simulated_turn_p95_ms": elapsed[min(len(elapsed) - 1, int(len(elapsed) * 0.95))],
+        "barge_in_cases": len(interruption_cases),
+        "barge_in_passed": interruption_passed,
+        "barge_in_pass_rate": interruption_passed / len(interruption_cases) if interruption_cases else None,
         "failures": [{"id": result.case_id, "error": result.error} for result in results if not result.passed],
     }
     return report

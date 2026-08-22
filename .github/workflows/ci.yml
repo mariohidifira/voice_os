@@ -22,4 +22,27 @@ jobs:
       - run: python scripts/test_rls.py
         env: {DATABASE_URL: "postgresql+asyncpg://voiceos:voiceos@localhost:5432/voiceos"}
       - run: make lint typecheck test build
+      - run: npx playwright install --with-deps chromium
+      - name: Run essential dashboard E2E
+        shell: bash
+        env:
+          APP_ENV: dev
+          AUTH_SECRET: dev-secret-change-me-at-least-32-bytes
+          DATABASE_URL: postgresql+asyncpg://voiceos:voiceos@localhost:5432/voiceos
+          INTERNAL_API_TOKEN: dev-internal-token
+          LIVEKIT_URL: wss://example.invalid
+          LIVEKIT_API_KEY: dev
+          LIVEKIT_API_SECRET: dev
+        run: |
+          python -m uvicorn voiceos_api.main:app --app-dir apps/api --host 127.0.0.1 --port 8005 &
+          python -m uvicorn apps.mock.main:app --host 127.0.0.1 --port 9000 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8005/health >/dev/null && curl --fail --silent http://127.0.0.1:9000/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8005/health
+          curl --fail http://127.0.0.1:9000/health
+          npm run test:e2e --workspace=@voiceos/dashboard
       - run: docker compose build
