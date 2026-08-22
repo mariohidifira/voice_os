@@ -1,16 +1,16 @@
 # Graph Report - VOICE_OS  (2026-08-22)
 
 ## Corpus Check
-- 144 files · ~53,969 words
+- 144 files · ~54,269 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1158 nodes · 2584 edges · 96 communities (63 shown, 33 thin omitted)
+- 1160 nodes · 2610 edges · 93 communities (62 shown, 31 thin omitted)
 - Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 293 edges (avg confidence: 0.71)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3cd67051`
+- Built from commit: `f37dff49`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -81,6 +81,7 @@
 - evaluate
 - LiveKitCallBridge
 - WorkerAPI
+- FakeEventBus
 - repository.py
 - CallAccounting
 - postprocessing.py
@@ -92,9 +93,7 @@
 - PATCH
 - POST
 - PUT
-- FakeEventBus
 - SessionGuards
-- repository.py
 - __init__.py
 
 ## God Nodes (most connected - your core abstractions)
@@ -104,22 +103,22 @@
 4. `VoiceSession` - 37 edges
 5. `get_settings()` - 36 edges
 6. `Settings` - 34 edges
-7. `ToolRegistry` - 30 edges
-8. `LLMResponse` - 28 edges
-9. `WorkerAPI` - 27 edges
-10. `voiceos_agent()` - 21 edges
+7. `_require_admin()` - 32 edges
+8. `ToolRegistry` - 30 edges
+9. `LLMResponse` - 28 edges
+10. `WorkerAPI` - 27 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `test_postgres_agent_and_call_lifecycle()` --calls--> `PostgresRepository`  [INFERRED]
+  tests/test_postgres_repository.py → apps/api/voiceos_api/repository.py
+- `test_postgres_members_and_api_keys_lifecycle()` --calls--> `PostgresRepository`  [INFERRED]
+  tests/test_postgres_repository.py → apps/api/voiceos_api/repository.py
 - `test_egress_webhook_maps_completed_file_to_recording()` --calls--> `_egress_recording()`  [INFERRED]
   tests/test_recording.py → apps/api/voiceos_api/routes.py
 - `Phase 1 voice runtime` --defines_typed_contracts_for--> `RuntimeConfig`  [EXTRACTED]
   PHASE-1-REPORT.md → packages/shared-py/voiceos_shared/contracts.py
 - `Tenant-scoped row-level security` --validates_tenant_isolation_behavior--> `Agent publish, session and isolation test`  [INFERRED]
   PHASE-0-REPORT.md → tests/test_api.py
-- `Phase 4 WhatsApp processing` --uses_async_worker_boundary--> `run worker loop`  [INFERRED]
-  PHASE-4-REPORT.md → apps/worker/main.py
-- `Voice Provider Protocols` --conceptually_related_to--> `LiveKit Deepgram Anthropic OpenAI ElevenLabs Voice Stack`  [INFERRED]
-  apps/agent-worker/voiceos_voice/contracts.py → PROVIDER-SETUP-CHECKLIST.md
 
 ## Import Cycles
 - None detected.
@@ -129,15 +128,15 @@
 - **Tenant Agent Version Management Flow** — apps_api_voiceos_api_routes_agent_version_lifecycle, apps_api_voiceos_api_repository_postgres_rls, apps_api_voiceos_api_schemas_api_contracts, scripts_test_agent_versions_acceptance [INFERRED 0.95]
 - **Phase 0 Local Acceptance Stack** — compose_local_platform, phase_0_local_acceptance, scripts_test_auth_flow_acceptance, scripts_test_rls_acceptance, scripts_smoke_local_stack [EXTRACTED 1.00]
 
-## Communities (96 total, 33 thin omitted)
+## Communities (93 total, 31 thin omitted)
 
 ### Community 0 - "Voice Core Modules"
-Cohesion: 0.05
-Nodes (66): BaseModel, simulate(), SimulationRequest, SimulationResponse, WorkerState, LLMProvider, LLMResponse, Any (+58 more)
+Cohesion: 0.06
+Nodes (62): BaseModel, simulate(), SimulationRequest, SimulationResponse, WorkerState, LLMProvider, LLMResponse, Any (+54 more)
 
 ### Community 1 - "API Authentication Routes"
-Cohesion: 0.15
-Nodes (17): VoiceOS FastAPI application, AsyncSession, session(), get_health_checker(), health(), http_error(), Any, Request (+9 more)
+Cohesion: 0.16
+Nodes (16): VoiceOS FastAPI application, AsyncSession, session(), health(), http_error(), Any, Request, ready() (+8 more)
 
 ### Community 3 - "VoiceOS Platform Architecture"
 Cohesion: 0.06
@@ -149,7 +148,7 @@ Nodes (44): dependencies, @auth/core, @auth/pg-adapter, livekit-client, next, ne
 
 ### Community 5 - "API Schemas and Mock"
 Cohesion: 0.06
-Nodes (120): alias, get_agent_template(), list_agent_templates(), Any, internal_token(), Principal, UUID, extract_url() (+112 more)
+Nodes (116): alias, get_agent_template(), list_agent_templates(), Any, extract_url(), agent_templates(), append_call_events(), append_call_tool_call() (+108 more)
 
 ### Community 6 - "Health Checks"
 Cohesion: 0.08
@@ -220,7 +219,7 @@ Cohesion: 0.17
 Nodes (11): devDependencies, typescript, files, typescript, name, scripts, build, typecheck (+3 more)
 
 ### Community 32 - "Dashboard Page"
-Cohesion: 0.14
+Cohesion: 0.13
 Nodes (10): AgentTemplate, api(), Call, Dashboard(), Document, Item, Section, sections (+2 more)
 
 ### Community 34 - "Worker Shutdown Model"
@@ -252,12 +251,12 @@ Cohesion: 0.50
 Nodes (3): compat, config, directory
 
 ### Community 63 - "Any"
-Cohesion: 0.07
-Nodes (3): Any, Protocol, Repository
+Cohesion: 0.06
+Nodes (4): get_repository(), Protocol, UUID, Repository
 
 ### Community 64 - "PostgresRepository"
 Cohesion: 0.09
-Nodes (5): immutable agent publish flow, PostgresRepository, tenant_session(), test_postgres_agent_and_call_lifecycle(), test_postgres_members_and_api_keys_lifecycle()
+Nodes (3): immutable agent publish flow, PostgresRepository, tenant_session()
 
 ### Community 65 - "knowledge.py"
 Cohesion: 0.16
@@ -265,39 +264,43 @@ Nodes (10): chunk_text(), cosine_similarity(), Embeddings, extract_bytes(), get_
 
 ### Community 66 - "get_settings"
 Cohesion: 0.14
-Nodes (19): get_settings(), internal_request(), Any, Exercise agent draft, publish, version history and rollback against PostgreSQL., request(), headers(), HealthyChecker, test_agent_draft_versions_and_rollback() (+11 more)
+Nodes (15): FakeEventBus, headers(), HealthyChecker, test_agent_draft_versions_and_rollback(), test_agent_publish_session_and_isolation(), test_call_lifecycle_internal_batches_and_detail(), test_knowledge_base_and_document_crud_is_tenant_scoped(), test_members_and_api_keys_are_tenant_scoped_and_admin_only() (+7 more)
 
 ### Community 67 - "test_health.py"
-Cohesion: 0.15
-Nodes (10): HealthChecker, Any, MonkeyPatch, FakeConnection, FakeConnectionContext, FakeEngine, FakeRedis, Any (+2 more)
+Cohesion: 0.14
+Nodes (11): get_health_checker(), HealthChecker, Any, MonkeyPatch, FakeConnection, FakeConnectionContext, FakeEngine, FakeRedis (+3 more)
 
 ### Community 68 - "tool_execution.py"
-Cohesion: 0.25
-Nodes (11): get_tool_executor(), _json_path(), _lookup(), Any, AsyncBaseTransport, _render(), _safe_url(), ToolExecutor (+3 more)
+Cohesion: 0.31
+Nodes (10): get_tool_executor(), _json_path(), _lookup(), Any, _render(), _safe_url(), ToolExecutor, test_webhook_bearer_secret_is_applied() (+2 more)
 
 ### Community 69 - "HealthChecker"
 Cohesion: 0.15
-Nodes (13): Settings, get_native_integrations(), NativeIntegrations, Any, AsyncBaseTransport, UUID, EnvelopeCipher, get_secret_cipher() (+5 more)
+Nodes (11): get_native_integrations(), NativeIntegrations, Any, UUID, EnvelopeCipher, get_secret_cipher(), Protocol, SecretCipher (+3 more)
 
 ### Community 71 - "MemoryStore"
-Cohesion: 0.28
-Nodes (5): room_metadata(), test_call_bridge_persists_final_transcript_and_closes_call(), test_room_metadata_parses_dispatch_contract(), test_room_metadata_rejects_invalid_dispatch_contract(), UserInputTranscribedEvent
+Cohesion: 0.19
+Nodes (13): AgentSession, dynamic_tools(), provider_pipeline(), Any, UUID, room_metadata(), voiceos_agent(), JobContext (+5 more)
 
 ### Community 72 - "evaluate"
 Cohesion: 0.36
 Nodes (8): evaluate(), fetch_calls(), main(), percentile(), Any, Verify Phase 1 media acceptance from real staging call records., test_phase1_staging_acceptance_fails_without_external_evidence(), test_phase1_staging_acceptance_requires_and_validates_real_metrics()
 
 ### Community 73 - "LiveKitCallBridge"
-Cohesion: 0.16
-Nodes (15): AgentSession, dynamic_tools(), _jsonable(), LiveKitCallBridge, provider_pipeline(), Any, MetricsCollectedEvent, SessionUsageUpdatedEvent (+7 more)
+Cohesion: 0.20
+Nodes (8): _jsonable(), LiveKitCallBridge, MetricsCollectedEvent, SessionUsageUpdatedEvent, CloseEvent, ConversationItemAddedEvent, test_call_bridge_persists_final_transcript_and_closes_call(), UserInputTranscribedEvent
 
 ### Community 74 - "WorkerAPI"
-Cohesion: 0.41
-Nodes (3): Any, UUID, WorkerAPI
+Cohesion: 0.22
+Nodes (6): Any, AsyncBaseTransport, Protocol, UUID, RuntimeCache, WorkerAPI
+
+### Community 76 - "FakeEventBus"
+Cohesion: 0.29
+Nodes (6): build_system_prompt(), Any, datetime, test_postgres_agent_and_call_lifecycle(), test_postgres_members_and_api_keys_lifecycle(), test_prompt_rejects_tenant_prompt_over_limit()
 
 ### Community 77 - "repository.py"
 Cohesion: 0.13
-Nodes (15): EgressStarter, Protocol, UUID, start_egress(), start_room_recording(), MemoryStore, Any, UUID (+7 more)
+Nodes (14): EgressStarter, Protocol, UUID, start_egress(), start_room_recording(), MemoryStore, Any, UUID (+6 more)
 
 ### Community 78 - "CallAccounting"
 Cohesion: 0.20
@@ -308,35 +311,35 @@ Cohesion: 0.22
 Nodes (8): AnthropicPostprocessor, get_postprocessor(), Postprocessor, Any, AsyncBaseTransport, Protocol, test_postprocessor_retries_invalid_provider_response(), test_postprocessor_sends_transcript_and_validates_structured_result()
 
 ### Community 80 - "MemoryRuntimeCache"
-Cohesion: 0.19
-Nodes (5): MemoryRuntimeCache, RedisRuntimeCache, test_dynamic_tools_mutate_variables_and_proxy_remote_execution(), test_api_retries_three_times_then_fails(), test_runtime_is_cached_and_internal_calls_are_persisted()
+Cohesion: 0.21
+Nodes (4): MemoryRuntimeCache, RedisRuntimeCache, test_api_retries_three_times_then_fails(), test_runtime_is_cached_and_internal_calls_are_persisted()
 
 ### Community 81 - "RuntimeCache"
-Cohesion: 0.29
-Nodes (3): AsyncBaseTransport, Protocol, RuntimeCache
+Cohesion: 0.50
+Nodes (4): internal_request(), Any, Exercise agent draft, publish, version history and rollback against PostgreSQL., request()
 
 ### Community 82 - "livekit_sessions.py"
-Cohesion: 0.31
-Nodes (5): get_livekit_sessions(), LiveKitSessions, Any, UUID, test_dev_session_token_contains_room_and_publish_grants()
+Cohesion: 0.15
+Nodes (15): internal_token(), Principal, UUID, get_settings(), Settings, get_livekit_sessions(), LiveKitSessions, Any (+7 more)
 
 ### Community 91 - "SessionGuards"
-Cohesion: 0.40
+Cohesion: 0.38
 Nodes (3): SessionGuards, test_session_guards_prompt_once_then_end_after_second_silence(), UserStateChangedEvent
 
 ## Knowledge Gaps
 - **181 isolated node(s):** `Item`, `Call`, `Document`, `AgentTemplate`, `Section` (+176 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **33 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **31 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Repository` connect `Any` to `Voice Core Modules`, `Memory Repository Operations`, `HealthChecker`, `API Schemas and Mock`, `repository.py`, `repository.py`?**
-  _High betweenness centrality (0.066) - this node is a cross-community bridge._
-- **Why does `MemoryRepository` connect `Memory Repository Operations` to `PostgresRepository`, `get_settings`, `Backend Design Rationale`, `FakeEventBus`, `repository.py`, `.get_call`, `FakeEventBus`, `repository.py`?**
-  _High betweenness centrality (0.055) - this node is a cross-community bridge._
-- **Why does `PostgresRepository` connect `PostgresRepository` to `Memory Repository Operations`, `._internal_session`, `Backend Design Rationale`, `FakeEventBus`, `repository.py`, `.get_call`, `repository.py`?**
-  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+- **Why does `Repository` connect `Any` to `Voice Core Modules`, `Memory Repository Operations`, `API Schemas and Mock`, `HealthChecker`, `repository.py`?**
+  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+- **Why does `MemoryRepository` connect `Memory Repository Operations` to `PostgresRepository`, `get_settings`, `HealthChecker`, `Backend Design Rationale`, `repository.py`, `Any`?**
+  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+- **Why does `PostgresRepository` connect `PostgresRepository` to `Memory Repository Operations`, `._internal_session`, `Backend Design Rationale`, `FakeEventBus`, `repository.py`, `Any`?**
+  _High betweenness centrality (0.041) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `Repository` (e.g. with `NativeIntegrations` and `MemoryStore`) actually correct?**
   _`Repository` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 4 inferred relationships involving `PostgresRepository` (e.g. with `MemoryRepository` and `MemoryStore`) actually correct?**

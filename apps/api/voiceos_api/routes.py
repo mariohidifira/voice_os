@@ -139,6 +139,7 @@ async def me(auth: Auth) -> dict[str, Any]:
 
 @v1.get("/tenants/{tenant_id}/members")
 async def list_members(tenant_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     if tenant_id != auth.tenant_id:
         raise HTTPException(404, detail={"code": "tenant_not_found", "message": "Tenant not found"})
     return {"data": await repo.list_members(auth.tenant_id), "next_cursor": None}
@@ -403,16 +404,19 @@ async def hangup_call(call_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
 
 @v1.post("/tools", status_code=201)
 async def create_tool(body: ToolCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     return await repo.create_tool(auth.tenant_id, body.model_dump(by_alias=True))
 
 
 @v1.get("/tools")
 async def list_tools(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     return {"data": await repo.list_tools(auth.tenant_id), "next_cursor": None}
 
 
 @v1.get("/tools/{tool_id}")
 async def get_tool(tool_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     tool = await repo.get_tool(auth.tenant_id, tool_id)
     if not tool:
         raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
@@ -421,6 +425,7 @@ async def get_tool(tool_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
 
 @v1.patch("/tools/{tool_id}")
 async def update_tool(tool_id: UUID, body: ToolPatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     tool = await repo.update_tool(auth.tenant_id, tool_id, body.model_dump(exclude_unset=True, by_alias=True))
     if not tool:
         raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
@@ -429,12 +434,14 @@ async def update_tool(tool_id: UUID, body: ToolPatch, auth: Auth, repo: Repo) ->
 
 @v1.delete("/tools/{tool_id}", status_code=204)
 async def delete_tool(tool_id: UUID, auth: Auth, repo: Repo) -> None:
+    _require_admin(auth)
     if not await repo.delete_tool(auth.tenant_id, tool_id):
         raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
 
 
 @v1.post("/tools/{tool_id}/test")
 async def test_tool(tool_id: UUID, body: ToolTestRequest, auth: Auth, repo: Repo, executor: Executor, cipher: Cipher) -> dict[str, Any]:
+    _require_admin(auth)
     tool = await repo.get_tool(auth.tenant_id, tool_id)
     if not tool:
         raise HTTPException(404, detail={"code": "tool_not_found", "message": "Tool not found"})
@@ -447,23 +454,27 @@ async def test_tool(tool_id: UUID, body: ToolTestRequest, auth: Auth, repo: Repo
 
 @v1.get("/secrets")
 async def list_secrets(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     return {"data": await repo.list_secrets(auth.tenant_id), "next_cursor": None}
 
 
 @v1.post("/secrets", status_code=201)
 async def create_secret(body: SecretCreate, auth: Auth, repo: Repo, cipher: Cipher) -> dict[str, Any]:
+    _require_admin(auth)
     ciphertext, key_id = await cipher.encrypt(body.value)
     return await repo.create_secret(auth.tenant_id, body.name, ciphertext, key_id)
 
 
 @v1.delete("/secrets/{secret_id}", status_code=204)
 async def delete_secret(secret_id: UUID, auth: Auth, repo: Repo) -> None:
+    _require_admin(auth)
     if not await repo.delete_secret(auth.tenant_id, secret_id):
         raise HTTPException(404, detail={"code": "secret_not_found", "message": "Secret not found"})
 
 
 @v1.get("/integrations/google/connect")
 async def google_connect(auth: Auth, native: Native) -> dict[str, str]:
+    _require_admin(auth)
     try:
         return {"url": native.google_connect_url(auth.tenant_id, auth.user_id)}
     except RuntimeError as exc:
@@ -481,6 +492,7 @@ async def google_callback(code: str, state: str, repo: Repo, cipher: Cipher, nat
 
 @v1.get("/integrations")
 async def list_integrations(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     google = await repo.get_integration(auth.tenant_id, "google")
     sanitized = {key: value for key, value in google.items() if key != "refresh_token_secret_id"} if google else None
     return {"data": [sanitized] if sanitized else []}
@@ -488,6 +500,7 @@ async def list_integrations(auth: Auth, repo: Repo) -> dict[str, Any]:
 
 @v1.put("/agents/{agent_id}/draft/tools")
 async def set_draft_tools(agent_id: UUID, body: AgentToolsSet, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     try:
         tools = await repo.set_draft_tools(auth.tenant_id, agent_id, body.tool_ids)
     except ValueError as exc:
@@ -499,6 +512,7 @@ async def set_draft_tools(agent_id: UUID, body: AgentToolsSet, auth: Auth, repo:
 
 @v1.get("/agents/{agent_id}/draft/tools")
 async def get_draft_tools(agent_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     if not await repo.get_agent(auth.tenant_id, agent_id):
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
     runtime = await repo.get_runtime(agent_id, "draft")
@@ -507,16 +521,19 @@ async def get_draft_tools(agent_id: UUID, auth: Auth, repo: Repo) -> dict[str, A
 
 @v1.get("/knowledge-bases")
 async def list_knowledge_bases(auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     return {"data": await repo.list_knowledge_bases(auth.tenant_id), "next_cursor": None}
 
 
 @v1.post("/knowledge-bases", status_code=201)
 async def create_knowledge_base(body: KnowledgeBaseCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     return await repo.create_knowledge_base(auth.tenant_id, body.model_dump())
 
 
 @v1.get("/knowledge-bases/{kb_id}")
 async def get_knowledge_base(kb_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     item = await repo.get_knowledge_base(auth.tenant_id, kb_id)
     if not item:
         raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
@@ -525,6 +542,7 @@ async def get_knowledge_base(kb_id: UUID, auth: Auth, repo: Repo) -> dict[str, A
 
 @v1.patch("/knowledge-bases/{kb_id}")
 async def update_knowledge_base(kb_id: UUID, body: KnowledgeBasePatch, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     item = await repo.update_knowledge_base(auth.tenant_id, kb_id, body.model_dump(exclude_unset=True))
     if not item:
         raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
@@ -533,12 +551,14 @@ async def update_knowledge_base(kb_id: UUID, body: KnowledgeBasePatch, auth: Aut
 
 @v1.delete("/knowledge-bases/{kb_id}", status_code=204)
 async def delete_knowledge_base(kb_id: UUID, auth: Auth, repo: Repo) -> None:
+    _require_admin(auth)
     if not await repo.delete_knowledge_base(auth.tenant_id, kb_id):
         raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
 
 
 @v1.get("/knowledge-bases/{kb_id}/documents")
 async def list_documents(kb_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
     if not await repo.get_knowledge_base(auth.tenant_id, kb_id):
         raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})
     return {"data": await repo.list_documents(auth.tenant_id, kb_id), "next_cursor": None}
@@ -546,6 +566,7 @@ async def list_documents(kb_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
 
 @v1.post("/knowledge-bases/{kb_id}/documents", status_code=202)
 async def create_document(kb_id: UUID, request: Request, background: BackgroundTasks, auth: Auth, repo: Repo, embeddings: Embedder) -> dict[str, Any]:
+    _require_admin(auth)
     upload_bytes: bytes | None = None
     if request.headers.get("content-type", "").startswith("multipart/form-data"):
         form = await request.form()
@@ -572,12 +593,14 @@ async def create_document(kb_id: UUID, request: Request, background: BackgroundT
 
 @v1.delete("/knowledge-bases/{kb_id}/documents/{document_id}", status_code=204)
 async def delete_document(kb_id: UUID, document_id: UUID, auth: Auth, repo: Repo) -> None:
+    _require_admin(auth)
     if not await repo.delete_document(auth.tenant_id, kb_id, document_id):
         raise HTTPException(404, detail={"code": "document_not_found", "message": "Document not found"})
 
 
 @v1.post("/knowledge-bases/{kb_id}/query")
 async def query_knowledge_base(kb_id: UUID, body: KnowledgeQuery, auth: Auth, repo: Repo, embeddings: Embedder) -> dict[str, Any]:
+    _require_admin(auth)
     kb = await repo.get_knowledge_base(auth.tenant_id, kb_id)
     if not kb:
         raise HTTPException(404, detail={"code": "knowledge_base_not_found", "message": "Knowledge base not found"})

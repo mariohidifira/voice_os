@@ -16,9 +16,11 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 
 - `ruff check .`: aprovado.
 - MyPy strict: aprovado em 33 arquivos.
-- `pytest -q`: 68 testes aprovados.
+- `pytest -q`: 69 testes aprovados.
 - TypeScript, ESLint e build de produção Next.js: aprovados.
 - Playwright essencial: 1 cenário aprovado contra PostgreSQL, mock HTTP e API em `localhost:8005`.
+- RBAC de configuração: operator/viewer recebem 403 em KB, tools, secrets, integrações e membros; o painel carrega somente os recursos permitidos ao papel.
+- Detalhe de chamada: player/download, custo, TTFB, reação ao barge-in, tools, eventos, resultado e variáveis coletadas.
 - Conversas determinísticas: 40 casos texto + 10 casos áudio sintético, 100% aprovados.
 - Barge-in determinístico: 4/4 casos aprovados; backchannels isolados também cobertos.
 - KB: FAQ, ausência de resposta e injeção de prompt por documento cobertos.

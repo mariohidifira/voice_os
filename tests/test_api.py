@@ -226,6 +226,20 @@ def test_operator_cannot_create_agent() -> None:
     assert response.status_code == 403
 
 
+def test_operator_and_viewer_cannot_access_agent_configuration_resources() -> None:
+    tenant = str(uuid4())
+    for role in ("operator", "viewer"):
+        auth = headers(tenant, role)
+        assert client.get("/v1/tools", headers=auth).status_code == 403
+        assert client.get("/v1/secrets", headers=auth).status_code == 403
+        assert client.get("/v1/integrations", headers=auth).status_code == 403
+        assert client.get("/v1/knowledge-bases", headers=auth).status_code == 403
+        assert client.get(f"/v1/tenants/{tenant}/members", headers=auth).status_code == 403
+        assert client.post(
+            "/v1/knowledge-bases", json={"name": "Blocked"}, headers=auth
+        ).status_code == 403
+
+
 def test_internal_auth() -> None:
     assert client.get(f"/internal/agents/{uuid4()}/runtime").status_code == 401
 

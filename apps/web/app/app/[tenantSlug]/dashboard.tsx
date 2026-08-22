@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import VoiceWidget from "./voice-widget";
 
 type Item = Record<string, unknown> & { id: string; name?: string; status?: string };
-type Call = Item & { channel?: string; duration_s?: number; summary?: string; started_at?: string; turns?: Array<{ id?: string; role: string; text: string; audio_offset_ms?: number }>; recordings?: Array<{ url?: string; storage_key?: string }> };
+type Call = Item & { channel?: string; duration_s?: number; summary?: string; started_at?: string; turns?: Array<{ id?: string; role: string; text: string; audio_offset_ms?: number }>; recording?: { url?: string; storage_key?: string }; recordings?: Array<{ url?: string; storage_key?: string }>; tool_calls?: Array<Record<string, unknown>>; events?: Array<Record<string, unknown>>; latency?: Record<string, unknown>; cost?: Record<string, unknown>; variables?: Record<string, unknown>; outcome?: Record<string, unknown> };
 type Document = Item & { source_type?: string; source_uri?: string; chunk_count?: number; error?: string };
 type AgentTemplate = Item & { description?: string; suggested_tools?: string[] };
 type Section = "overview" | "agents" | "calls" | "knowledge" | "tools" | "members" | "settings";
@@ -24,6 +24,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="field"><span>{label}</span>{children}</label>; }
 function Empty({ children }: { children: React.ReactNode }) { return <div className="empty">{children}</div>; }
+function CallEvidence({ call }: { call: Call }) {
+  const recording = call.recording ?? call.recordings?.[0];
+  const recordingUrl = recording?.url ?? (recording?.storage_key ? `/recordings/${recording.storage_key}` : "");
+  return <section className="callEvidence card"><h2>Operação e métricas</h2><div className="metricGrid"><span>Custo <b>USD {Number(call.cost?.total_usd ?? 0).toFixed(4)}</b></span><span>TTFB p50 <b>{String(call.latency?.ttfb_p50_ms ?? "—")} ms</b></span><span>TTFB p95 <b>{String(call.latency?.ttfb_p95_ms ?? "—")} ms</b></span><span>Barge-in p95 <b>{String(call.latency?.barge_in_p95_ms ?? "—")} ms</b></span></div>{recordingUrl && <><audio controls src={recordingUrl}/><p><a href={recordingUrl} download>Baixar gravação</a></p></>}<div className="two"><div><h3>Tools chamadas</h3>{call.tool_calls?.map((tool, index) => <details key={String(tool.id ?? index)}><summary>{String(tool.name)} · {String(tool.status)} · {String(tool.duration_ms ?? 0)} ms</summary><pre>{JSON.stringify({ arguments: tool.arguments, result: tool.result }, null, 2)}</pre></details>)}{!call.tool_calls?.length && <small>Nenhuma tool chamada.</small>}</div><div><h3>Eventos</h3>{call.events?.map((event, index) => <div className="eventRow" key={String(event.id ?? index)}><b>{String(event.type)}</b><small>{String(event.at ?? "")}</small></div>)}{!call.events?.length && <small>Nenhum evento adicional.</small>}</div></div><h3>Resultado e variáveis</h3><pre>{JSON.stringify({ outcome: call.outcome ?? {}, variables: call.variables ?? {} }, null, 2)}</pre></section>;
+}
 
 export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
   const [section, setSection] = useState<Section>("overview");
@@ -39,6 +44,7 @@ export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
   const [members, setMembers] = useState<Item[]>([]);
   const [apiKeys, setApiKeys] = useState<Item[]>([]);
   const [tenantId, setTenantId] = useState("");
+  const [role, setRole] = useState("viewer");
   const [widgetAgentId, setWidgetAgentId] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<Item | null>(null);
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
@@ -50,13 +56,18 @@ export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [me, a, templates, c, k, t, keys] = await Promise.all([
-        api<{ tenant_id: string }>("me"),
+      const me = await api<{ tenant_id: string; role: string }>("me");
+      const [a, templates, c] = await Promise.all([
         api<{ data: Item[] }>("agents"), api<{ data: AgentTemplate[] }>("agent-templates"), api<{ data: Call[] }>("calls"),
-        api<{ data: Item[] }>("knowledge-bases"), api<{ data: Item[] }>("tools"), api<{ data: Item[] }>("api-keys"),
       ]);
-      const memberResult = await api<{ data: Item[] }>(`tenants/${me.tenant_id}/members`);
-      setTenantId(me.tenant_id); setMembers(memberResult.data); setApiKeys(keys.data);
+      const canConfigure = ["owner", "admin"].includes(me.role);
+      const [k, t, keys, memberResult] = canConfigure
+        ? await Promise.all([
+            api<{ data: Item[] }>("knowledge-bases"), api<{ data: Item[] }>("tools"),
+            api<{ data: Item[] }>("api-keys"), api<{ data: Item[] }>(`tenants/${me.tenant_id}/members`),
+          ])
+        : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+      setTenantId(me.tenant_id); setRole(me.role); setMembers(memberResult.data); setApiKeys(keys.data);
       setAgents(a.data); setAgentTemplates(templates.data); setCalls(c.data); setKnowledge(k.data); setTools(t.data); setNotice("");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Falha ao carregar dados"); }
     finally { setLoading(false); }
@@ -68,6 +79,7 @@ export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
   const minutes = Math.round(calls.reduce((sum, call) => sum + Number(call.duration_s ?? 0), 0) / 60);
   const active = calls.filter((call) => ["queued", "ringing", "in_progress"].includes(call.status ?? "")).length;
   const completed = calls.filter((call) => call.status === "completed").length;
+  const canConfigure = ["owner", "admin"].includes(role);
 
   async function createAgent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); const name = String(form.get("name") ?? "").trim(); if (!name) return;
@@ -113,7 +125,8 @@ export default function Dashboard({ tenantSlug }: { tenantSlug: string }) {
         {section === "tools" && <section className="split"><article className="card"><h2>Ferramentas</h2>{tools.map((tool) => <div className="row static" key={tool.id}><span><strong>{tool.name}</strong><small>{String(tool.description ?? tool.type)}</small></span><span><button className="secondary compact" onClick={() => void testTool(tool)}>Testar</button> <span className={`pill ${tool.last_test_ok_at ? "ok" : ""}`}>{tool.last_test_ok_at ? "testada" : "pendente"}</span></span></div>)}{toolTestResult && <pre className="testResult">{toolTestResult}</pre>}</article><article className="card"><h2>Novo webhook</h2><form className="formGrid" onSubmit={createTool}><Field label="Nome snake_case"><input name="name" required pattern="[a-z0-9_]+"/></Field><Field label="Descrição"><input name="description" required maxLength={300}/></Field><Field label="URL HTTPS"><input name="url" type="url" required/></Field><button>Criar ferramenta</button></form></article></section>}
         {section === "members" && <section className="split"><article className="card"><h2>Membros</h2>{members.map((member) => <div className="row static" key={member.id}><span><strong>{String(member.name ?? member.email)}</strong><small>{String(member.email)}</small></span><span className="pill ok">{String(member.role)}</span></div>)}{!members.length && <Empty>Nenhum membro listado.</Empty>}</article><article className="card"><h2>Adicionar membro</h2><form className="formGrid" onSubmit={inviteMember}><Field label="E-mail"><input name="email" type="email" required/></Field><Field label="Papel"><select name="role"><option value="viewer">Viewer</option><option value="operator">Operator</option><option value="developer">Developer</option><option value="admin">Admin</option></select></Field><button>Adicionar</button></form></article></section>}
         {section === "settings" && <section className="split"><article className="card"><h2>Integrações</h2><p>Google Calendar e Gmail</p><button className="secondary" onClick={async () => { try { const result = await api<{ url: string }>("integrations/google/connect"); location.href = result.url; } catch (error) { setNotice(String(error)); } }}>Conectar Google</button><h2>Chaves existentes</h2>{apiKeys.map((key) => <div className="row static" key={key.id}><span><strong>{key.name}</strong><small>{String(key.prefix)}… · {String(key.scope)}</small></span><span className={`pill ${key.revoked_at ? "" : "ok"}`}>{key.revoked_at ? "revogada" : "ativa"}</span></div>)}</article><article className="card"><h2>Nova API key</h2><p className="muted">A chave completa é exibida somente uma vez; apenas SHA-256 é armazenado.</p><form className="formGrid" onSubmit={createApiKey}><Field label="Nome"><input name="name" required/></Field><Field label="Escopo"><select name="scope"><option value="secret">Secret</option><option value="public">Public/widget</option></select></Field><Field label="Origem permitida (obrigatória para public)"><input name="origin" type="url" placeholder="https://cliente.com"/></Field><button>Criar chave</button></form></article></section>}
-        {section === "agents" && <aside className="templateDock card"><b>Template para o próximo agente</b><select aria-label="Template do agente" value={newAgentTemplate} onChange={(event) => setNewAgentTemplate(event.target.value)}>{agentTemplates.map((template) => <option value={template.id} key={template.id}>{template.name}</option>)}</select><small>{agentTemplates.find((template) => template.id === newAgentTemplate)?.description}</small></aside>}
+        {section === "calls" && selectedCall && <CallEvidence call={selectedCall}/>} 
+        {section === "agents" && canConfigure && <aside className="templateDock card"><b>Template para o próximo agente</b><select aria-label="Template do agente" value={newAgentTemplate} onChange={(event) => setNewAgentTemplate(event.target.value)}>{agentTemplates.map((template) => <option value={template.id} key={template.id}>{template.name}</option>)}</select><small>{agentTemplates.find((template) => template.id === newAgentTemplate)?.description}</small></aside>}
       </>}
     </main>
   </div>;
