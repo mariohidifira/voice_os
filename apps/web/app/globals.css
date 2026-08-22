@@ -223,6 +223,32 @@ small {
   border-bottom: 1px solid var(--line);
   border-radius: 0;
 }
+.actions {
+  display: flex !important;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 8px;
+}
+.actions select {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #0b1017;
+  color: var(--text);
+  padding: 7px 9px;
+}
+button.danger {
+  background: #5b2830;
+  color: #ffdce1;
+}
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+}
+.checkRow input {
+  accent-color: var(--accent);
+}
 .editor {
   min-height: 560px;
 }

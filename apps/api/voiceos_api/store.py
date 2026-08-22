@@ -7,6 +7,7 @@ class MemoryStore:
     """Deterministic dev adapter. Production endpoints use the same contract with Postgres."""
 
     def __init__(self) -> None:
+        self.tenants: dict[UUID, dict[str, Any]] = {}
         self.agents: dict[UUID, dict[str, Any]] = {}
         self.agent_versions: dict[UUID, dict[str, Any]] = {}
         self.end_users: dict[UUID, dict[str, Any]] = {}
@@ -29,7 +30,16 @@ class MemoryStore:
     def create_agent(self, tenant_id: UUID, name: str) -> dict[str, Any]:
         agent_id, draft_id = uuid4(), uuid4()
         now = datetime.now(UTC)
-        result = {"id": agent_id, "tenant_id": tenant_id, "name": name, "status": "draft", "current_version_id": None, "draft_version_id": draft_id, "created_at": now, "updated_at": now}
+        result = {
+            "id": agent_id,
+            "tenant_id": tenant_id,
+            "name": name,
+            "status": "draft",
+            "current_version_id": None,
+            "draft_version_id": draft_id,
+            "created_at": now,
+            "updated_at": now,
+        }
         self.agents[agent_id] = result
         self.agent_versions[draft_id] = {
             "id": draft_id,

@@ -55,12 +55,7 @@ type Section =
   | "members"
   | "settings";
 type AgentTab =
-  | "prompt"
-  | "voice"
-  | "conversation"
-  | "knowledge"
-  | "tools"
-  | "advanced";
+  "prompt" | "voice" | "conversation" | "knowledge" | "tools" | "advanced";
 
 const agentTabs: Array<[AgentTab, string]> = [
   ["prompt", "Prompt"],
@@ -509,6 +504,7 @@ export default function Dashboard({
   const [tools, setTools] = useState<Item[]>([]);
   const [members, setMembers] = useState<Item[]>([]);
   const [apiKeys, setApiKeys] = useState<Item[]>([]);
+  const [tenant, setTenant] = useState<Item | null>(null);
   const [tenantId, setTenantId] = useState("");
   const [role, setRole] = useState("viewer");
   const [widgetAgentId, setWidgetAgentId] = useState<string | null>(
@@ -542,10 +538,11 @@ export default function Dashboard({
     setLoading(true);
     try {
       const me = await api<{ tenant_id: string; role: string }>("me");
-      const [a, templates, c] = await Promise.all([
+      const [a, templates, c, tenantResult] = await Promise.all([
         api<{ data: Item[] }>("agents"),
         api<{ data: AgentTemplate[] }>("agent-templates"),
         api<{ data: Call[] }>("calls"),
+        api<Item>(`tenants/${me.tenant_id}`),
       ]);
       const canConfigure = ["owner", "admin"].includes(me.role);
       const [k, t, keys, memberResult, voiceResult] = canConfigure
@@ -564,6 +561,7 @@ export default function Dashboard({
             { data: [], configured: false },
           ];
       setTenantId(me.tenant_id);
+      setTenant(tenantResult);
       setRole(me.role);
       setMembers(memberResult.data);
       setApiKeys(keys.data);
@@ -643,8 +641,7 @@ export default function Dashboard({
       String(
         (
           (detail.draft as Record<string, unknown> | undefined)?.tts as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
         )?.voice_id ?? "",
       ),
     );
@@ -981,6 +978,57 @@ export default function Dashboard({
       setNotice(String(error));
     }
   }
+  async function updateMember(userId: string, role: string) {
+    try {
+      await api(`tenants/${tenantId}/members/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      });
+      await refresh();
+      setNotice("Papel do membro atualizado.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function removeMember(userId: string) {
+    try {
+      await api(`tenants/${tenantId}/members/${userId}`, { method: "DELETE" });
+      await refresh();
+      setNotice("Membro removido do workspace.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function updateTenant(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      await api(`tenants/${tenantId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: form.get("name"),
+          settings: {
+            timezone: form.get("timezone"),
+            recording_enabled: form.get("recording_enabled") === "on",
+            retention_days: Number(form.get("retention_days")),
+          },
+        }),
+      });
+      await refresh();
+      setNotice("Configurações gerais salvas.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function revokeApiKey(keyId: string) {
+    try {
+      await api(`api-keys/${keyId}`, { method: "DELETE" });
+      await refresh();
+      setNotice("Chave de API revogada.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
   async function createApiKey(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -1296,8 +1344,7 @@ export default function Dashboard({
                                 defaultValue={String(
                                   (
                                     draft.tts as
-                                      | Record<string, unknown>
-                                      | undefined
+                                      Record<string, unknown> | undefined
                                   )?.speed ?? 1,
                                 )}
                               />
@@ -1312,8 +1359,7 @@ export default function Dashboard({
                                 defaultValue={String(
                                   (
                                     draft.tts as
-                                      | Record<string, unknown>
-                                      | undefined
+                                      Record<string, unknown> | undefined
                                   )?.stability ?? 0.5,
                                 )}
                               />
@@ -1359,8 +1405,7 @@ export default function Dashboard({
                                 defaultValue={String(
                                   (
                                     draft.behavior as
-                                      | Record<string, unknown>
-                                      | undefined
+                                      Record<string, unknown> | undefined
                                   )?.max_call_duration_s ?? 900,
                                 )}
                               />
@@ -1373,8 +1418,7 @@ export default function Dashboard({
                                 defaultValue={String(
                                   (
                                     draft.behavior as
-                                      | Record<string, unknown>
-                                      | undefined
+                                      Record<string, unknown> | undefined
                                   )?.silence_timeout_s ?? 20,
                                 )}
                               />
@@ -1411,8 +1455,7 @@ export default function Dashboard({
                                 defaultValue={String(
                                   (
                                     draft.rag as
-                                      | Record<string, unknown>
-                                      | undefined
+                                      Record<string, unknown> | undefined
                                   )?.top_k ?? 5,
                                 )}
                               />
@@ -1427,8 +1470,7 @@ export default function Dashboard({
                                 defaultValue={String(
                                   (
                                     draft.rag as
-                                      | Record<string, unknown>
-                                      | undefined
+                                      Record<string, unknown> | undefined
                                   )?.min_score ?? 0.65,
                                 )}
                               />
@@ -1502,8 +1544,7 @@ export default function Dashboard({
                               defaultChecked={
                                 (
                                   draft.turn_config as
-                                    | Record<string, unknown>
-                                    | undefined
+                                    Record<string, unknown> | undefined
                                 )?.allow_interruptions !== false
                               }
                             />{" "}
@@ -1771,7 +1812,28 @@ export default function Dashboard({
                         <strong>{String(member.name ?? member.email)}</strong>
                         <small>{String(member.email)}</small>
                       </span>
-                      <span className="pill ok">{String(member.role)}</span>
+                      <span className="actions">
+                        <select
+                          aria-label={`Papel de ${String(member.email)}`}
+                          defaultValue={String(member.role)}
+                          onChange={(event) =>
+                            void updateMember(member.id, event.target.value)
+                          }
+                        >
+                          <option value="viewer">Viewer</option>
+                          <option value="operator">Operator</option>
+                          <option value="developer">Developer</option>
+                          <option value="admin">Admin</option>
+                          <option value="owner">Owner</option>
+                        </select>
+                        <button
+                          className="danger"
+                          type="button"
+                          onClick={() => void removeMember(member.id)}
+                        >
+                          Remover
+                        </button>
+                      </span>
                     </div>
                   ))}
                   {!members.length && <Empty>Nenhum membro listado.</Empty>}
@@ -1798,6 +1860,48 @@ export default function Dashboard({
             {section === "settings" && (
               <section className="split">
                 <article className="card">
+                  <h2>Geral</h2>
+                  <form className="formGrid" onSubmit={updateTenant}>
+                    <Field label="Nome do workspace">
+                      <input name="name" required defaultValue={tenant?.name} />
+                    </Field>
+                    <Field label="Fuso horário">
+                      <input
+                        name="timezone"
+                        required
+                        defaultValue={String(
+                          (tenant?.settings as Record<string, unknown>)
+                            ?.timezone ?? "America/Sao_Paulo",
+                        )}
+                      />
+                    </Field>
+                    <Field label="Retenção das gravações (dias)">
+                      <input
+                        name="retention_days"
+                        type="number"
+                        min="1"
+                        max="3650"
+                        required
+                        defaultValue={Number(
+                          (tenant?.settings as Record<string, unknown>)
+                            ?.retention_days ?? 90,
+                        )}
+                      />
+                    </Field>
+                    <label className="checkRow">
+                      <input
+                        name="recording_enabled"
+                        type="checkbox"
+                        defaultChecked={Boolean(
+                          (tenant?.settings as Record<string, unknown>)
+                            ?.recording_enabled ?? true,
+                        )}
+                      />
+                      Gravar chamadas
+                    </label>
+                    <button>Salvar configurações</button>
+                  </form>
+                  <hr />
                   <h2>Integrações</h2>
                   <p>Google Calendar e Gmail</p>
                   <button
@@ -1824,8 +1928,19 @@ export default function Dashboard({
                           {String(key.prefix)}… · {String(key.scope)}
                         </small>
                       </span>
-                      <span className={`pill ${key.revoked_at ? "" : "ok"}`}>
-                        {key.revoked_at ? "revogada" : "ativa"}
+                      <span className="actions">
+                        <span className={`pill ${key.revoked_at ? "" : "ok"}`}>
+                          {key.revoked_at ? "revogada" : "ativa"}
+                        </span>
+                        {!key.revoked_at && (
+                          <button
+                            className="danger"
+                            type="button"
+                            onClick={() => void revokeApiKey(key.id)}
+                          >
+                            Revogar
+                          </button>
+                        )}
                       </span>
                     </div>
                   ))}

@@ -157,6 +157,17 @@ test("criar agente, publicar, testar e ver chamada", async ({
     .getByRole("button", { name: "×" })
     .click();
 
+  await page.getByRole("button", { name: /Configura/ }).click();
+  const workspaceName = `Workspace E2E ${Date.now()}`;
+  await page.getByLabel("Nome do workspace").fill(workspaceName);
+  await page.getByLabel("Fuso horário").fill("America/Fortaleza");
+  await page.getByLabel("Retenção das gravações (dias)").fill("180");
+  await page.getByRole("button", { name: "Salvar configurações" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Configurações gerais salvas",
+  );
+  await expect(page.getByLabel("Nome do workspace")).toHaveValue(workspaceName);
+
   await page.getByRole("button", { name: "Chamadas", exact: true }).click();
   await expect(
     page

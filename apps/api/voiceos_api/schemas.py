@@ -10,6 +10,18 @@ class AgentCreate(BaseModel):
     template_id: str | None = None
 
 
+class TenantSettingsPatch(BaseModel):
+    timezone: str | None = Field(default=None, min_length=3, max_length=80)
+    locale: str | None = Field(default=None, min_length=2, max_length=20)
+    recording_enabled: bool | None = None
+    retention_days: int | None = Field(default=None, ge=1, le=3650)
+
+
+class TenantPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    settings: TenantSettingsPatch | None = None
+
+
 class AgentPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     status: str | None = None

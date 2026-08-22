@@ -45,6 +45,7 @@ from .schemas import (
     PromptImproveRequest,
     SecretCreate,
     SessionCreate,
+    TenantPatch,
     ToolCreate,
     ToolPatch,
     ToolTestRequest,
@@ -188,6 +189,29 @@ async def _ingest_document(
 @v1.get("/me")
 async def me(auth: Auth) -> dict[str, Any]:
     return {"id": auth.user_id, "tenant_id": auth.tenant_id, "role": auth.role}
+
+
+@v1.get("/tenants/{tenant_id}")
+async def get_tenant(tenant_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if tenant_id != auth.tenant_id or not (tenant := await repo.get_tenant(auth.tenant_id)):
+        raise HTTPException(404, detail={"code": "tenant_not_found", "message": "Tenant not found"})
+    return tenant
+
+
+@v1.patch("/tenants/{tenant_id}")
+async def update_tenant(
+    tenant_id: UUID, body: TenantPatch, auth: Auth, repo: Repo
+) -> dict[str, Any]:
+    _require_admin(auth)
+    if tenant_id != auth.tenant_id:
+        raise HTTPException(404, detail={"code": "tenant_not_found", "message": "Tenant not found"})
+    data = body.model_dump(exclude_unset=True)
+    if body.settings is not None:
+        data["settings"] = body.settings.model_dump(exclude_unset=True)
+    tenant = await repo.update_tenant(auth.tenant_id, data)
+    if not tenant:
+        raise HTTPException(404, detail={"code": "tenant_not_found", "message": "Tenant not found"})
+    return tenant
 
 
 @v1.get("/tenants/{tenant_id}/members")

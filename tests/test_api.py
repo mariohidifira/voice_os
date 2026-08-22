@@ -97,6 +97,37 @@ def test_health_and_error_contract() -> None:
     assert set(response.json()["error"]) == {"code", "message", "details", "request_id"}
 
 
+def test_tenant_general_settings_are_scoped_and_admin_mutable() -> None:
+    store.tenants.clear()
+    tenant = str(uuid4())
+    owner = headers(tenant)
+    initial = client.get(f"/v1/tenants/{tenant}", headers=owner)
+    assert initial.status_code == 200
+    changed = client.patch(
+        f"/v1/tenants/{tenant}",
+        json={
+            "name": "Clínica Voz",
+            "settings": {
+                "timezone": "America/Fortaleza",
+                "recording_enabled": False,
+                "retention_days": 180,
+            },
+        },
+        headers=owner,
+    )
+    assert changed.status_code == 200
+    assert changed.json()["name"] == "Clínica Voz"
+    assert changed.json()["settings"]["locale"] == "pt-BR"
+    assert changed.json()["settings"]["retention_days"] == 180
+    viewer = headers(tenant, "viewer")
+    assert client.get(f"/v1/tenants/{tenant}", headers=viewer).status_code == 200
+    assert (
+        client.patch(f"/v1/tenants/{tenant}", json={"name": "Nope"}, headers=viewer).status_code
+        == 403
+    )
+    assert client.get(f"/v1/tenants/{uuid4()}", headers=owner).status_code == 404
+
+
 def test_members_and_api_keys_are_tenant_scoped_and_admin_only() -> None:
     store.memberships.clear()
     store.users.clear()
