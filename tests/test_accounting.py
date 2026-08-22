@@ -26,7 +26,14 @@ def test_accounting_aggregates_latency_usage_and_cost(monkeypatch: object) -> No
             )
         )
     )
-    assert accounting.latency() == {"ttfb_p50_ms": 200, "ttfb_p95_ms": 400, "turns": 4, "barge_ins": 2}
+    assert accounting.latency() == {
+        "ttfb_p50_ms": 200,
+        "ttfb_p95_ms": 400,
+        "turns": 4,
+        "barge_ins": 2,
+        "barge_in_p50_ms": 200,
+        "barge_in_p95_ms": 200,
+    }
     cost = accounting.cost(60)
     assert cost["stt_usd"] == 0.0048
     assert cost["llm_usd"] == 4.5

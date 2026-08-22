@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "PHASE-1-REPORT.md": {
-    "mtime": 1787368555.7843258,
-    "ast_hash": "d7f03918c1d15f6fa3ddf92162b97907",
+    "mtime": 1787369281.7018027,
+    "ast_hash": "da7201626a7767705cab736dde2f1b04",
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "PROVIDER-SETUP-CHECKLIST.md": {
-    "mtime": 1787102095.9707863,
-    "ast_hash": "68d18e2645c60dda7b0d7c1731014138",
+    "mtime": 1787369183.9348674,
+    "ast_hash": "099e388a969caac5a1152c03f1debc55",
     "semantic_hash": ""
   },
   "docs/00-README.md": {
@@ -630,8 +630,8 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/accounting.py": {
-    "mtime": 1787324113.7425327,
-    "ast_hash": "19203ff8791b13ef6209b33b055d14ec",
+    "mtime": 1787369159.6182408,
+    "ast_hash": "2174ab2d0f52e5aa832e95c333c98984",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/postprocessing.py": {
@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "tests/test_accounting.py": {
-    "mtime": 1787368552.7988088,
-    "ast_hash": "52e890791287a3805bf9cd5913443097",
+    "mtime": 1787369160.8142924,
+    "ast_hash": "1852d9574ffcaf25ca1b288a68ddd265",
     "semantic_hash": ""
   },
   "tests/test_postprocessing.py": {
@@ -732,6 +732,21 @@
   "reports/phase1-cost-model.json": {
     "mtime": 1787368554.3846352,
     "ast_hash": "9ac4b7b4fa52ccc78a48f0905107115d",
+    "semantic_hash": ""
+  },
+  "scripts/verify_phase1_staging.py": {
+    "mtime": 1787369240.3820448,
+    "ast_hash": "5bd55182f7575e196ead9f29c4fd0b0b",
+    "semantic_hash": ""
+  },
+  "tests/test_phase1_staging_verifier.py": {
+    "mtime": 1787369163.8222015,
+    "ast_hash": "4aed7b1a43d9b4a33663cce134476953",
+    "semantic_hash": ""
+  },
+  ".github/workflows/phase1-staging-acceptance.yml": {
+    "mtime": 1787369182.7884624,
+    "ast_hash": "44ddf5eb0b365233b6007b9a81498abe",
     "semantic_hash": ""
   }
 }

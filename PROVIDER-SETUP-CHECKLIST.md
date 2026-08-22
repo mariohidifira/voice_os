@@ -163,6 +163,17 @@ OPENAI_API_KEY
 ELEVENLABS_API_KEY
 ```
 
+Após o primeiro deploy e o seed de aceite, cadastrar também os valores operacionais usados pelo
+workflow `phase1-staging-acceptance`:
+
+| Nome | Conteúdo |
+|---|---|
+| `STAGING_API_URL` | URL pública do ALB/API, com `https://` |
+| `STAGING_ACCEPTANCE_TOKEN` | JWT temporário do usuário de aceite; renovar antes de cada execução |
+| `STAGING_TENANT_ID` | UUID do tenant usado exclusivamente nos testes de aceite |
+
+O token não substitui `AUTH_SECRET` e não deve ser reutilizado em produção.
+
 Checklist:
 
 - [ ] Os 12 secrets acima existem no environment `staging`.
@@ -366,4 +377,3 @@ AGENT_WORKER_MAX_ROOMS
 | Twilio |  |  |  |
 | Stripe |  |  |  |
 | Meta WhatsApp |  |  |  |
-

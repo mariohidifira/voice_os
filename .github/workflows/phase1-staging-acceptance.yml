@@ -1,0 +1,26 @@
+name: phase1-staging-acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install httpx
+      - name: Verify 50 real staging calls
+        env:
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          STAGING_ACCEPTANCE_TOKEN: ${{ secrets.STAGING_ACCEPTANCE_TOKEN }}
+          STAGING_TENANT_ID: ${{ secrets.STAGING_TENANT_ID }}
+        run: python scripts/verify_phase1_staging.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase1-staging-acceptance
+          path: reports/phase1-staging-acceptance.json
+          if-no-files-found: error

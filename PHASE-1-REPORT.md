@@ -16,7 +16,7 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 
 - `ruff check .`: aprovado.
 - MyPy strict: aprovado em 33 arquivos.
-- `pytest -q`: 66 testes aprovados.
+- `pytest -q`: 68 testes aprovados.
 - TypeScript, ESLint e build de produção Next.js: aprovados.
 - Playwright essencial: 1 cenário aprovado contra PostgreSQL, mock HTTP e API em `localhost:8005`.
 - Conversas determinísticas: 40 casos texto + 10 casos áudio sintético, 100% aprovados.
@@ -45,6 +45,10 @@ Os seguintes critérios não podem ser honestamente declarados concluídos no am
 - Gravação Egress real no S3 e reprodução do objeto remoto.
 - Confirmação do custo efetivo por minuto contra usage/invoices dos provedores.
 - Deploy e smoke test do ambiente AWS staging.
+
+O workflow manual `phase1-staging-acceptance` busca os detalhes de 50 chamadas reais e falha se
+qualquer gate de latência, barge-in, custo ou gravação não for atendido. O worker agora persiste
+`barge_in_p50_ms` e `barge_in_p95_ms` a partir da métrica real de `detection_delay` do LiveKit.
 
 As contas, nomes de secrets e ordem de configuração estão em `PROVIDER-SETUP-CHECKLIST.md`. Nenhum secret deve ser commitado.
 

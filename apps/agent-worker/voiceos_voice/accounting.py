@@ -21,6 +21,7 @@ def _percentile(values: list[float], percentile: float) -> int | None:
 @dataclass
 class CallAccounting:
     ttfb: list[float] = field(default_factory=list)
+    barge_in_reaction: list[float] = field(default_factory=list)
     usage: list[dict[str, Any]] = field(default_factory=list)
     turns: int = 0
     barge_ins: int = 0
@@ -31,6 +32,10 @@ class CallAccounting:
             self.ttfb.append(metric.ttfb)
         elif metric.type == "interruption_metrics":
             self.barge_ins += metric.num_interruptions
+            if metric.num_interruptions and metric.detection_delay >= 0:
+                self.barge_in_reaction.extend(
+                    [metric.detection_delay] * metric.num_interruptions
+                )
 
     def observe_usage(self, event: SessionUsageUpdatedEvent) -> None:
         self.usage = [
@@ -44,6 +49,8 @@ class CallAccounting:
             "ttfb_p95_ms": _percentile(self.ttfb, 0.95),
             "turns": self.turns,
             "barge_ins": self.barge_ins,
+            "barge_in_p50_ms": _percentile(self.barge_in_reaction, 0.50),
+            "barge_in_p95_ms": _percentile(self.barge_in_reaction, 0.95),
         }
 
     def cost(self, duration_s: int) -> dict[str, Any]:

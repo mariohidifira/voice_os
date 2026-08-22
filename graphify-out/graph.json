@@ -153,7 +153,7 @@
       "label": ".observe_metric()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L28",
+      "source_location": "L29",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_accounting_callaccounting_observe_metric",
       "community": 78,
@@ -175,7 +175,7 @@
       "label": ".observe_usage()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L35",
+      "source_location": "L40",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_accounting_callaccounting_observe_usage",
       "community": 78,
@@ -197,7 +197,7 @@
       "label": ".latency()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L41",
+      "source_location": "L46",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_accounting_callaccounting_latency",
       "community": 78,
@@ -219,7 +219,7 @@
       "label": ".cost()",
       "file_type": "code",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L49",
+      "source_location": "L56",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_accounting_callaccounting_cost",
       "community": 78,
@@ -244,8 +244,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_api_client_runtimecache",
-      "community": 74,
-      "community_name": "WorkerAPI",
+      "community": 81,
+      "community_name": "RuntimeCache",
       "norm_label": "runtimecache"
     },
     {
@@ -255,8 +255,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_api_client_py_protocol",
-      "community": 74,
-      "community_name": "WorkerAPI",
+      "community": 81,
+      "community_name": "RuntimeCache",
       "norm_label": "protocol"
     },
     {
@@ -266,8 +266,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_api_client_runtimecache_get",
-      "community": 74,
-      "community_name": "WorkerAPI",
+      "community": 81,
+      "community_name": "RuntimeCache",
       "norm_label": ".get()"
     },
     {
@@ -288,8 +288,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_api_client_runtimecache_set",
-      "community": 74,
-      "community_name": "WorkerAPI",
+      "community": 81,
+      "community_name": "RuntimeCache",
       "norm_label": ".set()"
     },
     {
@@ -299,8 +299,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_api_client_runtimecache_delete",
-      "community": 74,
-      "community_name": "WorkerAPI",
+      "community": 81,
+      "community_name": "RuntimeCache",
       "norm_label": ".delete()"
     },
     {
@@ -431,8 +431,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_api_client_workerapi_init",
-      "community": 74,
-      "community_name": "WorkerAPI",
+      "community": 81,
+      "community_name": "RuntimeCache",
       "norm_label": ".__init__()"
     },
     {
@@ -442,8 +442,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_api_client_py_asyncbasetransport",
-      "community": 74,
-      "community_name": "WorkerAPI",
+      "community": 81,
+      "community_name": "RuntimeCache",
       "norm_label": "asyncbasetransport"
     },
     {
@@ -816,8 +816,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_py_any",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "any"
     },
     {
@@ -838,8 +838,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_livekitcallbridge_spawn",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": ".spawn()"
     },
     {
@@ -882,8 +882,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "userinputtranscribedevent",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "userinputtranscribedevent"
     },
     {
@@ -1014,8 +1014,8 @@
       "source_location": "L149",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_sessionguards_user_state",
-      "community": 91,
-      "community_name": "SessionGuards",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": ".user_state()"
     },
     {
@@ -1047,8 +1047,8 @@
       "source_location": "L166",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_dynamic_tools",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "dynamic_tools()"
     },
     {
@@ -1058,8 +1058,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_py_uuid",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "uuid"
     },
     {
@@ -1069,8 +1069,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "agentsession",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "agentsession"
     },
     {
@@ -1080,8 +1080,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tool",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "tool"
     },
     {
@@ -1091,8 +1091,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "toolset",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "toolset"
     },
     {
@@ -1113,8 +1113,8 @@
       "source_location": "L232",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_provider_pipeline",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "provider_pipeline()"
     },
     {
@@ -1124,8 +1124,8 @@
       "source_location": "L281",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_livekit_worker_voiceos_agent",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "voiceos_agent()"
     },
     {
@@ -1135,8 +1135,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "jobcontext",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 73,
+      "community_name": "LiveKitCallBridge",
       "norm_label": "jobcontext"
     },
     {
@@ -1157,8 +1157,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_prompting",
-      "community": 76,
-      "community_name": "FakeEventBus",
+      "community": 0,
+      "community_name": "Voice Core Modules",
       "norm_label": "prompting.py"
     },
     {
@@ -1168,8 +1168,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_prompting_build_system_prompt",
-      "community": 76,
-      "community_name": "FakeEventBus",
+      "community": 0,
+      "community_name": "Voice Core Modules",
       "norm_label": "build_system_prompt()"
     },
     {
@@ -1179,8 +1179,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_prompting_py_any",
-      "community": 76,
-      "community_name": "FakeEventBus",
+      "community": 0,
+      "community_name": "Voice Core Modules",
       "norm_label": "any"
     },
     {
@@ -1190,8 +1190,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "datetime",
-      "community": 76,
-      "community_name": "FakeEventBus",
+      "community": 0,
+      "community_name": "Voice Core Modules",
       "norm_label": "datetime"
     },
     {
@@ -1223,8 +1223,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "apps_agent_worker_voiceos_voice_providers_mockstt_transcribe",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 0,
+      "community_name": "Voice Core Modules",
       "norm_label": ".transcribe()"
     },
     {
@@ -1465,8 +1465,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "runtimeerror",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "runtimeerror"
     },
     {
@@ -2301,8 +2301,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_config_settings",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "settings"
     },
     {
@@ -2312,8 +2312,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "basesettings",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "basesettings"
     },
     {
@@ -2510,8 +2510,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_knowledge_chunk_text",
-      "community": 5,
-      "community_name": "API Schemas and Mock",
+      "community": 65,
+      "community_name": "knowledge.py",
       "norm_label": "chunk_text()"
     },
     {
@@ -2576,8 +2576,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_knowledge_extract_url",
-      "community": 65,
-      "community_name": "knowledge.py",
+      "community": 5,
+      "community_name": "API Schemas and Mock",
       "norm_label": "extract_url()"
     },
     {
@@ -3258,8 +3258,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository",
-      "community": 63,
-      "community_name": "Any",
+      "community": 92,
+      "community_name": "repository.py",
       "norm_label": "repository.py"
     },
     {
@@ -3302,8 +3302,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_py_uuid",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": "uuid"
     },
     {
@@ -3313,8 +3313,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_py_any",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 63,
+      "community_name": "Any",
       "norm_label": "any"
     },
     {
@@ -3346,8 +3346,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_delete_member",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".delete_member()"
     },
     {
@@ -3379,8 +3379,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_revoke_api_key",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".revoke_api_key()"
     },
     {
@@ -3456,8 +3456,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_delete_agent",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".delete_agent()"
     },
     {
@@ -3577,8 +3577,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_create_internal_call",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 63,
+      "community_name": "Any",
       "norm_label": ".create_internal_call()"
     },
     {
@@ -3632,8 +3632,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_get_call_tenant",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".get_call_tenant()"
     },
     {
@@ -3775,8 +3775,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_delete_knowledge_base",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".delete_knowledge_base()"
     },
     {
@@ -3830,8 +3830,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_fail_document",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".fail_document()"
     },
     {
@@ -3852,8 +3852,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_get_knowledge_base_tenant",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".get_knowledge_base_tenant()"
     },
     {
@@ -3896,8 +3896,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_repository_delete_secret",
-      "community": 63,
-      "community_name": "Any",
+      "community": 2,
+      "community_name": "Memory Repository Operations",
       "norm_label": ".delete_secret()"
     },
     {
@@ -4072,8 +4072,8 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_get_agent_detail",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".get_agent_detail()"
     },
     {
@@ -4204,8 +4204,8 @@
       "source_location": "L306",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_get_call_detail",
-      "community": 64,
-      "community_name": "PostgresRepository",
+      "community": 89,
+      "community_name": ".get_call",
       "norm_label": ".get_call_detail()"
     },
     {
@@ -4215,8 +4215,8 @@
       "source_location": "L325",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_postgresrepository_update_call",
-      "community": 70,
-      "community_name": "._internal_session",
+      "community": 89,
+      "community_name": ".get_call",
       "norm_label": ".update_call()"
     },
     {
@@ -4721,8 +4721,8 @@
       "source_location": "L660",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_agent",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".get_agent()"
     },
     {
@@ -4732,8 +4732,8 @@
       "source_location": "L664",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_agent_detail",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".get_agent_detail()"
     },
     {
@@ -4743,8 +4743,8 @@
       "source_location": "L674",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_update_agent",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".update_agent()"
     },
     {
@@ -4765,8 +4765,8 @@
       "source_location": "L690",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_list_versions",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".list_versions()"
     },
     {
@@ -4776,8 +4776,8 @@
       "source_location": "L697",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_version",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".get_version()"
     },
     {
@@ -4787,8 +4787,8 @@
       "source_location": "L701",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_update_draft",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".update_draft()"
     },
     {
@@ -4798,8 +4798,8 @@
       "source_location": "L712",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_rollback_agent",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".rollback_agent()"
     },
     {
@@ -4809,8 +4809,8 @@
       "source_location": "L722",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_publish_agent",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 76,
+      "community_name": "FakeEventBus",
       "norm_label": ".publish_agent()"
     },
     {
@@ -4853,8 +4853,8 @@
       "source_location": "L766",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_call",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 89,
+      "community_name": ".get_call",
       "norm_label": ".get_call()"
     },
     {
@@ -4864,8 +4864,8 @@
       "source_location": "L770",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_memoryrepository_get_call_detail",
-      "community": 2,
-      "community_name": "Memory Repository Operations",
+      "community": 89,
+      "community_name": ".get_call",
       "norm_label": ".get_call_detail()"
     },
     {
@@ -5238,8 +5238,8 @@
       "source_location": "L986",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_repository_get_repository",
-      "community": 63,
-      "community_name": "Any",
+      "community": 92,
+      "community_name": "repository.py",
       "norm_label": "get_repository()"
     },
     {
@@ -6547,8 +6547,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "secrets.py"
     },
     {
@@ -6602,8 +6602,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "envelopecipher"
     },
     {
@@ -6613,8 +6613,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher_init",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": ".__init__()"
     },
     {
@@ -6624,8 +6624,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher_encrypt",
-      "community": 79,
-      "community_name": "postprocessing.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": ".encrypt()"
     },
     {
@@ -6635,8 +6635,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_envelopecipher_decrypt",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": ".decrypt()"
     },
     {
@@ -6646,8 +6646,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "apps_api_voiceos_api_secrets_get_secret_cipher",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "get_secret_cipher()"
     },
     {
@@ -9558,6 +9558,83 @@
       "norm_label": "real postgresql rls acceptance check for tenants, agents and calls."
     },
     {
+      "label": "verify_phase1_staging.py",
+      "file_type": "code",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scripts_verify_phase1_staging",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "verify_phase1_staging.py"
+    },
+    {
+      "label": "percentile()",
+      "file_type": "code",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "scripts_verify_phase1_staging_percentile",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "percentile()"
+    },
+    {
+      "label": "evaluate()",
+      "file_type": "code",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "scripts_verify_phase1_staging_evaluate",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "evaluate()"
+    },
+    {
+      "label": "Any",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "scripts_verify_phase1_staging_py_any",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "any"
+    },
+    {
+      "label": "fetch_calls()",
+      "file_type": "code",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L67",
+      "_origin": "ast",
+      "id": "scripts_verify_phase1_staging_fetch_calls",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "fetch_calls()"
+    },
+    {
+      "label": "main()",
+      "file_type": "code",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L81",
+      "_origin": "ast",
+      "id": "scripts_verify_phase1_staging_main",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "main()"
+    },
+    {
+      "label": "Verify Phase 1 media acceptance from real staging call records.",
+      "file_type": "rationale",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scripts_verify_phase1_staging_rationale_1",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "verify phase 1 media acceptance from real staging call records."
+    },
+    {
       "label": "test_accounting.py",
       "file_type": "code",
       "source_file": "tests/test_accounting.py",
@@ -9583,7 +9660,7 @@
       "label": "test_representative_web_minute_cost_model_is_within_rnf_09()",
       "file_type": "code",
       "source_file": "tests/test_accounting.py",
-      "source_location": "L38",
+      "source_location": "L45",
       "_origin": "ast",
       "id": "tests_test_accounting_test_representative_web_minute_cost_model_is_within_rnf_09",
       "community": 78,
@@ -9630,8 +9707,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "tests_test_api_fakeeventbus",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 90,
+      "community_name": "FakeEventBus",
       "norm_label": "fakeeventbus"
     },
     {
@@ -9641,8 +9718,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "tests_test_api_fakeeventbus_init",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 90,
+      "community_name": "FakeEventBus",
       "norm_label": ".__init__()"
     },
     {
@@ -9652,8 +9729,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "tests_test_api_fakeeventbus_publish",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 90,
+      "community_name": "FakeEventBus",
       "norm_label": ".publish()"
     },
     {
@@ -9663,8 +9740,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "tests_test_api_fakeeventbus_subscribe",
-      "community": 66,
-      "community_name": "get_settings",
+      "community": 90,
+      "community_name": "FakeEventBus",
       "norm_label": ".subscribe()"
     },
     {
@@ -10147,8 +10224,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "tests_test_livekit_worker_test_call_bridge_persists_final_transcript_and_closes_call",
-      "community": 73,
-      "community_name": "LiveKitCallBridge",
+      "community": 71,
+      "community_name": "MemoryStore",
       "norm_label": "test_call_bridge_persists_final_transcript_and_closes_call()"
     },
     {
@@ -10158,8 +10235,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "tests_test_livekit_worker_test_dynamic_tools_mutate_variables_and_proxy_remote_execution",
-      "community": 71,
-      "community_name": "MemoryStore",
+      "community": 80,
+      "community_name": "MemoryRuntimeCache",
       "norm_label": "test_dynamic_tools_mutate_variables_and_proxy_remote_execution()"
     },
     {
@@ -10235,8 +10312,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_native_integrations",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "test_native_integrations.py"
     },
     {
@@ -10246,9 +10323,42 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_test_native_integrations_test_google_oauth_refresh_calendar_and_resend",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 77,
+      "community_name": "repository.py",
       "norm_label": "test_google_oauth_refresh_calendar_and_resend()"
+    },
+    {
+      "label": "test_phase1_staging_verifier.py",
+      "file_type": "code",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "tests_test_phase1_staging_verifier",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "test_phase1_staging_verifier.py"
+    },
+    {
+      "label": "test_phase1_staging_acceptance_requires_and_validates_real_metrics()",
+      "file_type": "code",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "tests_test_phase1_staging_verifier_test_phase1_staging_acceptance_requires_and_validates_real_metrics",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "test_phase1_staging_acceptance_requires_and_validates_real_metrics()"
+    },
+    {
+      "label": "test_phase1_staging_acceptance_fails_without_external_evidence()",
+      "file_type": "code",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L29",
+      "_origin": "ast",
+      "id": "tests_test_phase1_staging_verifier_test_phase1_staging_acceptance_fails_without_external_evidence",
+      "community": 72,
+      "community_name": "evaluate",
+      "norm_label": "test_phase1_staging_acceptance_fails_without_external_evidence()"
     },
     {
       "label": "test_postgres_repository.py",
@@ -10257,8 +10367,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_postgres_repository",
-      "community": 76,
-      "community_name": "FakeEventBus",
+      "community": 64,
+      "community_name": "PostgresRepository",
       "norm_label": "test_postgres_repository.py"
     },
     {
@@ -10268,8 +10378,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_test_postgres_repository_test_postgres_members_and_api_keys_lifecycle",
-      "community": 76,
-      "community_name": "FakeEventBus",
+      "community": 64,
+      "community_name": "PostgresRepository",
       "norm_label": "test_postgres_members_and_api_keys_lifecycle()"
     },
     {
@@ -10279,8 +10389,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "tests_test_postgres_repository_test_postgres_agent_and_call_lifecycle",
-      "community": 76,
-      "community_name": "FakeEventBus",
+      "community": 64,
+      "community_name": "PostgresRepository",
       "norm_label": "test_postgres_agent_and_call_lifecycle()"
     },
     {
@@ -10389,8 +10499,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_secrets",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_secrets.py"
     },
     {
@@ -10400,8 +10510,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "tests_test_secrets_test_local_envelope_cipher_roundtrip",
-      "community": 82,
-      "community_name": "livekit_sessions.py",
+      "community": 69,
+      "community_name": "HealthChecker",
       "norm_label": "test_local_envelope_cipher_roundtrip()"
     },
     {
@@ -10488,8 +10598,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "tests_test_voice_core_test_prompt_rejects_tenant_prompt_over_limit",
-      "community": 76,
-      "community_name": "FakeEventBus",
+      "community": 0,
+      "community_name": "Voice Core Modules",
       "norm_label": "test_prompt_rejects_tenant_prompt_over_limit()"
     },
     {
@@ -13075,7 +13185,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L54",
+      "source_location": "L61",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting_cost",
@@ -13087,7 +13197,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L43",
+      "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting_latency",
@@ -13098,7 +13208,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L49",
+      "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting",
@@ -13109,7 +13219,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L41",
+      "source_location": "L46",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting",
@@ -13120,7 +13230,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L28",
+      "source_location": "L29",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting",
@@ -13131,7 +13241,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L35",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting",
@@ -13190,7 +13300,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "tests/test_accounting.py",
-      "source_location": "L39",
+      "source_location": "L46",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_accounting_test_representative_web_minute_cost_model_is_within_rnf_09",
@@ -13201,7 +13311,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L28",
+      "source_location": "L29",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting_observe_metric",
@@ -13213,7 +13323,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L35",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting_observe_usage",
@@ -13225,7 +13335,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L41",
+      "source_location": "L46",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting_latency",
@@ -13237,7 +13347,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "apps/agent-worker/voiceos_voice/accounting.py",
-      "source_location": "L49",
+      "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_agent_worker_voiceos_voice_accounting_callaccounting_cost",
@@ -39699,6 +39809,169 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging",
+      "target": "scripts_verify_phase1_staging_evaluate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L67",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging",
+      "target": "scripts_verify_phase1_staging_fetch_calls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L81",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging",
+      "target": "scripts_verify_phase1_staging_main",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging",
+      "target": "scripts_verify_phase1_staging_percentile",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging_rationale_1",
+      "target": "scripts_verify_phase1_staging",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_phase1_staging_verifier",
+      "target": "scripts_verify_phase1_staging",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L48",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging_evaluate",
+      "target": "scripts_verify_phase1_staging_percentile",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging_evaluate",
+      "target": "scripts_verify_phase1_staging_py_any",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L98",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging_main",
+      "target": "scripts_verify_phase1_staging_evaluate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_phase1_staging_verifier",
+      "target": "scripts_verify_phase1_staging_evaluate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_phase1_staging_verifier_test_phase1_staging_acceptance_fails_without_external_evidence",
+      "target": "scripts_verify_phase1_staging_evaluate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_phase1_staging_verifier_test_phase1_staging_acceptance_requires_and_validates_real_metrics",
+      "target": "scripts_verify_phase1_staging_evaluate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L67",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging_fetch_calls",
+      "target": "scripts_verify_phase1_staging_py_any",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/verify_phase1_staging.py",
+      "source_location": "L93",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scripts_verify_phase1_staging_main",
+      "target": "scripts_verify_phase1_staging_fetch_calls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "tests/test_accounting.py",
       "source_location": "L7",
       "weight": 1.0,
@@ -39711,7 +39984,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_accounting.py",
-      "source_location": "L38",
+      "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_accounting",
@@ -40487,6 +40760,28 @@
       "_origin": "ast",
       "source": "tests_test_native_integrations",
       "target": "tests_test_native_integrations_test_google_oauth_refresh_calendar_and_resend",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_phase1_staging_verifier",
+      "target": "tests_test_phase1_staging_verifier_test_phase1_staging_acceptance_fails_without_external_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_phase1_staging_verifier.py",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_phase1_staging_verifier",
+      "target": "tests_test_phase1_staging_verifier_test_phase1_staging_acceptance_requires_and_validates_real_metrics",
       "confidence_score": 1.0
     },
     {
@@ -42335,5 +42630,5 @@
       "source_file": "PHASE-0-REPORT.md"
     }
   ],
-  "built_at_commit": "655c036a57119dc807ffb6b4b6c9d915dbf6df1b"
+  "built_at_commit": "3cd67051882dc42e7fb159bc6b514a1c561ecf6b"
 }
