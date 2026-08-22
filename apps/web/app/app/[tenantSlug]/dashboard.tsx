@@ -502,6 +502,7 @@ export default function Dashboard({
     Array<Record<string, unknown>>
   >([]);
   const [tools, setTools] = useState<Item[]>([]);
+  const [secrets, setSecrets] = useState<Item[]>([]);
   const [members, setMembers] = useState<Item[]>([]);
   const [apiKeys, setApiKeys] = useState<Item[]>([]);
   const [tenant, setTenant] = useState<Item | null>(null);
@@ -511,6 +512,7 @@ export default function Dashboard({
     initialTestAgentId ?? null,
   );
   const [selectedAgent, setSelectedAgent] = useState<Item | null>(null);
+  const [agentVersions, setAgentVersions] = useState<Item[]>([]);
   const [agentTab, setAgentTab] = useState<AgentTab>("prompt");
   const [promptValue, setPromptValue] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
@@ -545,13 +547,14 @@ export default function Dashboard({
         api<Item>(`tenants/${me.tenant_id}`),
       ]);
       const canConfigure = ["owner", "admin"].includes(me.role);
-      const [k, t, keys, memberResult, voiceResult] = canConfigure
+      const [k, t, keys, memberResult, voiceResult, secretResult] = canConfigure
         ? await Promise.all([
             api<{ data: Item[] }>("knowledge-bases"),
             api<{ data: Item[] }>("tools"),
             api<{ data: Item[] }>("api-keys"),
             api<{ data: Item[] }>(`tenants/${me.tenant_id}/members`),
             api<{ data: Item[]; configured: boolean }>("voices"),
+            api<{ data: Item[] }>("secrets"),
           ])
         : [
             { data: [] },
@@ -559,6 +562,7 @@ export default function Dashboard({
             { data: [] },
             { data: [] },
             { data: [], configured: false },
+            { data: [] },
           ];
       setTenantId(me.tenant_id);
       setTenant(tenantResult);
@@ -570,6 +574,7 @@ export default function Dashboard({
       setCalls(c.data);
       setKnowledge(k.data);
       setTools(t.data);
+      setSecrets(secretResult.data);
       setVoices(voiceResult.data);
       setVoiceProviderConfigured(voiceResult.configured);
       setNotice("");
@@ -620,11 +625,13 @@ export default function Dashboard({
     }
   }
   async function openAgent(id: string, nextTab: AgentTab = "prompt") {
-    const [detail, linked] = await Promise.all([
+    const [detail, linked, versions] = await Promise.all([
       api<Item>(`agents/${id}`),
       api<{ data: Item[] }>(`agents/${id}/draft/tools`),
+      api<{ data: Item[] }>(`agents/${id}/versions`),
     ]);
     setSelectedAgent(detail);
+    setAgentVersions(versions.data);
     setSelectedToolIds(linked.data.map((tool) => tool.id));
     setPromptValue(
       String(
@@ -693,6 +700,7 @@ export default function Dashboard({
       },
     };
     try {
+      setNotice("Salvando rascunho…");
       await Promise.all([
         api(`agents/${selectedAgent.id}/draft`, {
           method: "PATCH",
@@ -719,6 +727,20 @@ export default function Dashboard({
       await refresh();
       await openAgent(selectedAgent.id, agentTab);
       setNotice("Versão publicada.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function rollbackAgent(versionId: string) {
+    if (!selectedAgent) return;
+    try {
+      await api(`agents/${selectedAgent.id}/rollback`, {
+        method: "POST",
+        body: JSON.stringify({ version_id: versionId }),
+      });
+      await refresh();
+      await openAgent(selectedAgent.id, agentTab);
+      setNotice("Rollback aplicado em um novo rascunho. Revise antes de publicar.");
     } catch (error) {
       setNotice(String(error));
     }
@@ -918,19 +940,51 @@ export default function Dashboard({
   }
   async function createTool(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
+      const parametersSchema = JSON.parse(
+        String(form.get("parameters_schema") || "{}"),
+      ) as Record<string, unknown>;
+      const headers = JSON.parse(
+        String(form.get("headers") || "{}"),
+      ) as Record<string, unknown>;
+      const bodyTemplate = JSON.parse(
+        String(form.get("body_template") || "{}"),
+      ) as Record<string, unknown>;
+      const responseMapping = JSON.parse(
+        String(form.get("response_mapping") || "{}"),
+      ) as Record<string, unknown>;
+      const authType = String(form.get("auth_type") || "none");
+      const secretId = String(form.get("secret_id") || "");
       await api("tools", {
         method: "POST",
         body: JSON.stringify({
           name: form.get("name"),
           description: form.get("description"),
           type: "webhook",
-          parameters_schema: { type: "object", properties: {} },
-          webhook: { url: form.get("url"), method: "POST", timeout_ms: 5000 },
+          parameters_schema: parametersSchema,
+          webhook: {
+            url: form.get("url"),
+            method: form.get("method"),
+            headers,
+            auth:
+              authType === "none"
+                ? { type: "none" }
+                : {
+                    type: authType,
+                    secret_id: secretId,
+                    name: form.get("auth_header") || "X-API-Key",
+                  },
+            timeout_ms: Number(form.get("timeout_ms")),
+            body_template: bodyTemplate,
+            response_mapping: responseMapping,
+          },
+          speak_before: form.get("speak_before") || null,
+          async: form.get("async") === "on",
         }),
       });
-      event.currentTarget.reset();
+      formElement.reset();
       await refresh();
       setNotice(
         "Ferramenta criada; execute o teste antes de publicar um agente que a use.",
@@ -939,14 +993,17 @@ export default function Dashboard({
       setNotice(String(error));
     }
   }
-  async function testTool(tool: Item) {
+  async function testTool(
+    tool: Item,
+    arguments_: Record<string, unknown> = {},
+  ) {
     try {
       const result = await api<Record<string, unknown>>(
         `tools/${tool.id}/test`,
         {
           method: "POST",
           body: JSON.stringify({
-            arguments: {},
+            arguments: arguments_,
             session_variables: {},
             end_user: {},
           }),
@@ -1025,6 +1082,34 @@ export default function Dashboard({
       await api(`api-keys/${keyId}`, { method: "DELETE" });
       await refresh();
       setNotice("Chave de API revogada.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function createSecret(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    try {
+      await api("secrets", {
+        method: "POST",
+        body: JSON.stringify({
+          name: form.get("name"),
+          value: form.get("value"),
+        }),
+      });
+      formElement.reset();
+      await refresh();
+      setNotice("Secret criptografado e salvo.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function deleteSecret(secretId: string) {
+    try {
+      await api(`secrets/${secretId}`, { method: "DELETE" });
+      await refresh();
+      setNotice("Secret removido.");
     } catch (error) {
       setNotice(String(error));
     }
@@ -1219,6 +1304,34 @@ export default function Dashboard({
                           </button>
                         </div>
                       </div>
+                      <details className="versionHistory">
+                        <summary>
+                          Versões e rollback ({agentVersions.length})
+                        </summary>
+                        {agentVersions.map((version) => (
+                          <div className="row static" key={version.id}>
+                            <span>
+                              <strong>
+                                v{String(version.version ?? "rascunho")}
+                              </strong>
+                              <small>
+                                {version.published_at
+                                  ? `Publicada em ${new Date(String(version.published_at)).toLocaleString("pt-BR")}`
+                                  : "Rascunho atual"}
+                              </small>
+                            </span>
+                            {Boolean(version.published_at) && (
+                              <button
+                                type="button"
+                                className="secondary compact"
+                                onClick={() => void rollbackAgent(version.id)}
+                              >
+                                Restaurar como rascunho
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </details>
                       <div
                         className="tabs"
                         role="tablist"
@@ -1767,12 +1880,76 @@ export default function Dashboard({
                         <small>{String(tool.description ?? tool.type)}</small>
                       </span>
                       <span>
-                        <button
-                          className="secondary compact"
-                          onClick={() => void testTool(tool)}
-                        >
-                          Testar
-                        </button>{" "}
+                        <details className="toolTest">
+                          <summary>Testar</summary>
+                          <form
+                            className="formGrid"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              const form = new FormData(event.currentTarget);
+                              const properties = (((tool.parameters_schema as
+                                | Record<string, unknown>
+                                | undefined)?.properties ?? {}) as Record<
+                                string,
+                                Record<string, unknown>
+                              >);
+                              const arguments_ = Object.fromEntries(
+                                Object.entries(properties).map(
+                                  ([name, schema]) => {
+                                    const raw = String(form.get(name) ?? "");
+                                    const value =
+                                      schema.type === "number" ||
+                                      schema.type === "integer"
+                                        ? Number(raw)
+                                        : schema.type === "boolean"
+                                          ? raw === "true"
+                                          : raw;
+                                    return [name, value];
+                                  },
+                                ),
+                              );
+                              void testTool(tool, arguments_);
+                            }}
+                          >
+                            {Object.entries(
+                              (((tool.parameters_schema as
+                                | Record<string, unknown>
+                                | undefined)?.properties ?? {}) as Record<
+                                string,
+                                Record<string, unknown>
+                              >),
+                            ).map(([name, schema]) => (
+                              <Field
+                                key={name}
+                                label={String(schema.description ?? name)}
+                              >
+                                {schema.type === "boolean" ? (
+                                  <select name={name} defaultValue="false">
+                                    <option value="false">Não</option>
+                                    <option value="true">Sim</option>
+                                  </select>
+                                ) : (
+                                  <input
+                                    name={name}
+                                    type={
+                                      schema.type === "number" ||
+                                      schema.type === "integer"
+                                        ? "number"
+                                        : "text"
+                                    }
+                                    required={(
+                                      ((tool.parameters_schema as Record<
+                                        string,
+                                        unknown
+                                      >)?.required ?? []) as string[]
+                                    ).includes(name)}
+                                  />
+                                )}
+                              </Field>
+                            ))}
+                            <button className="secondary compact">Testar</button>
+                          </form>
+                        </details>{" "}
                         <span
                           className={`pill ${tool.last_test_ok_at ? "ok" : ""}`}
                         >
@@ -1797,6 +1974,91 @@ export default function Dashboard({
                     <Field label="URL HTTPS">
                       <input name="url" type="url" required />
                     </Field>
+                    <div className="two">
+                      <Field label="Método HTTP">
+                        <select name="method" defaultValue="POST">
+                          <option>POST</option>
+                          <option>PUT</option>
+                          <option>PATCH</option>
+                          <option>GET</option>
+                          <option>DELETE</option>
+                        </select>
+                      </Field>
+                      <Field label="Timeout (ms)">
+                        <input
+                          name="timeout_ms"
+                          type="number"
+                          min="100"
+                          max="30000"
+                          defaultValue="5000"
+                          required
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Schema JSON dos parâmetros">
+                      <textarea
+                        name="parameters_schema"
+                        rows={5}
+                        defaultValue={JSON.stringify(
+                          { type: "object", properties: {}, required: [] },
+                          null,
+                          2,
+                        )}
+                        required
+                      />
+                    </Field>
+                    <Field label="Headers JSON">
+                      <textarea name="headers" rows={3} defaultValue="{}" />
+                    </Field>
+                    <div className="two">
+                      <Field label="Autenticação">
+                        <select name="auth_type" defaultValue="none">
+                          <option value="none">Nenhuma</option>
+                          <option value="bearer">Bearer</option>
+                          <option value="basic">Basic</option>
+                          <option value="header">Header</option>
+                          <option value="hmac">HMAC</option>
+                        </select>
+                      </Field>
+                      <Field label="Secret">
+                        <select name="secret_id" defaultValue="">
+                          <option value="">Sem secret</option>
+                          {secrets.map((secret) => (
+                            <option key={secret.id} value={secret.id}>
+                              {secret.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                    <Field label="Nome do header de autenticação">
+                      <input name="auth_header" defaultValue="X-API-Key" />
+                    </Field>
+                    <Field label="Body template JSON">
+                      <textarea
+                        name="body_template"
+                        rows={4}
+                        defaultValue="{}"
+                      />
+                    </Field>
+                    <Field label="Response mapping JSONPath">
+                      <textarea
+                        name="response_mapping"
+                        rows={3}
+                        defaultValue="{}"
+                        placeholder={'{"status":"$.status"}'}
+                      />
+                    </Field>
+                    <Field label="Fala antes da execução">
+                      <input
+                        name="speak_before"
+                        placeholder="Vou consultar isso para você."
+                      />
+                    </Field>
+                    <label className="checkRow">
+                      <input name="async" type="checkbox" /> Executar sem
+                      bloquear a conversa
+                    </label>
                     <button>Criar ferramenta</button>
                   </form>
                 </article>
@@ -1919,6 +2181,34 @@ export default function Dashboard({
                   >
                     Conectar Google
                   </button>
+                  <h2>Secrets de integrações</h2>
+                  <p className="muted">
+                    Valores são criptografados e nunca retornam pela API.
+                  </p>
+                  <form className="formGrid" onSubmit={createSecret}>
+                    <Field label="Nome">
+                      <input name="name" required placeholder="crm_api_key" />
+                    </Field>
+                    <Field label="Valor secreto">
+                      <input name="value" type="password" required />
+                    </Field>
+                    <button>Salvar secret</button>
+                  </form>
+                  {secrets.map((secret) => (
+                    <div className="row static" key={secret.id}>
+                      <span>
+                        <strong>{secret.name}</strong>
+                        <small>valor protegido</small>
+                      </span>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => void deleteSecret(secret.id)}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
                   <h2>Chaves existentes</h2>
                   {apiKeys.map((key) => (
                     <div className="row static" key={key.id}>

@@ -128,6 +128,9 @@ test("criar agente, publicar, testar e ver chamada", async ({
     .selectOption({ label: "Base Demo" });
   await page.getByLabel("Top K da busca").fill("7");
   await page.getByRole("button", { name: "Salvar rascunho" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Rascunho e ferramentas salvos",
+  );
   await expect(page.getByLabel("Top K da busca")).toHaveValue("7");
   await page.getByRole("button", { name: "Testar busca" }).click();
   await expect(page.getByRole("heading", { name: "Base Demo" })).toBeVisible();
@@ -137,9 +140,31 @@ test("criar agente, publicar, testar e ver chamada", async ({
   await expect(
     page.getByRole("heading", { name: "Novo webhook" }),
   ).toBeVisible();
+  const toolName = `webhook_e2e_${Date.now()}`;
+  await page.getByLabel("Nome snake_case").fill(toolName);
+  await page.getByLabel("Descrição").fill("Consulta o mock de teste E2E");
+  await page.getByLabel("URL HTTPS").fill("http://127.0.0.1:9000/tool/ok");
+  await page.getByLabel("Fala antes da execução").fill("Vou consultar agora.");
+  await page.getByRole("button", { name: "Criar ferramenta" }).click();
+  await expect(page.getByRole("status")).toContainText("Ferramenta criada");
+  const toolRow = page.locator(".row.static").filter({ hasText: toolName });
+  await expect(toolRow).toBeVisible();
+  await toolRow.getByText("Testar", { exact: true }).first().click();
+  await toolRow.getByRole("button", { name: "Testar" }).click();
+  await expect(page.getByRole("status")).toContainText(/conclu/);
   await page.getByRole("button", { name: "Agentes", exact: true }).click();
   await page.getByRole("button", { name: "Publicar" }).click();
   await expect(page.getByRole("status")).toContainText("Versão publicada");
+
+  await page.getByText(/Versões e rollback/).click();
+  await expect(
+    page.getByRole("button", { name: "Restaurar como rascunho" }).first(),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Restaurar como rascunho" })
+    .first()
+    .click();
+  await expect(page.getByRole("status")).toContainText("Rollback aplicado");
 
   await page.getByRole("button", { name: "Testar" }).click();
   await expect(
@@ -167,6 +192,15 @@ test("criar agente, publicar, testar e ver chamada", async ({
     "Configurações gerais salvas",
   );
   await expect(page.getByLabel("Nome do workspace")).toHaveValue(workspaceName);
+  const secretName = `secret_e2e_${Date.now()}`;
+  await page.getByPlaceholder("crm_api_key").fill(secretName);
+  await page.getByLabel("Valor secreto").fill("e2e-secret-value");
+  await page.getByRole("button", { name: "Salvar secret" }).click();
+  await expect(page.getByRole("status")).toContainText("Secret criptografado");
+  const secretRow = page.locator(".row.static").filter({ hasText: secretName });
+  await expect(secretRow).toBeVisible();
+  await secretRow.getByRole("button", { name: "Remover" }).click();
+  await expect(page.getByRole("status")).toContainText("Secret removido");
 
   await page.getByRole("button", { name: "Chamadas", exact: true }).click();
   await expect(

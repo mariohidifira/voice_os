@@ -258,6 +258,35 @@ button.danger {
 .editorHead h2 {
   font-size: 25px;
 }
+.versionHistory {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+.versionHistory summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.toolTest {
+  display: inline-block;
+  position: relative;
+}
+.toolTest summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.toolTest form {
+  position: absolute;
+  right: 0;
+  z-index: 4;
+  min-width: 280px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #111923;
+  box-shadow: 0 12px 30px #0008;
+}
 .tabs {
   display: flex;
   gap: 20px;

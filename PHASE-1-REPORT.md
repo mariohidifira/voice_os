@@ -17,7 +17,7 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 
 - `ruff check .`: aprovado.
 - MyPy strict: aprovado em 33 arquivos.
-- `pytest -q`: 77 testes aprovados.
+- `pytest -q`: 78 testes aprovados; cobertura combinada da API em 83,09% (gate mínimo 80%).
 - TypeScript, ESLint e build de produção Next.js: aprovados.
 - Playwright essencial: 2 cenários aprovados contra PostgreSQL, mock HTTP e API em `localhost:8005`, cobrindo o fluxo administrativo e o onboarding completo.
 - Isolamento PostgreSQL reforçado: toda sessão de tenant assume o papel `voiceos_app` (`NOSUPERUSER`/`NOBYPASSRLS`) antes de definir `app.tenant_id`; o E2E confirma que o novo tenant não enxerga agentes do tenant demo.
@@ -31,6 +31,9 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 - Aba Conhecimento configura KB, `top_k` e score mínimo e abre a busca de debug; aba Tools mantém toggles e atalho direto para criação de webhook.
 - Configurações gerais do tenant (nome, fuso horário, gravação e retenção) expostas por API tenant-scoped e editáveis no painel; persistência coberta no E2E.
 - Gestão do workspace concluída no painel: convite, alteração de papel e remoção de membros, criação e revogação de API keys.
+- Histórico de versões e rollback expostos no editor; o E2E cobre publicar, restaurar uma versão como novo rascunho e iniciar o teste desse rascunho.
+- Formulário completo de webhook no painel: JSON Schema, método, headers, autenticação por secret criptografado, timeout, body template, response mapping JSONPath, `speak_before` e execução assíncrona; o formulário de teste é gerado a partir do schema.
+- Falhas de conexão de webhooks são convertidas em `connection_error` recuperável, sem HTTP 500 nem interrupção do fluxo; timeout, erro HTTP e conexão recusada possuem cobertura automatizada.
 - Ciclo administrativo do agente: pausar, reativar e excluir pelo painel.
 - Conversas determinísticas: 40 casos texto + 10 casos áudio sintético, 100% aprovados.
 - Barge-in determinístico: 4/4 casos aprovados; backchannels isolados também cobertos.
