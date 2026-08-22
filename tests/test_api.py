@@ -218,6 +218,9 @@ def test_tool_and_internal_runtime() -> None:
     assert client.get("/v1/tools", headers=headers(tenant)).json()["data"][0]["id"] == tool_id
     assert client.patch(f"/v1/tools/{tool_id}", json={"speak_before": "Consultando"}, headers=headers(tenant)).json()["speak_before"] == "Consultando"
     assert client.put(f"/v1/agents/{agent['id']}/draft/tools", json={"tool_ids": [tool_id]}, headers=headers(tenant)).status_code == 200
+    linked = client.get(f"/v1/agents/{agent['id']}/draft/tools", headers=headers(tenant))
+    assert linked.status_code == 200 and linked.json()["data"][0]["id"] == tool_id
+    assert client.get(f"/v1/agents/{agent['id']}/draft/tools", headers=headers(str(uuid4()))).status_code == 404
     runtime = client.get(
         f"/internal/agents/{agent['id']}/runtime?version=draft",
         headers={"X-Internal-Token": get_settings().internal_api_token},

@@ -475,6 +475,14 @@ async def set_draft_tools(agent_id: UUID, body: AgentToolsSet, auth: Auth, repo:
     return {"data": tools}
 
 
+@v1.get("/agents/{agent_id}/draft/tools")
+async def get_draft_tools(agent_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    if not await repo.get_agent(auth.tenant_id, agent_id):
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    runtime = await repo.get_runtime(agent_id, "draft")
+    return {"data": runtime.get("tools", []) if runtime else []}
+
+
 @v1.get("/knowledge-bases")
 async def list_knowledge_bases(auth: Auth, repo: Repo) -> dict[str, Any]:
     return {"data": await repo.list_knowledge_bases(auth.tenant_id), "next_cursor": None}

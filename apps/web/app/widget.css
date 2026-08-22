@@ -16,3 +16,9 @@
 .queryResult{margin-top:9px;padding:12px;border:1px solid var(--line);border-radius:9px;background:#0b1118}
 .queryResult b{color:var(--accent);font-size:12px}
 .queryResult p{margin:6px 0 0;white-space:pre-wrap}
+.toolPicker{display:grid;gap:9px;margin:0;padding:14px;border:1px solid var(--line);border-radius:9px}
+.toolPicker legend{padding:0 6px;color:var(--muted)}
+.toolPicker .check{display:flex;align-items:center;gap:6px}
+.toolPicker .check small{margin-left:5px}
+.compact{padding:5px 9px;font-size:12px}
+.testResult{max-height:280px;overflow:auto;padding:12px;background:#090d12;border:1px solid var(--line);border-radius:9px;color:#bad7cf;white-space:pre-wrap}
