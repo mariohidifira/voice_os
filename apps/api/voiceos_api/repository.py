@@ -1,7 +1,7 @@
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Protocol
 from uuid import UUID, uuid4
 
@@ -616,14 +616,17 @@ class PostgresRepository:
                 clauses.append(f"{field}=:{field}")
                 params[field] = filters[field]
         if filters.get("from") is not None:
-            clauses.append("started_at >= :from_date")
+            clauses.append("started_at >= CAST(:from_date AS date)")
             params["from_date"] = filters["from"]
         if filters.get("to") is not None:
-            clauses.append("started_at <= :to_date")
+            clauses.append("started_at < (CAST(:to_date AS date) + INTERVAL '1 day')")
             params["to_date"] = filters["to"]
         if filters.get("q"):
             clauses.append(
-                "(summary ILIKE :q OR EXISTS (SELECT 1 FROM call_turns ct WHERE ct.call_id=calls.id AND ct.text ILIKE :q))"
+                "(calls.id::text ILIKE :q OR summary ILIKE :q "
+                "OR EXISTS (SELECT 1 FROM call_turns ct WHERE ct.call_id=calls.id AND ct.text ILIKE :q) "
+                "OR EXISTS (SELECT 1 FROM end_users eu WHERE eu.id=calls.end_user_id "
+                "AND (eu.phone ILIKE :q OR eu.email ILIKE :q OR eu.name ILIKE :q)))"
             )
             params["q"] = f"%{filters['q']}%"
         async with self.tenant_session(tenant_id) as db:
@@ -1531,15 +1534,35 @@ class MemoryRepository:
     ) -> list[dict[str, Any]]:
         filters = filters or {}
         calls = [c for c in self.memory.calls.values() if c["tenant_id"] == tenant_id]
+
+        def occurred_on(call: dict[str, Any]) -> date:
+            timestamp = call.get("started_at") or call.get("created_at")
+            if isinstance(timestamp, datetime):
+                return timestamp.date()
+            return timestamp if isinstance(timestamp, date) else date.min
+
         for field in ("agent_id", "channel", "status", "end_user_id"):
             if filters.get(field) is not None:
                 calls = [call for call in calls if call.get(field) == filters[field]]
+        if filters.get("from") is not None:
+            calls = [call for call in calls if occurred_on(call) >= filters["from"]]
+        if filters.get("to") is not None:
+            calls = [call for call in calls if occurred_on(call) <= filters["to"]]
         if filters.get("q"):
             query = filters["q"].casefold()
             calls = [
                 call
                 for call in calls
-                if query in (call.get("summary") or "").casefold()
+                if query in str(call["id"]).casefold()
+                or query in (call.get("summary") or "").casefold()
+                or (
+                    bool(call.get("end_user_id"))
+                    and (end_user := self.memory.end_users.get(call["end_user_id"])) is not None
+                    and any(
+                        query in str(end_user.get(field) or "").casefold()
+                        for field in ("phone", "email", "name")
+                    )
+                )
                 or any(
                     query in turn.get("text", "").casefold()
                     for turn in self.memory.call_turns.get(call["id"], [])

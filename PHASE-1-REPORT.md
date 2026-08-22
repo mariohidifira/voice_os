@@ -17,12 +17,13 @@ Status: **implementação local completa; aceite de mídia real em staging pende
 
 - `ruff check .`: aprovado.
 - MyPy strict: aprovado em 33 arquivos.
-- `pytest -q`: 80 testes aprovados; cobertura combinada da API em 83,24% (gate mínimo 80%).
+- `pytest -q`: 80 testes aprovados; cobertura combinada da API em 83,62% (gate mínimo 80%).
 - TypeScript, ESLint e build de produção Next.js: aprovados.
 - Playwright essencial: 2 cenários aprovados contra PostgreSQL, mock HTTP e API em `localhost:8005`, cobrindo o fluxo administrativo e o onboarding completo.
 - Isolamento PostgreSQL reforçado: toda sessão de tenant assume o papel `voiceos_app` (`NOSUPERUSER`/`NOBYPASSRLS`) antes de definir `app.tenant_id`; o E2E confirma que o novo tenant não enxerga agentes do tenant demo.
 - RBAC de configuração: operator/viewer recebem 403 em KB, tools, secrets, integrações e membros; o painel carrega somente os recursos permitidos ao papel.
 - Detalhe de chamada: player autenticado por URL S3 assinada e tenant-scoped, download, transcrição clicável sincronizada, custo, TTFB, reação ao barge-in, tools, eventos, resultado e variáveis coletadas.
+- Lista de chamadas com filtros combináveis por busca, status, canal, agente e período inclusivo; busca cobre resumo, transcrição, ID e dados do end-user. O detalhe exporta a transcrição com timestamps e permite copiar o ID.
 - Editor avançado: modelo/temperatura/tokens, voz/velocidade/estabilidade, presets de turno, interrupções, backchannels, keywords STT, filler, transferência, variáveis e JSON read-only; persistência coberta no E2E.
 - Editor organizado em seis abas acessíveis e funcionais (Prompt, Voz, Conversa, Conhecimento, Tools e Avançado), com navegação e persistência cobertas no E2E.
 - Aba Prompt com limite/contador de 6.000 caracteres, detecção de variáveis Jinja e preview “Melhorar com IA”; o serviço Anthropic preserva variáveis, aplica timeout/retry e só persiste após revisão e salvamento explícito.

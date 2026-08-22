@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import jwt
@@ -318,6 +319,9 @@ def test_session_end_user_filters_and_draft_test_session() -> None:
         )
         == 1
     )
+    today = datetime.now(UTC).date().isoformat()
+    assert len(client.get(f"/v1/calls?q={session['call_id']}", headers=auth).json()["data"]) == 1
+    assert len(client.get(f"/v1/calls?from={today}&to={today}", headers=auth).json()["data"]) == 1
 
     detail = client.get(f"/v1/agents/{agent['id']}", headers=auth).json()
     test_session = client.post(
@@ -331,6 +335,7 @@ def test_session_end_user_filters_and_draft_test_session() -> None:
     test_call = client.get(f"/v1/calls/{test_session['call_id']}", headers=auth).json()
     assert test_call["agent_version_id"] == detail["draft"]["id"]
     assert len(store.end_users) == 1
+    assert len(client.get("/v1/calls?q=%2B5511999999999", headers=auth).json()["data"]) == 2
 
 
 def test_agent_draft_versions_and_rollback() -> None:

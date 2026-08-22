@@ -218,6 +218,13 @@ test("criar agente, publicar, testar e ver chamada", async ({
       .or(page.getByText("cancelled", { exact: false }))
       .first(),
   ).toBeVisible();
+  await page.getByLabel("Buscar").fill("Chamada demo 1");
+  await page.getByRole("button", { name: "Filtrar" }).click();
+  await expect(page.getByRole("status")).toContainText("1 chamada(s)");
+  await expect(page.getByText("Chamada demo 2", { exact: false })).toHaveCount(0);
+  await page.getByRole("button", { name: "Limpar" }).click();
+  await expect(page.getByRole("status")).toContainText("Filtros de chamadas removidos");
+  await expect(page.getByText("Chamada demo 2", { exact: false }).first()).toBeVisible();
   await page
     .getByRole("button", {
       name: "completed · web 120s · Chamada demo 1",
@@ -229,6 +236,13 @@ test("criar agente, publicar, testar e ver chamada", async ({
   });
   await expect(synchronizedTurn).toBeVisible();
   await synchronizedTurn.click();
+  const transcriptDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Baixar transcrição" }).click();
+  expect((await transcriptDownload).suggestedFilename()).toMatch(
+    /voiceos-.*-transcript\.txt/,
+  );
+  await page.getByRole("button", { name: "Copiar ID" }).click();
+  await expect(page.getByRole("status")).toContainText(/ID da chamada/);
 });
 
 test("onboarding cria tenant, agente por template e abre teste", async ({

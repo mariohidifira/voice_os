@@ -834,6 +834,57 @@ export default function Dashboard({
     setSelectedCall(detail);
     setSection("calls");
   }
+  async function filterCalls(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const query = new URLSearchParams();
+    for (const name of ["q", "status", "channel", "agent_id", "from", "to"]) {
+      const value = String(form.get(name) ?? "").trim();
+      if (value) query.set(name, value);
+    }
+    try {
+      const result = await api<{ data: Call[] }>(`calls?${query.toString()}`);
+      setCalls(result.data);
+      setSelectedCall(null);
+      setNotice(`${result.data.length} chamada(s) encontrada(s).`);
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function clearCallFilters(form: HTMLFormElement) {
+    form.reset();
+    try {
+      const result = await api<{ data: Call[] }>("calls");
+      setCalls(result.data);
+      setSelectedCall(null);
+      setNotice("Filtros de chamadas removidos.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  function downloadTranscript(call: Call) {
+    const content = (call.turns ?? [])
+      .map((turn) => {
+        const totalSeconds = Math.floor((turn.audio_offset_ms ?? 0) / 1000);
+        const timestamp = new Date(totalSeconds * 1000).toISOString().slice(11, 19);
+        return `[${timestamp}] ${turn.role === "user" ? "Pessoa" : "Agente"}: ${turn.text}`;
+      })
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `voiceos-${call.id}-transcript.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+  async function copyCallId(callId: string) {
+    try {
+      await navigator.clipboard.writeText(callId);
+      setNotice("ID da chamada copiado.");
+    } catch {
+      setNotice(`ID da chamada: ${callId}`);
+    }
+  }
   async function openKnowledge(kb: Item) {
     setSelectedKnowledge(kb);
     setDocuments(
@@ -1678,6 +1729,62 @@ export default function Dashboard({
               <section className="workspace">
                 <aside className="list card">
                   <h2>Chamadas</h2>
+                  <form className="callFilters" onSubmit={filterCalls}>
+                    <Field label="Buscar">
+                      <input name="q" placeholder="Resumo, telefone ou ID" />
+                    </Field>
+                    <div className="two">
+                      <Field label="Status">
+                        <select name="status" defaultValue="">
+                          <option value="">Todos</option>
+                          <option value="queued">Na fila</option>
+                          <option value="ringing">Chamando</option>
+                          <option value="in_progress">Em andamento</option>
+                          <option value="completed">Concluída</option>
+                          <option value="failed">Falhou</option>
+                          <option value="cancelled">Cancelada</option>
+                        </select>
+                      </Field>
+                      <Field label="Canal">
+                        <select name="channel" defaultValue="">
+                          <option value="">Todos</option>
+                          <option value="web">Web</option>
+                          <option value="phone">Telefone</option>
+                          <option value="whatsapp">WhatsApp</option>
+                        </select>
+                      </Field>
+                    </div>
+                    <Field label="Agente">
+                      <select name="agent_id" defaultValue="">
+                        <option value="">Todos</option>
+                        {agents.map((agent) => (
+                          <option value={agent.id} key={agent.id}>
+                            {agent.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <div className="two">
+                      <Field label="De">
+                        <input name="from" type="date" />
+                      </Field>
+                      <Field label="Até">
+                        <input name="to" type="date" />
+                      </Field>
+                    </div>
+                    <div className="actions">
+                      <button>Filtrar</button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={(event) =>
+                          void clearCallFilters(event.currentTarget.form!)
+                        }
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </form>
                   {calls.map((call) => (
                     <button
                       className={`row ${selectedCall?.id === call.id ? "selected" : ""}`}
@@ -1701,6 +1808,23 @@ export default function Dashboard({
                     <>
                       <div className="eyebrow">detalhe da chamada</div>
                       <h2>{selectedCall.summary ?? selectedCall.id}</h2>
+                      <div className="actions callActions">
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => downloadTranscript(selectedCall)}
+                          disabled={!selectedCall.turns?.length}
+                        >
+                          Baixar transcrição
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => void copyCallId(selectedCall.id)}
+                        >
+                          Copiar ID
+                        </button>
+                      </div>
                       <div className="callMeta">
                         <span>
                           Status <b>{selectedCall.status}</b>

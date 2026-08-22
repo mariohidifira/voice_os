@@ -223,6 +223,21 @@ small {
   border-bottom: 1px solid var(--line);
   border-radius: 0;
 }
+.callFilters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.callFilters .field input,
+.callFilters .field select {
+  min-width: 0;
+}
+.callActions {
+  justify-content: flex-start;
+  margin: 10px 0;
+}
 .actions {
   display: flex !important;
   grid-auto-flow: column;

@@ -244,6 +244,20 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
                 },
             )
         ] == [call_id]
+        assert [item["id"] for item in await repo.list_calls(TENANT, {"q": str(call_id)})] == [
+            call_id
+        ]
+        today = datetime.now(UTC).date()
+        assert [
+            item["id"]
+            for item in await repo.list_calls(TENANT, {"from": today, "to": today})
+            if item["id"] == call_id
+        ] == [call_id]
+        assert [
+            item["id"]
+            for item in await repo.list_calls(TENANT, {"q": "+5511999999999"})
+            if item["id"] == call_id
+        ] == [call_id]
         assert await repo.update_call(
             TENANT, call_id, {"status": "in_progress", "latency": {"ttfb_p50_ms": 700}}
         )
