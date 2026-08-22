@@ -294,6 +294,28 @@ async def test_postgres_agent_and_call_lifecycle() -> None:
         assert [item["id"] for item in await repo.list_calls(TENANT, {"q": str(call_id)})] == [
             call_id
         ]
+        outbound_call = await repo.create_call(
+            TENANT,
+            agent_id,
+            {},
+            {"source": "outbound-test"},
+            agent_version_id=first_version,
+            end_user_id=end_user_id,
+            channel="phone_outbound",
+            from_number="+551140008888",
+            to_number="+5511999990001",
+        )
+        call_ids.append(outbound_call["id"])
+        persisted_outbound = await repo.update_call(
+            TENANT,
+            outbound_call["id"],
+            {"status": "ringing", "provider_call_sid": "SIP_TEST_1"},
+        )
+        assert persisted_outbound
+        assert persisted_outbound["channel"] == "phone_outbound"
+        assert persisted_outbound["from_number"] == "+551140008888"
+        assert persisted_outbound["to_number"] == "+5511999990001"
+        assert persisted_outbound["provider_call_sid"] == "SIP_TEST_1"
         today = datetime.now(UTC).date()
         assert [
             item["id"]

@@ -32,6 +32,10 @@ class SipDispatch(Protocol):
     async def delete(self, rule_id: str) -> None: ...
 
 
+class SipOutbound(Protocol):
+    async def dial(self, room_name: str, to: str, from_number: str) -> str: ...
+
+
 class TwilioNumberProvider:
     def __init__(
         self,
@@ -170,6 +174,40 @@ class LiveKitSipDispatch:
             await client.aclose()
 
 
+class LiveKitSipOutbound:
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    async def dial(self, room_name: str, to: str, from_number: str) -> str:
+        if not self.settings.livekit_sip_trunk_id_outbound:
+            raise TelephonyProviderError("LiveKit outbound SIP trunk is not configured")
+        client = api.LiveKitAPI(
+            self.settings.livekit_url,
+            self.settings.livekit_api_key,
+            self.settings.livekit_api_secret,
+        )
+        try:
+            participant = await client.sip.create_sip_participant(
+                api.CreateSIPParticipantRequest(
+                    sip_trunk_id=self.settings.livekit_sip_trunk_id_outbound,
+                    sip_call_to=to,
+                    sip_number=from_number,
+                    room_name=room_name,
+                    participant_identity=f"phone_{to.removeprefix('+')}",
+                    participant_name=to,
+                    participant_metadata=json.dumps({"channel": "phone_outbound"}),
+                    wait_until_answered=True,
+                    play_dialtone=False,
+                    krisp_enabled=True,
+                )
+            )
+            return str(participant.participant_id or participant.sip_call_id)
+        except Exception as exc:
+            raise TelephonyProviderError("LiveKit outbound SIP call failed") from exc
+        finally:
+            await client.aclose()
+
+
 class DevNumberProvider:
     def __init__(self) -> None:
         self.purchased: set[str] = set()
@@ -213,10 +251,16 @@ class DevSipDispatch:
         return None
 
 
+class DevSipOutbound:
+    async def dial(self, room_name: str, to: str, from_number: str) -> str:
+        return f"SIP_DEV_{room_name}_{to[-4:]}_{from_number[-4:]}"
+
+
 @dataclass(frozen=True)
 class Telephony:
     numbers: NumberProvider
     dispatch: SipDispatch
+    outbound: SipOutbound | None = None
 
 
 _dev_numbers = DevNumberProvider()
@@ -225,7 +269,7 @@ _dev_numbers = DevNumberProvider()
 def get_telephony() -> Telephony:
     settings = get_settings()
     if settings.app_env in {"dev", "test"}:
-        return Telephony(_dev_numbers, DevSipDispatch())
+        return Telephony(_dev_numbers, DevSipDispatch(), DevSipOutbound())
     if not settings.twilio_account_sid or not settings.twilio_auth_token:
         raise HTTPException(
             503,
@@ -245,4 +289,5 @@ def get_telephony() -> Telephony:
     return Telephony(
         TwilioNumberProvider(settings.twilio_account_sid, settings.twilio_auth_token),
         LiveKitSipDispatch(settings),
+        LiveKitSipOutbound(settings) if settings.livekit_sip_trunk_id_outbound else None,
     )

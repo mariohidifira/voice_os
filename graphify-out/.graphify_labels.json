@@ -100,5 +100,9 @@
   "98": "LastOwnerError",
   "99": "RedisRuntimeCache",
   "100": "0006_phone_number_lifecycle.py",
-  "101": ".get_tenant"
+  "101": ".get_tenant",
+  "102": "TelephonyProviderError",
+  "103": "storage.py",
+  "104": "FakeEventBus",
+  "105": "FakeVoicePreview"
 }

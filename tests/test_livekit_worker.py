@@ -14,9 +14,94 @@ from voiceos_voice.api_client import MemoryRuntimeCache, WorkerAPI
 from voiceos_voice.livekit_worker import (
     LiveKitCallBridge,
     SessionGuards,
+    dial_outbound,
     dynamic_tools,
     room_metadata,
 )
+
+
+@pytest.mark.asyncio
+async def test_dial_outbound_maps_sip_lifecycle(monkeypatch: pytest.MonkeyPatch) -> None:
+    call_id = uuid4()
+    patches: list[dict[str, Any]] = []
+    sip_requests: list[Any] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = __import__("json").loads(request.content or b"{}")
+        patches.append(body)
+        return httpx.Response(200, json={"id": str(call_id), **body})
+
+    class Sip:
+        async def create_sip_participant(self, request: Any) -> Any:
+            sip_requests.append(request)
+            return type("Participant", (), {"sip_call_id": "SIP_CALL_1"})()
+
+    class Client:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            self.sip = Sip()
+
+        async def aclose(self) -> None:
+            return None
+
+    monkeypatch.setenv("LIVEKIT_URL", "wss://livekit.test")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "key")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "secret")
+    monkeypatch.setenv("LIVEKIT_SIP_TRUNK_ID_OUTBOUND", "ST_OUT")
+    monkeypatch.setattr("voiceos_voice.livekit_worker.livekit_api.LiveKitAPI", Client)
+    api = WorkerAPI("http://api", "internal", MemoryRuntimeCache(), httpx.MockTransport(handler))
+
+    await dial_outbound(
+        api,
+        call_id,
+        "voiceos_room",
+        {"to": "+5511999990001", "from": "+551140008888"},
+    )
+
+    assert [patch["status"] for patch in patches] == ["ringing", "in_progress"]
+    assert patches[-1]["provider_call_sid"] == "SIP_CALL_1"
+    assert sip_requests[0].sip_trunk_id == "ST_OUT"
+    assert sip_requests[0].sip_call_to == "+5511999990001"
+    assert sip_requests[0].wait_until_answered is True
+
+
+@pytest.mark.asyncio
+async def test_dial_outbound_records_provider_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    call_id = uuid4()
+    patches: list[dict[str, Any]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = __import__("json").loads(request.content or b"{}")
+        patches.append(body)
+        return httpx.Response(200, json={"id": str(call_id), **body})
+
+    class Sip:
+        async def create_sip_participant(self, request: Any) -> Any:
+            raise RuntimeError("provider unavailable")
+
+    class Client:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            self.sip = Sip()
+
+        async def aclose(self) -> None:
+            return None
+
+    monkeypatch.setenv("LIVEKIT_URL", "wss://livekit.test")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "key")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "secret")
+    monkeypatch.setenv("LIVEKIT_SIP_TRUNK_ID_OUTBOUND", "ST_OUT")
+    monkeypatch.setattr("voiceos_voice.livekit_worker.livekit_api.LiveKitAPI", Client)
+    api = WorkerAPI("http://api", "internal", MemoryRuntimeCache(), httpx.MockTransport(handler))
+
+    with pytest.raises(RuntimeError, match="provider unavailable"):
+        await dial_outbound(
+            api,
+            call_id,
+            "voiceos_room",
+            {"to": "+5511999990001", "from": "+551140008888"},
+        )
+
+    assert [patch["status"] for patch in patches] == ["ringing", "failed"]
+    assert patches[-1]["end_reason"] == "error"
 
 
 def test_room_metadata_parses_dispatch_contract() -> None:

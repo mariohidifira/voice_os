@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from livekit import api as livekit_api
 from livekit.agents import (
     Agent,
     AgentServer,
@@ -30,6 +31,65 @@ from .accounting import CallAccounting
 from .api_client import RedisRuntimeCache, WorkerAPI
 from .prompting import build_system_prompt
 from .recording import start_room_recording
+
+
+async def dial_outbound(
+    api: WorkerAPI, call_id: UUID, room_name: str, metadata: dict[str, Any]
+) -> None:
+    trunk_id = os.getenv("LIVEKIT_SIP_TRUNK_ID_OUTBOUND", "")
+    to_number = str(metadata.get("to") or "")
+    from_number = str(metadata.get("from") or "")
+    if not trunk_id or not to_number or not from_number:
+        await api.update_call(
+            call_id,
+            {
+                "status": "failed",
+                "end_reason": "error",
+                "ended_at": datetime.now(UTC).isoformat(),
+            },
+        )
+        raise RuntimeError("outbound SIP metadata or trunk is not configured")
+    await api.update_call(call_id, {"status": "ringing", "livekit_room": room_name})
+    client = livekit_api.LiveKitAPI(
+        os.getenv("LIVEKIT_URL", ""),
+        os.getenv("LIVEKIT_API_KEY", ""),
+        os.getenv("LIVEKIT_API_SECRET", ""),
+    )
+    try:
+        participant = await client.sip.create_sip_participant(
+            livekit_api.CreateSIPParticipantRequest(
+                sip_trunk_id=trunk_id,
+                sip_call_to=to_number,
+                sip_number=from_number,
+                room_name=room_name,
+                participant_identity=f"phone_{to_number.removeprefix('+')}",
+                participant_name=to_number,
+                participant_metadata=json.dumps({"channel": "phone_outbound"}),
+                wait_until_answered=True,
+                play_dialtone=False,
+                krisp_enabled=True,
+            )
+        )
+    except Exception:
+        await api.update_call(
+            call_id,
+            {
+                "status": "failed",
+                "end_reason": "error",
+                "ended_at": datetime.now(UTC).isoformat(),
+            },
+        )
+        raise
+    finally:
+        await client.aclose()
+    await api.update_call(
+        call_id,
+        {
+            "status": "in_progress",
+            "provider_call_sid": str(participant.sip_call_id),
+            "answered_at": datetime.now(UTC).isoformat(),
+        },
+    )
 
 
 def _jsonable(value: Any) -> Any:
@@ -298,7 +358,10 @@ async def voiceos_agent(ctx: JobContext) -> None:
     variables = {**runtime.get("variables", {}), **dict(metadata.get("variables") or {})}
     if metadata.get("call_id"):
         call_id = UUID(str(metadata["call_id"]))
-        await api.update_call(call_id, {"status": "in_progress", "livekit_room": ctx.room.name, "answered_at": datetime.now(UTC).isoformat()})
+        if metadata.get("channel") == "phone_outbound":
+            await dial_outbound(api, call_id, ctx.room.name, metadata)
+        else:
+            await api.update_call(call_id, {"status": "in_progress", "livekit_room": ctx.room.name, "answered_at": datetime.now(UTC).isoformat()})
     else:
         created = await api.create_call(
             {

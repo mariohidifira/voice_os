@@ -59,6 +59,11 @@ class Repository(Protocol):
         *,
         agent_version_id: UUID | None = None,
         end_user_id: UUID | None = None,
+        channel: str = "web",
+        status: str = "queued",
+        from_number: str | None = None,
+        to_number: str | None = None,
+        campaign_id: UUID | None = None,
     ) -> dict[str, Any]: ...
     async def list_calls(
         self, tenant_id: UUID, filters: dict[str, Any] | None = None
@@ -644,12 +649,18 @@ class PostgresRepository:
         *,
         agent_version_id: UUID | None = None,
         end_user_id: UUID | None = None,
+        channel: str = "web",
+        status: str = "queued",
+        from_number: str | None = None,
+        to_number: str | None = None,
+        campaign_id: UUID | None = None,
     ) -> dict[str, Any]:
         call_id = uuid4()
         async with self.tenant_session(tenant_id) as db:
             await db.execute(
                 text(
-                    "INSERT INTO calls(id,tenant_id,agent_id,agent_version_id,end_user_id,channel,status,variables,metadata,started_at) VALUES(:id,:tenant,:agent,:version,:end_user,'web','queued',CAST(:variables AS jsonb),CAST(:metadata AS jsonb),now())"
+                    "INSERT INTO calls(id,tenant_id,agent_id,agent_version_id,end_user_id,channel,status,from_number,to_number,campaign_id,variables,metadata,started_at) "
+                    "VALUES(:id,:tenant,:agent,:version,:end_user,:channel,:status,:from_number,:to_number,:campaign_id,CAST(:variables AS jsonb),CAST(:metadata AS jsonb),now())"
                 ),
                 {
                     "id": call_id,
@@ -657,6 +668,11 @@ class PostgresRepository:
                     "agent": agent_id,
                     "version": agent_version_id,
                     "end_user": end_user_id,
+                    "channel": channel,
+                    "status": status,
+                    "from_number": from_number,
+                    "to_number": to_number,
+                    "campaign_id": campaign_id,
                     "variables": __import__("json").dumps(variables),
                     "metadata": __import__("json").dumps(metadata),
                 },
@@ -667,8 +683,11 @@ class PostgresRepository:
             "agent_id": agent_id,
             "agent_version_id": agent_version_id,
             "end_user_id": end_user_id,
-            "channel": "web",
-            "status": "queued",
+            "channel": channel,
+            "status": status,
+            "from_number": from_number,
+            "to_number": to_number,
+            "campaign_id": campaign_id,
             "variables": variables,
             "metadata": metadata,
         }
@@ -759,6 +778,7 @@ class PostgresRepository:
             "outcome",
             "variables",
             "metadata",
+            "provider_call_sid",
         }
         json_fields = {"cost", "latency", "outcome", "variables", "metadata"}
         assignments: list[str] = []
@@ -1579,6 +1599,11 @@ class MemoryRepository:
         *,
         agent_version_id: UUID | None = None,
         end_user_id: UUID | None = None,
+        channel: str = "web",
+        status: str = "queued",
+        from_number: str | None = None,
+        to_number: str | None = None,
+        campaign_id: UUID | None = None,
     ) -> dict[str, Any]:
         call_id = uuid4()
         result = {
@@ -1587,8 +1612,11 @@ class MemoryRepository:
             "agent_id": agent_id,
             "agent_version_id": agent_version_id,
             "end_user_id": end_user_id,
-            "channel": "web",
-            "status": "queued",
+            "channel": channel,
+            "status": status,
+            "from_number": from_number,
+            "to_number": to_number,
+            "campaign_id": campaign_id,
             "metadata": metadata,
             "variables": variables,
             "created_at": datetime.now(UTC),
@@ -1666,7 +1694,17 @@ class MemoryRepository:
 
     async def create_internal_call(self, data: dict[str, Any]) -> dict[str, Any]:
         return await self.create_call(
-            data["tenant_id"], data["agent_id"], data.get("variables", {}), data.get("metadata", {})
+            data["tenant_id"],
+            data["agent_id"],
+            data.get("variables", {}),
+            data.get("metadata", {}),
+            agent_version_id=data.get("agent_version_id"),
+            end_user_id=data.get("end_user_id"),
+            channel=data.get("channel", "web"),
+            status=data.get("status", "queued"),
+            from_number=data.get("from_number"),
+            to_number=data.get("to_number"),
+            campaign_id=data.get("campaign_id"),
         )
 
     async def update_internal_call(

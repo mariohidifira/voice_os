@@ -5,12 +5,14 @@ import jwt
 import pytest
 from fastapi.testclient import TestClient
 from voiceos_api.config import get_settings
+from voiceos_api.idempotency import MemoryIdempotencyStore, get_idempotency_store
 from voiceos_api.main import app
 from voiceos_api.repository import MemoryRepository, get_repository
 from voiceos_api.store import store
 from voiceos_api.telephony import (
     DevNumberProvider,
     DevSipDispatch,
+    DevSipOutbound,
     Telephony,
     TelephonyProviderError,
     TwilioNumberProvider,
@@ -35,10 +37,25 @@ class TrackingDispatch(DevSipDispatch):
         self.deleted.append(rule_id)
 
 
+class TrackingOutbound(DevSipOutbound):
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, str]] = []
+        self.fail = False
+
+    async def dial(self, room_name: str, to: str, from_number: str) -> str:
+        self.calls.append((room_name, to, from_number))
+        if self.fail:
+            raise TelephonyProviderError("outbound unavailable")
+        return await super().dial(room_name, to, from_number)
+
+
 numbers = DevNumberProvider()
 dispatch = TrackingDispatch()
+outbound = TrackingOutbound()
+idempotency = MemoryIdempotencyStore()
 app.dependency_overrides[get_repository] = lambda: MemoryRepository(store)
-app.dependency_overrides[get_telephony] = lambda: Telephony(numbers, dispatch)
+app.dependency_overrides[get_telephony] = lambda: Telephony(numbers, dispatch, outbound)
+app.dependency_overrides[get_idempotency_store] = lambda: idempotency
 client = TestClient(app)
 
 
@@ -65,6 +82,11 @@ def reset() -> None:
     dispatch.created.clear()
     dispatch.deleted.clear()
     dispatch.fail_create = False
+    outbound.calls.clear()
+    outbound.fail = False
+    idempotency.values.clear()
+    store.calls.clear()
+    store.end_users.clear()
 
 
 def test_phone_number_search_purchase_assignment_release_and_isolation() -> None:
@@ -164,3 +186,73 @@ async def test_twilio_number_provider_uses_official_inventory_and_purchase_contr
     assert [request.method for request in requests] == ["GET", "POST", "DELETE"]
     assert "Contains=%2B5511%2A" in str(requests[0].url)
     assert dict(httpx.QueryParams(requests[1].content.decode()))["PhoneNumber"] == "+551140001234"
+
+
+def test_outbound_call_is_tenant_scoped_and_idempotent() -> None:
+    reset()
+    tenant = uuid4()
+    agent = store.create_agent(tenant, "Outbound")
+    agent["status"] = "active"
+    purchased = client.post(
+        "/v1/phone-numbers",
+        json={"e164": "+551140008888", "agent_id": str(agent["id"])},
+        headers=auth(tenant),
+    )
+    assert purchased.status_code == 201
+    headers = {**auth(tenant), "Idempotency-Key": "campaign-contact-1"}
+    payload = {
+        "agent_id": str(agent["id"]),
+        "to": "+5511999990001",
+        "variables": {"invoice": "42"},
+        "end_user": {"name": "Cliente"},
+    }
+
+    first = client.post("/v1/calls/outbound", json=payload, headers=headers)
+    replay = client.post("/v1/calls/outbound", json=payload, headers=headers)
+
+    assert first.status_code == replay.status_code == 202
+    assert first.json() == replay.json()
+    assert outbound.calls == []
+    call = store.calls[UUID(first.json()["call_id"])]
+    assert call["channel"] == "phone_outbound"
+    assert call["status"] == "queued"
+    assert call["from_number"] == "+551140008888"
+    assert call["to_number"] == "+5511999990001"
+    assert call["livekit_room"].startswith("voiceos_")
+
+    conflict = client.post(
+        "/v1/calls/outbound",
+        json={**payload, "to": "+5511999990099"},
+        headers=headers,
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "idempotency_key_reused"
+    assert outbound.calls == []
+
+
+def test_outbound_requires_sip_dialer_configuration() -> None:
+    reset()
+    tenant = uuid4()
+    agent = store.create_agent(tenant, "Outbound failure")
+    agent["status"] = "active"
+    assert (
+        client.post(
+            "/v1/phone-numbers",
+            json={"e164": "+551140007777", "agent_id": str(agent["id"])},
+            headers=auth(tenant),
+        ).status_code
+        == 201
+    )
+    app.dependency_overrides[get_telephony] = lambda: Telephony(numbers, dispatch)
+    headers = {**auth(tenant), "Idempotency-Key": "missing-sip"}
+    payload = {"agent_id": str(agent["id"]), "to": "+5511999990002"}
+    try:
+        response = client.post("/v1/calls/outbound", json=payload, headers=headers)
+    finally:
+        app.dependency_overrides[get_telephony] = lambda: Telephony(
+            numbers, dispatch, outbound
+        )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "sip_not_configured"
+    assert store.calls == {}

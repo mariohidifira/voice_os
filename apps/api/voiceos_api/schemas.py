@@ -75,6 +75,14 @@ class PhoneNumberPatch(BaseModel):
     agent_id: UUID | None
 
 
+class OutboundCallCreate(BaseModel):
+    agent_id: UUID
+    to: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
+    end_user: dict[str, Any] | None = None
+    variables: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ToolCreate(BaseModel):
     name: str
     description: str = Field(max_length=300)

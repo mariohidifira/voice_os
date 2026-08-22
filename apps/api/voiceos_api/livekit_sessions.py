@@ -20,6 +20,9 @@ class LiveKitSessions:
         version: str,
         variables: dict[str, Any],
         end_user: dict[str, Any] | None,
+        channel: str = "web",
+        from_number: str | None = None,
+        to_number: str | None = None,
     ) -> dict[str, str]:
         room_name = f"voiceos_{call_id}"
         metadata = json.dumps(
@@ -29,6 +32,9 @@ class LiveKitSessions:
                 "version": version,
                 "variables": variables,
                 "end_user": end_user or {},
+                "channel": channel,
+                "from": from_number,
+                "to": to_number,
             },
             separators=(",", ":"),
         )
@@ -40,7 +46,16 @@ class LiveKitSessions:
             )
             try:
                 await client.room.create_room(
-                    livekit_api.CreateRoomRequest(name=room_name, metadata=metadata, empty_timeout=60)
+                    livekit_api.CreateRoomRequest(
+                        name=room_name,
+                        metadata=metadata,
+                        empty_timeout=60,
+                        agents=[
+                            livekit_api.RoomAgentDispatch(
+                                agent_name="voiceos-agent", metadata=metadata
+                            )
+                        ],
+                    )
                 )
             finally:
                 await client.aclose()

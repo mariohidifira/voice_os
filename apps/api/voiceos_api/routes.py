@@ -1,4 +1,5 @@
 import hashlib
+import json
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
@@ -6,7 +7,7 @@ from uuid import UUID
 
 import httpx
 import jwt
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from jsonschema import ValidationError, validate
 from livekit import api as livekit_api
@@ -15,6 +16,7 @@ from pydantic import ValidationError as PydanticValidationError
 from .agent_templates import get_agent_template, list_agent_templates
 from .auth import Principal, internal_token, principal
 from .config import get_settings
+from .idempotency import IdempotencyStore, get_idempotency_store
 from .knowledge import Embeddings, chunk_text, extract_bytes, extract_url, get_embeddings
 from .live import EventBus, encode_sse, get_event_bus
 from .livekit_sessions import LiveKitSessions, get_livekit_sessions
@@ -42,6 +44,7 @@ from .schemas import (
     KnowledgeQuery,
     MemberCreate,
     MemberPatch,
+    OutboundCallCreate,
     PhoneNumberPatch,
     PhoneNumberPurchase,
     PromptImproveRequest,
@@ -75,6 +78,7 @@ Rtc = Annotated[LiveKitSessions, Depends(get_livekit_sessions)]
 Storage = Annotated[RecordingStorage, Depends(get_recording_storage)]
 Voice = Annotated[VoicePreview, Depends(get_voice_preview)]
 Phone = Annotated[Telephony, Depends(get_telephony)]
+Idempotency = Annotated[IdempotencyStore, Depends(get_idempotency_store)]
 
 
 def _require_admin(auth: Principal) -> None:
@@ -717,6 +721,141 @@ async def delete_session(session_id: UUID, auth: Auth, repo: Repo) -> None:
         raise HTTPException(
             404, detail={"code": "session_not_found", "message": "Session not found"}
         )
+
+
+@v1.post("/calls/outbound", status_code=202)
+async def create_outbound_call(
+    body: OutboundCallCreate,
+    auth: Auth,
+    repo: Repo,
+    rtc: Rtc,
+    phone: Phone,
+    idempotency: Idempotency,
+    idempotency_key: Annotated[
+        str | None, Header(alias="Idempotency-Key", min_length=1, max_length=200)
+    ] = None,
+) -> dict[str, Any]:
+    agent = await repo.get_agent(auth.tenant_id, body.agent_id)
+    if not agent or agent["status"] != "active":
+        raise HTTPException(
+            404, detail={"code": "agent_not_found", "message": "Active agent not found"}
+        )
+    assigned = next(
+        (
+            item
+            for item in await repo.list_phone_numbers(auth.tenant_id)
+            if item.get("agent_id") == body.agent_id
+            and item.get("status") == "active"
+            and bool((item.get("capabilities") or {}).get("voice"))
+        ),
+        None,
+    )
+    if not assigned:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "outbound_number_required",
+                "message": "Assign an active voice-capable number to the agent first",
+            },
+        )
+    if phone.outbound is None:
+        raise HTTPException(
+            503,
+            detail={"code": "sip_not_configured", "message": "Outbound SIP is not configured"},
+        )
+    operation = "calls:outbound"
+    fingerprint = hashlib.sha256(
+        json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    if idempotency_key:
+        cached = await idempotency.reserve(
+            auth.tenant_id, operation, idempotency_key, fingerprint
+        )
+        if cached:
+            if cached.get("_conflict"):
+                raise HTTPException(
+                    409,
+                    detail={
+                        "code": "idempotency_key_reused",
+                        "message": "This Idempotency-Key was already used with another payload",
+                    },
+                )
+            if cached.get("_pending"):
+                raise HTTPException(
+                    409,
+                    detail={
+                        "code": "idempotency_in_progress",
+                        "message": "A request with this Idempotency-Key is still in progress",
+                    },
+                )
+            if cached.get("_error"):
+                raise HTTPException(int(cached["status_code"]), detail=cached["detail"])
+            return cached
+    call: dict[str, Any] | None = None
+    try:
+        end_user_data = {**(body.end_user or {}), "phone": body.to}
+        end_user = await repo.upsert_end_user(auth.tenant_id, end_user_data)
+        call = await repo.create_call(
+            auth.tenant_id,
+            body.agent_id,
+            body.variables,
+            body.metadata,
+            agent_version_id=agent["current_version_id"],
+            end_user_id=end_user["id"],
+            channel="phone_outbound",
+            from_number=str(assigned["e164"]),
+            to_number=body.to,
+        )
+        session = await rtc.provision(
+            call_id=call["id"],
+            agent_id=body.agent_id,
+            version="current",
+            variables=body.variables,
+            end_user=end_user_data,
+            channel="phone_outbound",
+            from_number=str(assigned["e164"]),
+            to_number=body.to,
+        )
+        await repo.update_call(
+            auth.tenant_id,
+            call["id"],
+            {
+                "livekit_room": session["room_name"],
+            },
+        )
+        response = {"call_id": str(call["id"])}
+        if idempotency_key:
+            await idempotency.complete(
+                auth.tenant_id, operation, idempotency_key, fingerprint, response
+            )
+        return response
+    except TelephonyProviderError as exc:
+        if call:
+            await repo.update_call(
+                auth.tenant_id,
+                call["id"],
+                {"status": "failed", "end_reason": "error", "ended_at": datetime.now(UTC)},
+            )
+        detail = {"code": "telephony_provider_error", "message": str(exc)}
+        if idempotency_key:
+            await idempotency.complete(
+                auth.tenant_id,
+                operation,
+                idempotency_key,
+                fingerprint,
+                {"_error": True, "status_code": 502, "detail": detail},
+            )
+        raise HTTPException(502, detail=detail) from exc
+    except Exception:
+        if call:
+            await repo.update_call(
+                auth.tenant_id,
+                call["id"],
+                {"status": "failed", "end_reason": "error", "ended_at": datetime.now(UTC)},
+            )
+        if idempotency_key:
+            await idempotency.release(auth.tenant_id, operation, idempotency_key)
+        raise
 
 
 @v1.post("/agents/{agent_id}/test-session", status_code=201)

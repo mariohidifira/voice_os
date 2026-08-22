@@ -100,18 +100,18 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/repository.py": {
-    "mtime": 1787386077.4011045,
-    "ast_hash": "3c1feafe6762d57927f632df9b56035f",
+    "mtime": 1787392972.5205083,
+    "ast_hash": "f660bc1f23188fa76bcc327b543ae484",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787386098.949257,
-    "ast_hash": "decb001280685f6e95ccad42ef9c64a9",
+    "mtime": 1787393501.0121233,
+    "ast_hash": "d62bd28524a662e5dc66a34963614a3c",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
-    "mtime": 1787385222.9835732,
-    "ast_hash": "5e74e2b852c011eee52317e4446cf85a",
+    "mtime": 1787392855.857401,
+    "ast_hash": "b69c19a136c50fe604ab9e39b849fd3a",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/store.py": {
@@ -215,8 +215,8 @@
     "semantic_hash": ""
   },
   "packages/shared-ts/src/openapi.ts": {
-    "mtime": 1787020621.1187186,
-    "ast_hash": "228e9e7e70c221b9a7083f0b817bd6e5",
+    "mtime": 1787393543.3713803,
+    "ast_hash": "3238919c75993d6080aa13dfe28c4a8a",
     "semantic_hash": ""
   },
   "packages/widget/src/index.ts": {
@@ -300,8 +300,8 @@
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
-    "mtime": 1787387079.5707533,
-    "ast_hash": "8fe546288377d3adfef515cbc550df73",
+    "mtime": 1787393820.3140273,
+    "ast_hash": "0aa6ae9c6b213f17e3119c25dd38ecf1",
     "semantic_hash": ""
   },
   "PHASE-3-REPORT.md": {
@@ -485,8 +485,8 @@
     "semantic_hash": ""
   },
   "packages/shared-ts/openapi.json": {
-    "mtime": 1787377050.6357367,
-    "ast_hash": "c55e7dd1e79712d37485d74a486109ba",
+    "mtime": 1787393515.9662306,
+    "ast_hash": "98991e597bb6fbe9091a9139fee0624f",
     "semantic_hash": ""
   },
   "packages/shared-ts/package.json": {
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "tests/test_postgres_repository.py": {
-    "mtime": 1787385550.601303,
-    "ast_hash": "1a6a7f898abd2d16f7653400e8e5b851",
+    "mtime": 1787393155.146546,
+    "ast_hash": "f76cc57742326a0eba94c35a7562a134",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
@@ -610,13 +610,13 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/livekit_worker.py": {
-    "mtime": 1787383607.4917805,
-    "ast_hash": "b46fff9c754bad6ccfe7f1fce5a5de66",
+    "mtime": 1787393257.5781474,
+    "ast_hash": "df72a19c394184f4a568acaabe1281aa",
     "semantic_hash": ""
   },
   "tests/test_livekit_worker.py": {
-    "mtime": 1787383608.723996,
-    "ast_hash": "680ef7d78457e67f429f83f39aad2736",
+    "mtime": 1787393365.1828725,
+    "ast_hash": "a5e47398a73be5b19cd25633474546e5",
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/recording.py": {
@@ -665,8 +665,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/livekit_sessions.py": {
-    "mtime": 1787363303.7604864,
-    "ast_hash": "d65c6b8bb3ed2dca709183efc55bc74a",
+    "mtime": 1787393252.4639356,
+    "ast_hash": "072b76f9a3c5861d318da3d35541528f",
     "semantic_hash": ""
   },
   "apps/web/app/app/[tenantSlug]/voice-widget.tsx": {
@@ -825,18 +825,28 @@
     "semantic_hash": ""
   },
   "apps/api/alembic/versions/0006_phone_number_lifecycle.py": {
-    "mtime": 1787386100.0557353,
-    "ast_hash": "405664ed2552e1c2b3dab72b1c7a54aa",
+    "mtime": 1787387545.2856796,
+    "ast_hash": "48a541365a17a83f283f7118b12e02c0",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/telephony.py": {
-    "mtime": 1787385888.5843358,
-    "ast_hash": "f833cbf657a6025005c521d334419473",
+    "mtime": 1787393499.2766492,
+    "ast_hash": "2d55518630777091e6029a9a5915feaa",
     "semantic_hash": ""
   },
   "tests/test_phone_numbers.py": {
-    "mtime": 1787385732.6926243,
-    "ast_hash": "275cf122e786a3a7864b433421907367",
+    "mtime": 1787393361.2587752,
+    "ast_hash": "44b0dd697c0a454d9dfa833ccfcc0c8b",
+    "semantic_hash": ""
+  },
+  "apps/api/voiceos_api/idempotency.py": {
+    "mtime": 1787393089.4621491,
+    "ast_hash": "d7bce9ef1b305697ff00b2430f5e78a5",
+    "semantic_hash": ""
+  },
+  "tests/test_idempotency.py": {
+    "mtime": 1787393468.851585,
+    "ast_hash": "736ff32234b5fa3cea93fa8ee700eb56",
     "semantic_hash": ""
   }
 }
