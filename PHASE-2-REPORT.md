@@ -15,24 +15,28 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 - Idempotência de 24 horas em Redis, incluindo reserva concorrente, replay e rejeição da mesma chave com payload diferente.
 - Dispatch explícito do `agent-worker` ao criar a sala; o worker executa `CreateSIPParticipant` e persiste `queued → ringing → in_progress|failed`.
 - Contratos OpenAPI e tipos TypeScript regenerados para o endpoint outbound.
+- Tool `dtmf` executada localmente pelo worker via LiveKit RTC, com validação de `0-9`, `*`, `#`, `A-D` e evento persistido.
+- Tool `transfer_call` cold via SIP REFER e warm via nova perna SIP na mesma sala, resumo falado ao operador e eventos requested/completed.
+- Tool `send_sms` via Twilio, remetente SMS-capable validado por tenant, destino derivado da chamada e Messaging Service opcional.
 
 ## Evidências locais
 
 - Terraform `fmt -check` e `validate`: aprovado.
 - Ruff e mypy: aprovados.
-- Suíte Python: 96 testes aprovados, cobertura global 82,15% (gate ≥ 80%).
+- Suíte Python: 100 testes de regressão aprovados; último gate de cobertura global 82,15% (mínimo 80%).
 - Testes JavaScript: 8 aprovados; lint, typecheck e builds aprovados.
 - Testes de API/provedor: busca/compra/atribuição/liberação e outbound aprovados.
 - Teste PostgreSQL de persistência e isolamento: aprovado.
 - Teste Redis real de idempotência: aprovado.
 - Testes do worker para sucesso e falha SIP outbound: aprovados.
+- Testes determinísticos de DTMF, transferência cold/warm e SMS: aprovados.
 - Playwright: 3 fluxos aprovados, incluindo compra → atribuição → liberação.
 - Alembic local: `0006 (head)`.
 
 ## Itens ainda em implementação
 
 - Trunks Twilio/LiveKit e validação real inbound/outbound.
-- Pipeline de telefone além da discagem base, AMD/voicemail, DTMF, transferências cold/warm e SMS.
+- Pipeline de telefone além da discagem base e AMD/voicemail.
 - Horário de funcionamento e mensagem fora do horário.
 - Campanhas, janela, concorrência, retry, opt-out e do-not-call.
 - Painel de campanhas, canais e `/live`; templates 5 e 6; métricas de rede/MOS.
@@ -42,6 +46,7 @@ Status: **em implementação**. Dependências de provedores estão **pendentes e
 
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
+- `TWILIO_MESSAGING_SERVICE_SID`
 - `TWILIO_SIP_DOMAIN`
 - `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
 - `LIVEKIT_SIP_TRUNK_ID_INBOUND`

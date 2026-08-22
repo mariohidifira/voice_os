@@ -48,3 +48,58 @@ async def test_google_oauth_refresh_calendar_and_resend() -> None:
     email = await native.execute("send_email", {"to": "a@example.com", "subject": "Olá", "body": "Teste"}, tenant_id, repo, cipher)
     assert email == {"status": "sent", "id": "email-1"}
     assert len(requests) == 7
+
+
+@pytest.mark.asyncio
+async def test_twilio_sms_uses_tenant_sender_and_call_recipient() -> None:
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(201, json={"sid": "SM123"})
+
+    settings = Settings(
+        app_env="test",
+        auth_secret="x" * 32,
+        twilio_account_sid="AC123",
+        twilio_auth_token="token",
+        twilio_messaging_service_sid="MG123",
+    )
+    native = NativeIntegrations(settings, httpx.MockTransport(handler))
+    store = MemoryStore()
+    repo = MemoryRepository(store)
+    cipher = EnvelopeCipher(settings)
+    tenant_id = uuid4()
+    await repo.create_phone_number(
+        tenant_id,
+        {
+            "agent_id": uuid4(),
+            "e164": "+551140008888",
+            "provider": "twilio",
+            "provider_sid": "PN123",
+            "capabilities": {"voice": True, "sms": True},
+            "livekit_dispatch_rule_id": "SDR123",
+        },
+    )
+
+    result = await native.execute(
+        "send_sms",
+        {"message": "Seu link: https://example.test/pay"},
+        tenant_id,
+        repo,
+        cipher,
+        {
+            "channel": "phone_outbound",
+            "from_number": "+551140008888",
+            "to_number": "+5511999990001",
+        },
+    )
+
+    assert result == {"status": "queued", "id": "SM123", "to": "+5511999990001"}
+    assert requests[0].url.path.endswith("/Accounts/AC123/Messages.json")
+    form = dict(httpx.QueryParams(requests[0].content.decode()))
+    assert form == {
+        "To": "+5511999990001",
+        "Body": "Seu link: https://example.test/pay",
+        "MessagingServiceSid": "MG123",
+    }

@@ -245,6 +245,7 @@ Serviços: números brasileiros, Elastic SIP Trunking, chamadas inbound/outbound
 | `TWILIO_ACCOUNT_SID` | SID da conta |
 | `TWILIO_AUTH_TOKEN` | Token da conta ou subaccount |
 | `TWILIO_SIP_DOMAIN` | Domínio de termination SIP |
+| `TWILIO_MESSAGING_SERVICE_SID` | Messaging Service para envio de SMS |
 | `LIVEKIT_SIP_TRUNK_ID_INBOUND` | ID do inbound trunk no LiveKit |
 | `LIVEKIT_SIP_TRUNK_ID_OUTBOUND` | ID do outbound trunk no LiveKit |
 

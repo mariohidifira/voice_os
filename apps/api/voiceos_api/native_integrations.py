@@ -55,7 +55,7 @@ class NativeIntegrations:
             response.raise_for_status()
             return str(response.json()["access_token"])
 
-    async def execute(self, kind: str, arguments: dict[str, Any], tenant_id: UUID, repo: Repository, cipher: SecretCipher) -> dict[str, Any]:
+    async def execute(self, kind: str, arguments: dict[str, Any], tenant_id: UUID, repo: Repository, cipher: SecretCipher, call: dict[str, Any] | None = None) -> dict[str, Any]:
         if kind == "send_email":
             if not self.settings.resend_api_key:
                 return {"error": "integration_unavailable", "message": "Resend is not configured"}
@@ -63,6 +63,35 @@ class NativeIntegrations:
                 response = await client.post("https://api.resend.com/emails", headers={"Authorization": f"Bearer {self.settings.resend_api_key}"}, json={"from": self.settings.email_from, "to": [arguments["to"]], "subject": arguments["subject"], "html": arguments["body"]})
                 response.raise_for_status()
                 return {"status": "sent", "id": response.json()["id"]}
+        if kind == "send_sms":
+            if not self.settings.twilio_account_sid or not self.settings.twilio_auth_token:
+                return {"error": "integration_unavailable", "message": "Twilio is not configured"}
+            if not call:
+                return {"error": "call_required", "message": "SMS requires an active call context"}
+            outbound = call.get("channel") == "phone_outbound"
+            to_number = str(arguments.get("to") or (call.get("to_number") if outbound else call.get("from_number")) or "")
+            from_number = str(call.get("from_number") if outbound else call.get("to_number") or "")
+            numbers = await repo.list_phone_numbers(tenant_id)
+            sender = next((item for item in numbers if item.get("status") == "active" and item.get("e164") == from_number and bool((item.get("capabilities") or {}).get("sms"))), None)
+            if not to_number or not sender:
+                return {"error": "sms_unavailable", "message": "No SMS-capable sender or recipient is available"}
+            data = {"To": to_number, "Body": str(arguments["message"])}
+            if self.settings.twilio_messaging_service_sid:
+                data["MessagingServiceSid"] = self.settings.twilio_messaging_service_sid
+            else:
+                data["From"] = from_number
+            async with httpx.AsyncClient(
+                base_url="https://api.twilio.com/2010-04-01",
+                auth=httpx.BasicAuth(self.settings.twilio_account_sid, self.settings.twilio_auth_token),
+                transport=self.transport,
+                timeout=15,
+            ) as client:
+                response = await client.post(
+                    f"/Accounts/{self.settings.twilio_account_sid}/Messages.json", data=data
+                )
+                response.raise_for_status()
+                result = response.json()
+                return {"status": "queued", "id": result["sid"], "to": to_number}
         if kind not in {"google_calendar_check", "google_calendar_book"}:
             return {"error": "unsupported_tool", "message": f"Native tool {kind} is not available in API"}
         token = await self._google_access_token(tenant_id, repo, cipher)

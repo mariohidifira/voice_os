@@ -17,6 +17,8 @@ from voiceos_voice.livekit_worker import (
     dial_outbound,
     dynamic_tools,
     room_metadata,
+    send_dtmf,
+    transfer_phone_call,
 )
 
 
@@ -102,6 +104,168 @@ async def test_dial_outbound_records_provider_failure(monkeypatch: pytest.Monkey
 
     assert [patch["status"] for patch in patches] == ["ringing", "failed"]
     assert patches[-1]["end_reason"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_dtmf_native_tool_uses_rtc_codes_and_persists_event() -> None:
+    call_id, tool_id = uuid4(), uuid4()
+    requests: list[tuple[str, dict[str, Any]]] = []
+    published: list[tuple[int, str]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = __import__("json").loads(request.content or b"{}")
+        requests.append((request.url.path, body))
+        return httpx.Response(200, json={"accepted": 1})
+
+    class Participant:
+        async def publish_dtmf(self, *, code: int, digit: str) -> None:
+            published.append((code, digit))
+
+    api = WorkerAPI("http://api", "internal", MemoryRuntimeCache(), httpx.MockTransport(handler))
+    bridge = LiveKitCallBridge(api, call_id, {})
+    tools = dynamic_tools(
+        api,
+        call_id,
+        [
+            {
+                "id": str(tool_id),
+                "name": "navegar_ura",
+                "native_kind": "dtmf",
+                "parameters_schema": {"type": "object"},
+            }
+        ],
+        {},
+        {},
+        {},
+        bridge,
+        lambda digits: send_dtmf(Participant(), digits),
+    )
+    dtmf_tool = cast(RawFunctionTool[..., Any], tools[0])
+
+    result = await dtmf_tool(raw_arguments={"digits": "12#A"})
+    invalid = await dtmf_tool(raw_arguments={"digits": "12X"})
+
+    assert result == {"status": "sent", "digits": "12#A"}
+    assert invalid["error"] == "invalid_digits"
+    assert published == [(1, "1"), (2, "2"), (11, "#"), (12, "A")]
+    assert any(body["events"][0]["type"] == "dtmf" for _, body in requests)
+
+
+@pytest.mark.asyncio
+async def test_transfer_phone_call_supports_cold_and_warm(monkeypatch: pytest.MonkeyPatch) -> None:
+    transferred: list[Any] = []
+    created: list[Any] = []
+
+    class Sip:
+        async def transfer_sip_participant(self, request: Any) -> Any:
+            transferred.append(request)
+            return type("Participant", (), {"participant_identity": "caller"})()
+
+        async def create_sip_participant(self, request: Any) -> Any:
+            created.append(request)
+            return type("Participant", (), {"participant_identity": "operator"})()
+
+    class Client:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            self.sip = Sip()
+
+        async def aclose(self) -> None:
+            return None
+
+    caller = type("Remote", (), {"identity": "caller", "kind": 3})()
+    room = type(
+        "Room",
+        (),
+        {"name": "voiceos_room", "remote_participants": {"caller": caller}},
+    )()
+    monkeypatch.setenv("LIVEKIT_URL", "wss://livekit.test")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "key")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "secret")
+    monkeypatch.setenv("LIVEKIT_SIP_TRUNK_ID_OUTBOUND", "ST_OUT")
+    monkeypatch.setattr("voiceos_voice.livekit_worker.livekit_api.LiveKitAPI", Client)
+
+    cold = await transfer_phone_call(
+        room,
+        {"to": "+551140008888"},
+        {"transfer_number": "+551130003000"},
+        {"reason": "human", "mode": "cold"},
+    )
+    warm = await transfer_phone_call(
+        room,
+        {"to": "+551140008888"},
+        {"transfer_number": "+551130003000"},
+        {"reason": "human", "mode": "warm"},
+    )
+
+    assert cold["status"] == warm["status"] == "transferred"
+    assert transferred[0].transfer_to == "tel:+551130003000"
+    assert transferred[0].participant_identity == "caller"
+    assert created[0].sip_trunk_id == "ST_OUT"
+    assert created[0].sip_call_to == "+551130003000"
+    assert created[0].sip_number == "+551140008888"
+
+
+@pytest.mark.asyncio
+async def test_transfer_native_tool_summarizes_and_closes() -> None:
+    call_id, tool_id = uuid4(), uuid4()
+    events: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = __import__("json").loads(request.content or b"{}")
+        if request.url.path.endswith("/events"):
+            events.append(body["events"][0]["type"])
+        return httpx.Response(200, json={"accepted": 1})
+
+    class Speech:
+        async def wait_for_playout(self) -> None:
+            return None
+
+    class Session:
+        def __init__(self) -> None:
+            self.spoken: list[str] = []
+            self.closed = False
+
+        def say(self, text: str, **kwargs: Any) -> Speech:
+            self.spoken.append(text)
+            return Speech()
+
+        def shutdown(self, *, drain: bool = True) -> None:
+            self.closed = True
+
+    async def transfer(arguments: dict[str, Any]) -> dict[str, Any]:
+        return {"status": "transferred", "mode": arguments["mode"]}
+
+    api = WorkerAPI("http://api", "internal", MemoryRuntimeCache(), httpx.MockTransport(handler))
+    bridge = LiveKitCallBridge(api, call_id, {})
+    session = Session()
+    tools = dynamic_tools(
+        api,
+        call_id,
+        [
+            {
+                "id": str(tool_id),
+                "name": "encaminhar_humano",
+                "native_kind": "transfer_call",
+                "parameters_schema": {"type": "object"},
+            }
+        ],
+        {},
+        {},
+        {"session": cast(AgentSession[Any], session)},
+        bridge,
+        transfer_handler=transfer,
+    )
+    transfer_tool = cast(RawFunctionTool[..., Any], tools[0])
+
+    result = await transfer_tool(
+        raw_arguments={"reason": "cliente irritado", "mode": "warm", "summary": "Resumo."}
+    )
+
+    assert result["status"] == "transferred"
+    assert events == ["transfer.requested", "transfer.completed"]
+    assert session.spoken == ["Resumo."]
+    assert session.closed is True
+    assert bridge.end_reason == "transferred"
 
 
 def test_room_metadata_parses_dispatch_contract() -> None:

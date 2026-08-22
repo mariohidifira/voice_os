@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -31,6 +32,91 @@ from .accounting import CallAccounting
 from .api_client import RedisRuntimeCache, WorkerAPI
 from .prompting import build_system_prompt
 from .recording import start_room_recording
+
+DTMF_CODES = {**{str(value): value for value in range(10)}, "*": 10, "#": 11, "A": 12, "B": 13, "C": 14, "D": 15}
+
+
+async def send_dtmf(participant: Any, digits: str) -> None:
+    normalized = digits.upper()
+    if not normalized or len(normalized) > 32 or any(digit not in DTMF_CODES for digit in normalized):
+        raise ValueError("digits must contain 1-32 DTMF symbols: 0-9, *, #, A-D")
+    for index, digit in enumerate(normalized):
+        await participant.publish_dtmf(code=DTMF_CODES[digit], digit=digit)
+        if index < len(normalized) - 1:
+            await asyncio.sleep(0.15)
+
+
+async def transfer_phone_call(
+    room: Any,
+    metadata: dict[str, Any],
+    behavior: dict[str, Any],
+    arguments: dict[str, Any],
+) -> dict[str, Any]:
+    destination = str(arguments.get("destination") or behavior.get("transfer_number") or "")
+    if not destination.startswith("+") or not destination[1:].isdigit():
+        return {"error": "invalid_destination", "message": "Transfer destination must be E.164"}
+    mode = str(arguments.get("mode") or "cold")
+    if mode not in {"cold", "warm"}:
+        return {"error": "invalid_mode", "message": "Transfer mode must be cold or warm"}
+    client = livekit_api.LiveKitAPI(
+        os.getenv("LIVEKIT_URL", ""),
+        os.getenv("LIVEKIT_API_KEY", ""),
+        os.getenv("LIVEKIT_API_SECRET", ""),
+    )
+    try:
+        if mode == "cold":
+            requested_identity = str(arguments.get("participant_identity") or "")
+            sip_participant = next(
+                (
+                    participant
+                    for participant in room.remote_participants.values()
+                    if (requested_identity and participant.identity == requested_identity)
+                    or int(participant.kind) == 3
+                ),
+                None,
+            )
+            if not sip_participant:
+                return {"error": "sip_participant_not_found", "message": "No SIP leg to transfer"}
+            transferred = await client.sip.transfer_sip_participant(
+                livekit_api.TransferSIPParticipantRequest(
+                    participant_identity=sip_participant.identity,
+                    room_name=room.name,
+                    transfer_to=f"tel:{destination}",
+                    play_dialtone=True,
+                )
+            )
+            return {
+                "status": "transferred",
+                "mode": "cold",
+                "destination": destination,
+                "participant_identity": transferred.participant_identity,
+            }
+        trunk_id = os.getenv("LIVEKIT_SIP_TRUNK_ID_OUTBOUND", "")
+        from_number = str(metadata.get("from") or metadata.get("to") or "")
+        if not trunk_id or not from_number:
+            return {"error": "sip_not_configured", "message": "Warm transfer trunk is unavailable"}
+        identity = f"transfer_{destination.removeprefix('+')}"
+        participant = await client.sip.create_sip_participant(
+            livekit_api.CreateSIPParticipantRequest(
+                sip_trunk_id=trunk_id,
+                sip_call_to=destination,
+                sip_number=from_number,
+                room_name=room.name,
+                participant_identity=identity,
+                participant_name=f"Transfer {destination}",
+                wait_until_answered=True,
+                play_dialtone=False,
+                krisp_enabled=True,
+            )
+        )
+        return {
+            "status": "transferred",
+            "mode": "warm",
+            "destination": destination,
+            "participant_identity": participant.participant_identity or identity,
+        }
+    finally:
+        await client.aclose()
 
 
 async def dial_outbound(
@@ -238,23 +324,27 @@ def dynamic_tools(
     end_user: dict[str, Any],
     session_ref: dict[str, AgentSession[Any]],
     bridge: LiveKitCallBridge,
+    dtmf_sender: Callable[[str], Awaitable[None]] | None = None,
+    transfer_handler: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]] | None = None,
 ) -> list[Tool | Toolset]:
     result: list[Tool | Toolset] = []
     for definition in tools:
         tool_id = str(definition["id"])
         name = str(definition["name"])
+        kind = str(definition.get("native_kind") or name)
 
         async def execute(
             raw_arguments: dict[str, Any],
             *,
             remote_tool_id: str = tool_id,
             tool_name: str = name,
+            tool_kind: str = kind,
         ) -> dict[str, Any]:
-            if tool_name == "set_variable":
+            if tool_kind == "set_variable":
                 variables[str(raw_arguments["name"])] = raw_arguments.get("value")
                 await bridge.persist_event("variable.set", {"name": raw_arguments["name"]})
                 return {"status": "ok", "name": raw_arguments["name"], "value": raw_arguments.get("value")}
-            if tool_name == "end_call":
+            if tool_kind == "end_call":
                 bridge.end_reason = str(raw_arguments.get("reason") or "agent_hangup")
                 farewell = str(raw_arguments.get("farewell") or "Obrigado pelo contato. Até logo!")
 
@@ -265,6 +355,38 @@ def dynamic_tools(
 
                 asyncio.create_task(finish_after_farewell())
                 return {"status": "ending", "reason": bridge.end_reason}
+            if tool_kind == "dtmf":
+                if dtmf_sender is None:
+                    return {"error": "channel_unsupported", "message": "DTMF requires a phone call"}
+                digits = str(raw_arguments.get("digits") or "")
+                try:
+                    await dtmf_sender(digits)
+                except ValueError as exc:
+                    return {"error": "invalid_digits", "message": str(exc)}
+                await bridge.persist_event("dtmf", {"digits": digits})
+                return {"status": "sent", "digits": digits}
+            if tool_kind == "transfer_call":
+                if transfer_handler is None:
+                    return {
+                        "error": "channel_unsupported",
+                        "message": "Transfer requires a phone call",
+                    }
+                await bridge.persist_event("transfer.requested", raw_arguments)
+                transferred = await transfer_handler(raw_arguments)
+                if "error" in transferred:
+                    return transferred
+                bridge.end_reason = "transferred"
+                await bridge.persist_event("transfer.completed", transferred)
+                if transferred.get("mode") == "warm":
+                    summary = str(
+                        raw_arguments.get("summary")
+                        or f"Transferência solicitada. Motivo: {raw_arguments.get('reason', 'atendimento humano')}."
+                    )
+                    await session_ref["session"].say(
+                        summary, allow_interruptions=False
+                    ).wait_for_playout()
+                session_ref["session"].shutdown(drain=True)
+                return transferred
             return await api.execute_tool(
                 {
                     "tool_id": remote_tool_id,
@@ -390,7 +512,25 @@ async def voiceos_agent(ctx: JobContext) -> None:
     turn = runtime.get("turn") or {}
     behavior = runtime.get("behavior") or {}
     session_ref: dict[str, AgentSession[Any]] = {}
-    tools = dynamic_tools(api, call_id, list(runtime.get("tools", [])), variables, dict(metadata.get("end_user") or {}), session_ref, bridge)
+    tools = dynamic_tools(
+        api,
+        call_id,
+        list(runtime.get("tools", [])),
+        variables,
+        dict(metadata.get("end_user") or {}),
+        session_ref,
+        bridge,
+        (lambda digits: send_dtmf(ctx.room.local_participant, digits))
+        if str(metadata.get("channel") or "web").startswith("phone_")
+        else None,
+        (
+            lambda arguments: transfer_phone_call(
+                ctx.room, metadata, behavior, arguments
+            )
+        )
+        if str(metadata.get("channel") or "web").startswith("phone_")
+        else None,
+    )
     session = AgentSession(
         **pipeline,
         tools=tools,

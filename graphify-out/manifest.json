@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/config.py": {
-    "mtime": 1787385887.546165,
-    "ast_hash": "ec9029a65c27b8e4e54e524383c88b96",
+    "mtime": 1787394014.8889484,
+    "ast_hash": "3c5b735292b4cd758ac1b67c9ff0184a",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/db.py": {
@@ -105,8 +105,8 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/routes.py": {
-    "mtime": 1787393501.0121233,
-    "ast_hash": "d62bd28524a662e5dc66a34963614a3c",
+    "mtime": 1787394019.9511347,
+    "ast_hash": "5d94c8b59ee27e4560db1643dd25647e",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/schemas.py": {
@@ -300,8 +300,8 @@
     "semantic_hash": ""
   },
   "PHASE-2-REPORT.md": {
-    "mtime": 1787393820.3140273,
-    "ast_hash": "0aa6ae9c6b213f17e3119c25dd38ecf1",
+    "mtime": 1787394463.5701523,
+    "ast_hash": "b8ba85db765fe5e95d869d944ea03db7",
     "semantic_hash": ""
   },
   "PHASE-3-REPORT.md": {
@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "PROVIDER-SETUP-CHECKLIST.md": {
-    "mtime": 1787383404.0055997,
-    "ast_hash": "2f34a8191a7688ee57be233cc1105190",
+    "mtime": 1787394024.893362,
+    "ast_hash": "23738c2da26639f6ed3ba8a131eac644",
     "semantic_hash": ""
   },
   "docs/00-README.md": {
@@ -465,8 +465,8 @@
     "semantic_hash": ""
   },
   "infra/terraform/main.tf": {
-    "mtime": 1787386075.374437,
-    "ast_hash": "248df758bbc80df09f39e912cd7f492c",
+    "mtime": 1787394023.2291975,
+    "ast_hash": "cfe76361a1c2e8c1ec8801f34f7e443b",
     "semantic_hash": ""
   },
   "infra/terraform/outputs.tf": {
@@ -535,8 +535,8 @@
     "semantic_hash": ""
   },
   ".github/workflows/deploy-staging.yml": {
-    "mtime": 1787385946.118946,
-    "ast_hash": "fd65d454b8f6da071bd4adb828d794c4",
+    "mtime": 1787394021.6111424,
+    "ast_hash": "272708f86aaddd975ecc880b129330d9",
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/knowledge.py": {
@@ -575,13 +575,13 @@
     "semantic_hash": ""
   },
   "apps/api/voiceos_api/native_integrations.py": {
-    "mtime": 1787219941.2115312,
-    "ast_hash": "7a8ccd3d56f8e8a54c34794688e93eac",
+    "mtime": 1787394018.284276,
+    "ast_hash": "21e82752e39a3e90e34a56157e8457a1",
     "semantic_hash": ""
   },
   "tests/test_native_integrations.py": {
-    "mtime": 1787219989.8417368,
-    "ast_hash": "bee516b8f3165dae3dc67c83916e084e",
+    "mtime": 1787394048.3871915,
+    "ast_hash": "e1b57586d8a8c8a05ce8f0ec0ce7e30b",
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/api_client.py": {
@@ -610,13 +610,13 @@
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/livekit_worker.py": {
-    "mtime": 1787393257.5781474,
-    "ast_hash": "df72a19c394184f4a568acaabe1281aa",
+    "mtime": 1787394373.4966722,
+    "ast_hash": "bc42a07965e8878276f5f64147a16fe0",
     "semantic_hash": ""
   },
   "tests/test_livekit_worker.py": {
-    "mtime": 1787393365.1828725,
-    "ast_hash": "a5e47398a73be5b19cd25633474546e5",
+    "mtime": 1787394337.6819074,
+    "ast_hash": "38f725d6f39448b1af2b2a4cfe9c9408",
     "semantic_hash": ""
   },
   "apps/agent-worker/voiceos_voice/recording.py": {

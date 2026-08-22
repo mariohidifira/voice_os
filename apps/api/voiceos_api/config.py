@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     livekit_sip_trunk_id_outbound: str = ""
     twilio_account_sid: str | None = None
     twilio_auth_token: str | None = None
+    twilio_messaging_service_sid: str | None = None
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
     elevenlabs_api_key: str | None = None

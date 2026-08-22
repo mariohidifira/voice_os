@@ -1406,7 +1406,12 @@ async def execute_tool(
         if tool["type"] == "native":
             try:
                 raw_result = await native.execute(
-                    tool.get("native_kind") or tool["name"], body.arguments, tenant_id, repo, cipher
+                    tool.get("native_kind") or tool["name"],
+                    body.arguments,
+                    tenant_id,
+                    repo,
+                    cipher,
+                    call,
                 )
             except (httpx.HTTPError, RuntimeError, KeyError, ValueError) as exc:
                 raw_result = {"error": "integration_failed", "message": str(exc)}
