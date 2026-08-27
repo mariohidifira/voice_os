@@ -8,6 +8,18 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  buildSimulationCreatePayload,
+  buildWhatsappConnectPayload,
+  buildWhatsappHandoffRequest,
+  findWhatsappIntegration,
+  simulationYamlPath,
+} from "../../../lib/dashboard-phase4";
+import {
+  buildTenantSettingsPayload,
+  buildWidgetReactSnippet,
+  buildWidgetScriptSnippet,
+} from "../../../lib/dashboard-phase5";
 import { extractPromptVariables } from "../../../lib/prompt-utils";
 import VoiceWidget from "./voice-widget";
 
@@ -71,11 +83,24 @@ type BillingUsage = {
   overage_minutes: number;
   estimated_overage_cents: number;
 };
+type Integration = Item & {
+  provider: string;
+  account_email?: string;
+  config?: Record<string, unknown>;
+};
+type Simulation = Item & {
+  agent_id?: string;
+  persona?: string;
+  objective?: string;
+  conversation_count?: number;
+  report?: Record<string, unknown>;
+};
 type Section =
   | "overview"
   | "agents"
   | "calls"
   | "live"
+  | "simulator"
   | "campaigns"
   | "knowledge"
   | "tools"
@@ -111,6 +136,7 @@ const sections: Array<[Section, string]> = [
   ["agents", "Agentes"],
   ["calls", "Chamadas"],
   ["live", "Ao vivo"],
+  ["simulator", "Simulador"],
   ["campaigns", "Campanhas"],
   ["knowledge", "Conhecimento"],
   ["tools", "Ferramentas"],
@@ -553,6 +579,7 @@ export default function Dashboard({
     Array<Record<string, unknown>>
   >([]);
   const [tools, setTools] = useState<Item[]>([]);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [secrets, setSecrets] = useState<Item[]>([]);
   const [phoneNumbers, setPhoneNumbers] = useState<Item[]>([]);
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>(
@@ -560,6 +587,7 @@ export default function Dashboard({
   );
   const [members, setMembers] = useState<Item[]>([]);
   const [apiKeys, setApiKeys] = useState<Item[]>([]);
+  const [latestPublicWidgetKey, setLatestPublicWidgetKey] = useState("");
   const [billingPlan, setBillingPlan] = useState<BillingPlan | null>(null);
   const [billingUsage, setBillingUsage] = useState<BillingUsage | null>(null);
   const [invoices, setInvoices] = useState<Item[]>([]);
@@ -590,6 +618,9 @@ export default function Dashboard({
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [liveEvents, setLiveEvents] = useState<Array<Record<string, unknown>>>([]);
   const [watchedCallId, setWatchedCallId] = useState<string | null>(null);
+  const [whatsappHandoffText, setWhatsappHandoffText] = useState("");
+  const [latestSimulation, setLatestSimulation] = useState<Simulation | null>(null);
+  const [simulationYamlText, setSimulationYamlText] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const callAudio = useRef<HTMLAudioElement>(null);
@@ -626,7 +657,7 @@ export default function Dashboard({
         api<Record<string, unknown>>("analytics/overview"),
       ]);
       const canConfigure = ["owner", "admin"].includes(me.role);
-      const [k, t, keys, memberResult, voiceResult, secretResult, phoneResult, campaignResult, webhookResult] =
+      const [k, t, keys, memberResult, voiceResult, integrationResult, secretResult, phoneResult, campaignResult, webhookResult] =
         canConfigure
           ? await Promise.all([
               api<{ data: Item[] }>("knowledge-bases"),
@@ -634,6 +665,7 @@ export default function Dashboard({
               api<{ data: Item[] }>("api-keys"),
               api<{ data: Item[] }>(`tenants/${me.tenant_id}/members`),
               api<{ data: Item[]; configured: boolean }>("voices"),
+              api<{ data: Integration[] }>("integrations"),
               api<{ data: Item[] }>("secrets"),
               api<{ data: Item[] }>("phone-numbers"),
               api<{ data: Campaign[] }>("campaigns"),
@@ -645,6 +677,7 @@ export default function Dashboard({
               { data: [] },
               { data: [] },
               { data: [], configured: false },
+              { data: [] },
               { data: [] },
               { data: [] },
               { data: [] },
@@ -666,6 +699,7 @@ export default function Dashboard({
       setCalls(c.data);
       setKnowledge(k.data);
       setTools(t.data);
+      setIntegrations(integrationResult.data);
       setSecrets(secretResult.data);
       setPhoneNumbers(phoneResult.data);
       setCampaigns(campaignResult.data);
@@ -1215,15 +1249,7 @@ export default function Dashboard({
     try {
       await api(`tenants/${tenantId}`, {
         method: "PATCH",
-        body: JSON.stringify({
-          name: form.get("name"),
-          settings: {
-            timezone: form.get("timezone"),
-            recording_enabled: form.get("recording_enabled") === "on",
-          retention_days: Number(form.get("retention_days")),
-          anonymize_transcripts: form.get("anonymize_transcripts") === "on",
-          },
-        }),
+        body: JSON.stringify(buildTenantSettingsPayload(form)),
       });
       await refresh();
       setNotice("Configurações gerais salvas.");
@@ -1268,6 +1294,58 @@ export default function Dashboard({
       setNotice(String(error));
     }
   }
+  async function connectWhatsapp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    try {
+      await api("integrations/whatsapp", {
+        method: "POST",
+        body: JSON.stringify(buildWhatsappConnectPayload(form)),
+      });
+      formElement.reset();
+      await refresh();
+      setNotice("Integração do WhatsApp conectada.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function sendWhatsappHandoff() {
+    const request = buildWhatsappHandoffRequest(watchedCallId, whatsappHandoffText);
+    if (!request) return;
+    try {
+      await api(request.path, {
+        method: "POST",
+        body: JSON.stringify(request.body),
+      });
+      setWhatsappHandoffText("");
+      setNotice("Mensagem do operador enviada no WhatsApp.");
+      if (watchedCallId) watchLive(watchedCallId);
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
+  async function createSimulation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      const simulation = await api<Simulation>("simulations", {
+        method: "POST",
+        body: JSON.stringify(buildSimulationCreatePayload(form)),
+      });
+      setLatestSimulation(simulation);
+      const yaml = await fetch(simulationYamlPath(simulation.id)).then(
+        async (response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        },
+      );
+      setSimulationYamlText(yaml);
+      setNotice("Simulação concluída e relatório carregado.");
+    } catch (error) {
+      setNotice(String(error));
+    }
+  }
   async function createApiKey(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -1282,6 +1360,9 @@ export default function Dashboard({
         }),
       });
       event.currentTarget.reset();
+      if (result.scope === "public") {
+        setLatestPublicWidgetKey(String(result.key));
+      }
       await refresh();
       setNotice(
         `Copie agora; esta chave não será mostrada novamente: ${result.key}`,
@@ -1531,6 +1612,42 @@ export default function Dashboard({
   }
 
   const draft = (selectedAgent?.draft ?? {}) as Record<string, unknown>;
+  const whatsappIntegration = findWhatsappIntegration(integrations);
+  const tenantSettings = (tenant?.settings as Record<string, unknown>) ?? {};
+  const branding = (tenantSettings.branding as Record<string, unknown>) ?? {};
+  const widgetSettings = (tenantSettings.widget as Record<string, unknown>) ?? {};
+  const hostOrigin =
+    typeof window === "undefined" ? "https://app.voiceos.example" : window.location.origin;
+  const activePublicKeys = apiKeys.filter(
+    (key) => key.scope === "public" && !key.revoked_at,
+  );
+  const widgetPublicKey =
+    latestPublicWidgetKey || "COLE_AQUI_A_PUBLIC_KEY_GERADA_NESTA_SESSAO";
+  const widgetScriptSnippet = selectedAgent
+    ? buildWidgetScriptSnippet({
+        tenantId: tenant?.id ?? "TENANT_ID",
+        agentId: selectedAgent.id,
+        publicKey: widgetPublicKey,
+        hostOrigin,
+        buttonLabel: String(widgetSettings.button_label ?? "Falar agora"),
+        theme: String(widgetSettings.theme ?? "system"),
+        position: String(widgetSettings.position ?? "bottom-right"),
+        livekitModuleUrl: String(widgetSettings.livekit_module_url ?? ""),
+      })
+    : "";
+  const widgetReactSnippet = selectedAgent
+    ? buildWidgetReactSnippet({
+        tenantId: tenant?.id ?? "TENANT_ID",
+        agentId: selectedAgent.id,
+        publicKey: widgetPublicKey,
+        hostOrigin,
+        buttonLabel: String(widgetSettings.button_label ?? "Falar agora"),
+        theme: String(widgetSettings.theme ?? "system"),
+        position: String(widgetSettings.position ?? "bottom-right"),
+        livekitModuleUrl: String(widgetSettings.livekit_module_url ?? ""),
+      })
+    : "";
+  const watchedCall = calls.find((call) => call.id === watchedCallId) ?? null;
   const stats = useMemo(
     () => [
       ["Chamadas hoje", todayCalls.length],
@@ -1664,6 +1781,92 @@ export default function Dashboard({
                     <input name="name" placeholder="Nome do agente" required />
                     <button>+</button>
                   </form>
+                    {/*
+                    <hr />
+                    <h2>Branding e white-label</h2>
+                    <Field label="Nome do produto">
+                      <input
+                        name="product_name"
+                        defaultValue={String(branding.product_name ?? "")}
+                        placeholder="Clinica Aurora"
+                      />
+                    </Field>
+                    <Field label="Logo URL">
+                      <input
+                        name="logo_url"
+                        type="url"
+                        defaultValue={String(branding.logo_url ?? "")}
+                        placeholder="https://cdn.example.com/logo.svg"
+                      />
+                    </Field>
+                    <Field label="Favicon URL">
+                      <input
+                        name="favicon_url"
+                        type="url"
+                        defaultValue={String(branding.favicon_url ?? "")}
+                        placeholder="https://cdn.example.com/favicon.png"
+                      />
+                    </Field>
+                    <div className="two">
+                      <Field label="Cor principal">
+                        <input
+                          name="primary_color"
+                          defaultValue={String(branding.primary_color ?? "#78e6c0")}
+                          placeholder="#78e6c0"
+                        />
+                      </Field>
+                      <Field label="Cor de destaque">
+                        <input
+                          name="accent_color"
+                          defaultValue={String(branding.accent_color ?? "#05231b")}
+                          placeholder="#05231b"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Nome do remetente de e-mail">
+                      <input
+                        name="email_from_name"
+                        defaultValue={String(branding.email_from_name ?? "")}
+                        placeholder="Equipe Clinica Aurora"
+                      />
+                    </Field>
+                    <Field label="Domínio custom">
+                      <input
+                        name="custom_domain"
+                        defaultValue={String(branding.custom_domain ?? "")}
+                        placeholder="voz.clinica-aurora.com"
+                      />
+                    </Field>
+                    <hr />
+                    <h2>Widget embutível</h2>
+                    <Field label="Texto do botão">
+                      <input
+                        name="widget_button_label"
+                        defaultValue={String(widgetSettings.button_label ?? "Falar agora")}
+                      />
+                    </Field>
+                    <div className="two">
+                      <Field label="Tema do widget">
+                        <select
+                          name="widget_theme"
+                          defaultValue={String(widgetSettings.theme ?? "system")}
+                        >
+                          <option value="system">System</option>
+                          <option value="light">Light</option>
+                          <option value="dark">Dark</option>
+                        </select>
+                      </Field>
+                      <Field label="Posição">
+                        <select
+                          name="widget_position"
+                          defaultValue={String(widgetSettings.position ?? "bottom-right")}
+                        >
+                          <option value="bottom-right">Bottom right</option>
+                          <option value="bottom-left">Bottom left</option>
+                        </select>
+                      </Field>
+                    </div>
+                    */}
                   {agents.map((agent) => (
                     <button
                       className={`row ${selectedAgent?.id === agent.id ? "selected" : ""}`}
@@ -2084,6 +2287,20 @@ export default function Dashboard({
                             Web widget: disponível na Fase 5. WhatsApp:
                             integração prevista para a Fase 4.
                           </p>
+                          <div className="card">
+                            <h3>Widget web</h3>
+                            <p className="muted">
+                              {activePublicKeys.length
+                                ? `${activePublicKeys.length} chave(s) public/widget ativa(s). Gere uma nova key em Configurações para copiar o valor completo nesta sessão.`
+                                : "Gere uma API key do tipo public/widget em Configurações para copiar o snippet pronto."}
+                            </p>
+                            <Field label="Snippet HTML">
+                              <textarea readOnly rows={8} value={widgetScriptSnippet} />
+                            </Field>
+                            <Field label="Snippet React/Next">
+                              <textarea readOnly rows={12} value={widgetReactSnippet} />
+                            </Field>
+                          </div>
                           <button
                             type="button"
                             className="secondary"
@@ -2118,6 +2335,29 @@ export default function Dashboard({
                 </aside>
                 <article className="card editor">
                   <div className="eyebrow">SSE em tempo real</div>
+                  {watchedCall?.channel === "whatsapp" && (
+                    <div className="card">
+                      <h3>Handoff humano por texto</h3>
+                      <Field label="Mensagem do operador">
+                        <textarea
+                          value={whatsappHandoffText}
+                          onChange={(event) =>
+                            setWhatsappHandoffText(event.target.value)
+                          }
+                          placeholder="Digite a resposta que deve seguir para o WhatsApp"
+                        />
+                      </Field>
+                      <div className="actions">
+                        <button
+                          type="button"
+                          onClick={() => void sendWhatsappHandoff()}
+                          disabled={!whatsappHandoffText.trim()}
+                        >
+                          Enviar no WhatsApp
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <h2>TranscriÃ§Ã£o e eventos</h2>
                   {liveEvents.map((event, index) => (
                     <div className="row" key={index}>
@@ -2126,6 +2366,99 @@ export default function Dashboard({
                   ))}
                   {!liveEvents.length && <Empty>Selecione “Acompanhar” em uma chamada ativa.</Empty>}
                   {operatorRoom.current && <button type="button" className="danger" onClick={() => { void operatorRoom.current?.disconnect(); operatorRoom.current = null; setNotice("Operador desconectado."); }}>Sair da chamada</button>}
+                </article>
+              </section>
+            )}
+            {section === "simulator" && (
+              <section className="split">
+                <article className="card">
+                  <h2>Nova simulaÃ§Ã£o</h2>
+                  <form className="formGrid" onSubmit={createSimulation}>
+                    <Field label="Agente">
+                      <select name="agent_id" required defaultValue="">
+                        <option value="" disabled>
+                          Selecione
+                        </option>
+                        {agents.map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agent.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Persona">
+                      <textarea
+                        name="persona"
+                        required
+                        defaultValue="Paciente com dÃºvida sobre horÃ¡rios, confirmaÃ§Ã£o e retorno."
+                      />
+                    </Field>
+                    <Field label="Objetivo">
+                      <textarea
+                        name="objective"
+                        required
+                        defaultValue="Validar se o agente responde com clareza, mantÃ©m contexto e conduz a conversa."
+                      />
+                    </Field>
+                    <Field label="Quantidade de conversas">
+                      <input
+                        name="conversation_count"
+                        type="number"
+                        min="1"
+                        max="100"
+                        defaultValue="20"
+                        required
+                      />
+                    </Field>
+                    <button>Rodar simulador</button>
+                  </form>
+                </article>
+                <article className="card editor">
+                  <div className="eyebrow">RelatÃ³rio da simulaÃ§Ã£o</div>
+                  <h2>Resultado</h2>
+                  {latestSimulation ? (
+                    <>
+                      <div className="metricGrid">
+                        <span>
+                          Conversas{" "}
+                          <b>
+                            {String(
+                              latestSimulation.report?.conversation_count ??
+                                latestSimulation.conversation_count ??
+                                "â€”",
+                            )}
+                          </b>
+                        </span>
+                        <span>
+                          Score mÃ©dio{" "}
+                          <b>
+                            {String(
+                              latestSimulation.report?.average_score ?? "â€”",
+                            )}
+                          </b>
+                        </span>
+                        <span>
+                          Taxa de aprovaÃ§Ã£o{" "}
+                          <b>
+                            {String(latestSimulation.report?.pass_rate ?? "â€”")}
+                          </b>
+                        </span>
+                      </div>
+                      <pre>
+                        {JSON.stringify(latestSimulation.report ?? {}, null, 2)}
+                      </pre>
+                      {simulationYamlText && (
+                        <>
+                          <h3>YAML exportado</h3>
+                          <pre>{simulationYamlText}</pre>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <Empty>
+                      Rode uma simulaÃ§Ã£o para gerar o relatÃ³rio desta tela.
+                    </Empty>
+                  )}
                 </article>
               </section>
             )}
@@ -2924,6 +3257,99 @@ export default function Dashboard({
                     <button>Salvar configurações</button>
                   </form>
                   <hr />
+                  <h2>Branding e white-label</h2>
+                  <form className="formGrid" onSubmit={updateTenant}>
+                    <Field label="Nome do produto">
+                      <input
+                        name="product_name"
+                        defaultValue={String(branding.product_name ?? "")}
+                        placeholder="Clinica Aurora"
+                      />
+                    </Field>
+                    <Field label="Logo URL">
+                      <input
+                        name="logo_url"
+                        type="url"
+                        defaultValue={String(branding.logo_url ?? "")}
+                        placeholder="https://cdn.example.com/logo.svg"
+                      />
+                    </Field>
+                    <Field label="Favicon URL">
+                      <input
+                        name="favicon_url"
+                        type="url"
+                        defaultValue={String(branding.favicon_url ?? "")}
+                        placeholder="https://cdn.example.com/favicon.png"
+                      />
+                    </Field>
+                    <div className="two">
+                      <Field label="Cor principal">
+                        <input
+                          name="primary_color"
+                          defaultValue={String(branding.primary_color ?? "#78e6c0")}
+                          placeholder="#78e6c0"
+                        />
+                      </Field>
+                      <Field label="Cor de destaque">
+                        <input
+                          name="accent_color"
+                          defaultValue={String(branding.accent_color ?? "#05231b")}
+                          placeholder="#05231b"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Nome do remetente de e-mail">
+                      <input
+                        name="email_from_name"
+                        defaultValue={String(branding.email_from_name ?? "")}
+                        placeholder="Equipe Clinica Aurora"
+                      />
+                    </Field>
+                    <Field label="Dominio custom">
+                      <input
+                        name="custom_domain"
+                        defaultValue={String(branding.custom_domain ?? "")}
+                        placeholder="voz.clinica-aurora.com"
+                      />
+                    </Field>
+                    <h2>Widget embutivel</h2>
+                    <Field label="Texto do botao">
+                      <input
+                        name="widget_button_label"
+                        defaultValue={String(widgetSettings.button_label ?? "Falar agora")}
+                      />
+                    </Field>
+                    <div className="two">
+                      <Field label="Tema do widget">
+                        <select
+                          name="widget_theme"
+                          defaultValue={String(widgetSettings.theme ?? "system")}
+                        >
+                          <option value="system">System</option>
+                          <option value="light">Light</option>
+                          <option value="dark">Dark</option>
+                        </select>
+                      </Field>
+                      <Field label="Posicao">
+                        <select
+                          name="widget_position"
+                          defaultValue={String(widgetSettings.position ?? "bottom-right")}
+                        >
+                          <option value="bottom-right">Bottom right</option>
+                          <option value="bottom-left">Bottom left</option>
+                        </select>
+                      </Field>
+                    </div>
+                    <Field label="LiveKit module URL">
+                      <input
+                        name="widget_livekit_module_url"
+                        type="url"
+                        defaultValue={String(widgetSettings.livekit_module_url ?? "")}
+                        placeholder="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.esm.mjs"
+                      />
+                    </Field>
+                    <button>Salvar branding e widget</button>
+                  </form>
                   <h2>Integrações</h2>
                   <p>Google Calendar e Gmail</p>
                   <button
@@ -2942,6 +3368,68 @@ export default function Dashboard({
                     Conectar Google
                   </button>
                   <h2>Secrets de integrações</h2>
+                  <div className="card">
+                    <h3>WhatsApp Cloud API</h3>
+                    <p className="muted">
+                      {whatsappIntegration
+                        ? `Conectado em ${String(
+                            whatsappIntegration.config?.phone_number_id ?? "-",
+                          )}`
+                        : "Conecte um numero do WhatsApp a um agente ativo."}
+                    </p>
+                    <form className="formGrid" onSubmit={connectWhatsapp}>
+                      <Field label="Phone Number ID">
+                        <input
+                          name="phone_number_id"
+                          required
+                          defaultValue={String(
+                            whatsappIntegration?.config?.phone_number_id ?? "",
+                          )}
+                        />
+                      </Field>
+                      <Field label="Business Account ID">
+                        <input
+                          name="business_account_id"
+                          required
+                          defaultValue={String(
+                            whatsappIntegration?.config?.business_account_id ??
+                              "",
+                          )}
+                        />
+                      </Field>
+                      <Field label="Agente padrao">
+                        <select
+                          name="agent_id"
+                          required
+                          defaultValue={String(
+                            whatsappIntegration?.config?.agent_id ?? "",
+                          )}
+                        >
+                          <option value="" disabled>
+                            Selecione
+                          </option>
+                          {agents.map((agent) => (
+                            <option key={agent.id} value={agent.id}>
+                              {agent.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Access token">
+                        <input
+                          name="access_token"
+                          type="password"
+                          required={!whatsappIntegration}
+                          placeholder={
+                            whatsappIntegration
+                              ? "Informe um novo token para rotacionar"
+                              : "EAAG..."
+                          }
+                        />
+                      </Field>
+                      <button>Salvar WhatsApp</button>
+                    </form>
+                  </div>
                   <p className="muted">
                     Valores são criptografados e nunca retornam pela API.
                   </p>

@@ -1,0 +1,40 @@
+{
+  "scope": "phase5_acceptance_summary",
+  "status_date": "2026-08-25",
+  "passed": true,
+  "pending": [],
+  "hosted_asset_next_gap": null,
+  "environment_blocker": null,
+  "pytest_widget_origin": {
+    "passed": true,
+    "command": "pytest -q tests/test_api.py -k public_widget_session_requires_valid_origin_and_public_key",
+    "output": "[pytest output omitted on success]"
+  },
+  "steps": [
+    {
+      "name": "static_host_example_present",
+      "ok": true,
+      "detail": "the static host example should reference the generated browser bundle"
+    },
+    {
+      "name": "react_example_present",
+      "ok": true,
+      "detail": "the widget README should include a React/Next usage example"
+    },
+    {
+      "name": "dashboard_snippet_targets_hosted_asset",
+      "ok": true,
+      "detail": "the dashboard snippet builder should target /voiceos.js"
+    },
+    {
+      "name": "origin_enforcement_test_passed",
+      "ok": true,
+      "detail": "the focused API test for public widget key + allowed origin should pass"
+    },
+    {
+      "name": "hosted_asset_readiness_contract_green",
+      "ok": true,
+      "detail": "all hosted-asset contract checks except the materialized bundle artifacts should be green"
+    }
+  ]
+}

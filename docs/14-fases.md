@@ -79,7 +79,7 @@ Aceite: mensagem de áudio no WhatsApp respondida com texto+áudio em ≤ 8 s p5
 **Objetivo**: distribuir para sites dos clientes e personalizar marca.
 
 Entregáveis:
-- `packages/widget`: `voiceos.js` (≤ 60 KB gz), botão flutuante, temas, posição, textos, eventos; SDK `@voiceos/web` publicado no npm; docs com exemplos (HTML, React, Next).
+- `packages/widget`: `voiceos.js` (≤ 60 KB gz), botão flutuante, temas, posição, textos, eventos (`voiceos:start`, `voiceos:end`), SDK `@voiceos/web` com rota pública `/v1/public/tenants/{tenant_id}/widget/sessions` e `livekitModuleUrl` opcional; docs com exemplos (HTML, React, Next).
 - White-label: logo, cores, favicon, nome do produto, domínio custom (`CNAME` + certificado via ACM/Vercel), e-mails com marca do tenant.
 - Painel: aba Canais com snippet, settings/branding.
 

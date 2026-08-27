@@ -1,0 +1,51 @@
+{
+  "date": "2026-08-25",
+  "scope": "phase4_evidence_bundle",
+  "bundle_path": "reports/phase4-evidence-bundle.zip",
+  "included": [
+    {
+      "path": "PHASE-4-REPORT.md",
+      "bytes": 13484,
+      "sha256": "349c5a3eeeef6cf0063b86ff880662735b5c06de4c2e436eb576c71f03b51464"
+    },
+    {
+      "path": "PHASE-4-REMOTE-RUNBOOK.md",
+      "bytes": 4246,
+      "sha256": "a9880a72acdbec0f87ef730bdfa407465869707c7ba91eb5ddf7db025ac267cc"
+    },
+    {
+      "path": "scripts/check_phase4_remote_ready.ps1",
+      "bytes": 2029,
+      "sha256": "8fc24948ecc7c4a0505179db834b3362c141ae62cd52c324f89f17ac59117f43"
+    },
+    {
+      "path": "scripts/verify_phase4_remote_artifact.py",
+      "bytes": 4337,
+      "sha256": "6faeb6a2dceb21286e82705d3065411d91bf562960bdde9993c61c65faf624e7"
+    },
+    {
+      "path": "reports/phase4-local-acceptance.json",
+      "bytes": 2426,
+      "sha256": "f485348f7ee13f4429a2f689d69aa1583c2f53be60a04ab73073e5e7af69b18d"
+    },
+    {
+      "path": "reports/phase4-remote-readiness.json",
+      "bytes": 1480,
+      "sha256": "e6ff0b4d7e589cede781a4dcbacfb8b89ae61198b15ff9004ce179bacd3826d1"
+    },
+    {
+      "path": "reports/phase4-evidence-summary.json",
+      "bytes": 913,
+      "sha256": "b01e033dae06066ae335f465a486e7cdc2495a1a8516c1ea7a9b740b32488b11"
+    }
+  ],
+  "missing": [],
+  "bundle_bytes": 11300,
+  "bundle_sha256": "cfc8756d09b2ca22ebd7b7d59894c53b79ddfde891f0c4ec18c2a35b555fedee",
+  "next_gap": "remote_repo_access",
+  "environment_blocker": {
+    "type": "node_g_drive_eperm",
+    "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+    "current_gap": "phase4_playwright_executor_blocked"
+  }
+}

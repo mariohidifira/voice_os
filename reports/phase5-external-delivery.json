@@ -1,0 +1,18 @@
+{
+  "scope": "phase5_external_delivery",
+  "status_date": "2026-08-25",
+  "base_url": null,
+  "asset_url": null,
+  "passed": false,
+  "pending": true,
+  "current_gap": "phase5_external_closeout_pending",
+  "detail": "Awaiting externally hosted widget delivery verification outside this executor.",
+  "expected_input": {
+    "verifier_command": "python scripts/check_phase5_external_delivery.py --base-url https://<host> --expected-host <domain>",
+    "output_report": "reports/phase5-external-delivery.json"
+  },
+  "local_reference": {
+    "phase5_next_gap": null,
+    "environment_blocker": null
+  }
+}

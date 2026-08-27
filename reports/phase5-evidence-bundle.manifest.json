@@ -1,0 +1,96 @@
+{
+  "scope": "phase5_evidence_bundle",
+  "bundle_path": "reports/phase5-evidence-bundle.zip",
+  "included": [
+    {
+      "path": "PHASE-5-REPORT.md",
+      "bytes": 6057,
+      "sha256": "4690a82d2e0b9fcee05e0a3df1a893d596c03d6bd499d20238254857c14ee9b1"
+    },
+    {
+      "path": "PHASE-5-HOSTED-ASSET-RUNBOOK.md",
+      "bytes": 3952,
+      "sha256": "ee439fe260d66eba26960f62414205625df83fe22cde294b8309f9a0b22b4a7e"
+    },
+    {
+      "path": "FINAL-HANDOFF-2026-08-25.md",
+      "bytes": 5214,
+      "sha256": "c2b3a0b73402566a3c8e79c691f5008bbca64fb7425d185988f36a1a6e256f5c"
+    },
+    {
+      "path": "packages/widget/README.md",
+      "bytes": 2006,
+      "sha256": "e569d147fdc720af96f19fe67342971d23ec64988c89b076a49666283608f179"
+    },
+    {
+      "path": "packages/widget/examples/host-page.html",
+      "bytes": 2634,
+      "sha256": "ed6a085b8b00168e41cf94d8254582938d95c40ff38797a18a3956885eb95254"
+    },
+    {
+      "path": "apps/web/lib/dashboard-phase5.ts",
+      "bytes": 4528,
+      "sha256": "810ab5343088240aad44fab47132ee034bfa01935053d29c4f8472e010cdc2c5"
+    },
+    {
+      "path": "apps/web/lib/dashboard-phase5.test.ts",
+      "bytes": 3198,
+      "sha256": "03f778035ddba294180407087eac5eaaa1b89b9b02179afedf2271d9080cf314"
+    },
+    {
+      "path": "apps/web/public/voiceos.js",
+      "bytes": 10431,
+      "sha256": "cf0dd9118e4e74d9574e07bbba3d6b8d8b02a1aeb3aec9d2bf3111acf2a9039c"
+    },
+    {
+      "path": "packages/widget/dist/voiceos.js",
+      "bytes": 10431,
+      "sha256": "cf0dd9118e4e74d9574e07bbba3d6b8d8b02a1aeb3aec9d2bf3111acf2a9039c"
+    },
+    {
+      "path": "packages/widget/dist/size.json",
+      "bytes": 540,
+      "sha256": "3b67ef039694f270cb5865449c8c655837ca9e9dcc473fce4742e82536c87854"
+    },
+    {
+      "path": "scripts/build_widget_bundle_fallback.py",
+      "bytes": 3097,
+      "sha256": "bbb86c70c218dea0c08bd9e0da41b57c8c7b7f11c72a0aa5de1ba782031782cd"
+    },
+    {
+      "path": "scripts/check_phase5_hosted_asset_ready.py",
+      "bytes": 8257,
+      "sha256": "79ac148dff8c81c33154625e34bf5d290e25938476fd1661a57d4487cb522e05"
+    },
+    {
+      "path": "scripts/check_phase5_acceptance.py",
+      "bytes": 4072,
+      "sha256": "fda10d2a5a73e475297a1a31877d2b13690e4a30ae2b9838357a071fccf8fbf2"
+    },
+    {
+      "path": "scripts/check_phase5_external_delivery.py",
+      "bytes": 8373,
+      "sha256": "f8b7090d95ee01832f9ba5b02925dbd3a143f105632eadbb34a1614a8cd395d0"
+    },
+    {
+      "path": "reports/phase5-hosted-asset-readiness.json",
+      "bytes": 3015,
+      "sha256": "b6840f65bb4524b5c907b6bbe98919a8e7228e245d379db35390252e9389da34"
+    },
+    {
+      "path": "reports/phase5-acceptance-summary.json",
+      "bytes": 1278,
+      "sha256": "d0ba93e41f959e2a666896547c7850df87a7d4fcab5331d65001bc7dcfc31994"
+    },
+    {
+      "path": "reports/final-handoff-summary.json",
+      "bytes": 3350,
+      "sha256": "7f7491605820b2d800345e334886c2d08f118b9ae2fb1d2054d63d3f60ff4ab4"
+    }
+  ],
+  "missing": [],
+  "next_gap": null,
+  "environment_blocker": null,
+  "bundle_bytes": 29899,
+  "bundle_sha256": "1fdfd5a76d2f7e38570076cdb9252cb354c7b88f1e2289f93c7ac0d149eef8e0"
+}

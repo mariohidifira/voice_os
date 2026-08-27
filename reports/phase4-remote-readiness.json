@@ -1,0 +1,33 @@
+﻿{
+    "date":  "2026-08-25",
+    "scope":  "phase4_remote_readiness",
+    "repo":  "mariohidifira/voice_os",
+    "steps":  [
+                  {
+                      "output":  "\turl = https://github.com/mariohidifira/voice_os.git",
+                      "ok":  true,
+                      "name":  "origin_config"
+                  },
+                  {
+                      "output":  "gh: Requires authentication (HTTP 401)",
+                      "ok":  false,
+                      "name":  "gh_api_user"
+                  },
+                  {
+                      "output":  "gh: Not Found (HTTP 404)",
+                      "ok":  false,
+                      "name":  "gh_api_repo"
+                  },
+                  {
+                      "output":  "could not get workflows: HTTP 404: Not Found (https://api.github.com/repos/mariohidifira/voice_os/actions/workflows?page=1\u0026per_page=50)",
+                      "ok":  false,
+                      "name":  "gh_workflow_list"
+                  },
+                  {
+                      "output":  "fatal: unable to access \u0027https://github.com/mariohidifira/voice_os.git/\u0027: schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS (0x8009030e) - No credentials are available in the security package",
+                      "ok":  false,
+                      "name":  "git_ls_remote_origin"
+                  }
+              ],
+    "passed":  false
+}

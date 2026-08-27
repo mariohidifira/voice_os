@@ -66,6 +66,7 @@ from .schemas import (
     PromptImproveRequest,
     SecretCreate,
     SessionCreate,
+    SimulationCreate,
     TenantPatch,
     ToolCreate,
     ToolPatch,
@@ -73,8 +74,11 @@ from .schemas import (
     VoicePreviewRequest,
     WebhookCreate,
     WebhookPatch,
+    WhatsAppConnect,
+    WhatsAppHandoffMessage,
 )
 from .secrets import SecretCipher, get_secret_cipher
+from .simulator import run_simulation, simulation_yaml
 from .storage import (
     ExportStorage,
     RecordingStorage,
@@ -86,6 +90,13 @@ from .storage import (
 from .telephony import Telephony, TelephonyProviderError, get_telephony
 from .tool_execution import ToolExecutor, get_tool_executor
 from .voice_preview import VoicePreview, get_voice_preview
+from .whatsapp import WhatsAppGateway, incoming_messages, valid_meta_signature
+from .whatsapp_runtime import (
+    fallback_reply,
+    generate_whatsapp_reply,
+    synthesize_whatsapp_audio,
+    transcribe_whatsapp_audio,
+)
 
 v1 = APIRouter(prefix="/v1")
 admin = APIRouter(prefix="/admin")
@@ -118,6 +129,80 @@ def _require_admin(auth: Principal) -> None:
 def _require_platform_admin(auth: Principal) -> None:
     if not auth.is_platform_admin:
         raise HTTPException(403, detail={"code": "forbidden", "message": "Platform admin required"})
+
+
+def _sanitize_integration(item: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not item:
+        return None
+    return {key: value for key, value in item.items() if key != "refresh_token_secret_id"}
+
+
+def _whatsapp_handoff_requested(text: str) -> bool:
+    lowered = text.casefold()
+    return any(
+        phrase in lowered
+        for phrase in ("humano", "atendente", "pessoa", "suporte humano", "falar com alguem")
+    )
+
+
+def _build_whatsapp_reply(
+    runtime: dict[str, Any] | None, user_text: str, inbound_type: str
+) -> tuple[str, bool]:
+    greeting = str((runtime or {}).get("greeting") or "Olá! Como posso ajudar?")
+    cleaned = user_text.strip()
+    if _whatsapp_handoff_requested(cleaned):
+        return ("Vou encaminhar sua conversa para um atendente humano agora.", True)
+    if not cleaned:
+        if inbound_type == "audio":
+            return (
+                "Recebi sua mensagem de voz. Pode me dizer em texto ou áudio o que você precisa?",
+                False,
+            )
+        return (greeting, False)
+    if inbound_type == "audio":
+        return (f"Recebi sua mensagem de voz. {cleaned}", False)
+    return (f"Recebi sua mensagem: {cleaned}", False)
+
+
+def _whatsapp_reply_mode(runtime: dict[str, Any] | None) -> str:
+    behavior = dict((runtime or {}).get("behavior") or {})
+    mode = str(behavior.get("whatsapp_reply_mode") or "text").lower()
+    return mode if mode in {"text", "audio", "both"} else "text"
+
+
+def _origin_allowed(origin: str | None, allowed_origins: list[str]) -> bool:
+    if not origin:
+        return False
+    return origin in allowed_origins
+
+
+async def _require_public_widget_api_key(
+    repo: Repository,
+    tenant_id: UUID,
+    x_api_key: str | None,
+    origin: str | None,
+) -> dict[str, Any]:
+    if not x_api_key or not x_api_key.startswith("vos_pk_"):
+        raise HTTPException(
+            401,
+            detail={"code": "invalid_api_key", "message": "Valid public API key required"},
+        )
+    api_key = await repo.get_api_key_by_hash(
+        tenant_id,
+        x_api_key[:14],
+        hashlib.sha256(x_api_key.encode()).hexdigest(),
+    )
+    if not api_key or api_key["scope"] != "public":
+        raise HTTPException(
+            401,
+            detail={"code": "invalid_api_key", "message": "Valid public API key required"},
+        )
+    if not _origin_allowed(origin, list(api_key.get("allowed_origins") or [])):
+        raise HTTPException(
+            403,
+            detail={"code": "origin_not_allowed", "message": "Origin is not allowed for this key"},
+        )
+    return api_key
 
 
 @admin.get("/tenants")
@@ -363,6 +448,47 @@ async def stripe_webhook(
     return {"received": True}
 
 
+@webhooks.get("/whatsapp")
+async def whatsapp_webhook_verify(
+    hub_mode: Annotated[str | None, Query(alias="hub.mode")] = None,
+    hub_verify_token: Annotated[str | None, Query(alias="hub.verify_token")] = None,
+    hub_challenge: Annotated[str | None, Query(alias="hub.challenge")] = None,
+) -> Response:
+    settings = get_settings()
+    if (
+        hub_mode == "subscribe"
+        and hub_challenge
+        and hub_verify_token
+        and hub_verify_token == settings.whatsapp_verify_token
+    ):
+        return Response(content=hub_challenge, media_type="text/plain")
+    raise HTTPException(
+        403, detail={"code": "invalid_verify_token", "message": "Invalid WhatsApp verify token"}
+    )
+
+
+@webhooks.post("/whatsapp")
+async def whatsapp_webhook(
+    request: Request,
+    repo: Repo,
+    meta_signature: Annotated[str | None, Header(alias="X-Hub-Signature-256")] = None,
+) -> dict[str, Any]:
+    payload = await request.body()
+    settings = get_settings()
+    if settings.whatsapp_app_secret and (
+        not meta_signature
+        or not valid_meta_signature(payload, meta_signature, settings.whatsapp_app_secret)
+    ):
+        raise HTTPException(
+            401, detail={"code": "invalid_signature", "message": "Invalid WhatsApp signature"}
+        )
+    body = json.loads(payload or b"{}")
+    accepted = 0
+    for item in incoming_messages(body):
+        accepted += int(await repo.ingest_whatsapp_message(item))
+    return {"received": True, "accepted": accepted}
+
+
 @webhooks.post("/livekit")
 async def livekit_webhook(request: Request, repo: Repo) -> dict[str, bool]:
     raw = (await request.body()).decode()
@@ -396,6 +522,56 @@ async def _resolve_tool_secret(
     except ValueError:
         return None
     return await cipher.decrypt(secret["ciphertext"], secret["kms_key_id"]) if secret else None
+
+
+async def _execute_runtime_tool(
+    repo: Repository,
+    executor: ToolExecutor,
+    cipher: SecretCipher,
+    native: NativeIntegrations,
+    tenant_id: UUID,
+    call: dict[str, Any],
+    tool: dict[str, Any],
+    arguments: dict[str, Any],
+    *,
+    session_variables: dict[str, Any] | None = None,
+    end_user: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    try:
+        validate(arguments, tool["parameters_schema"])
+    except ValidationError as exc:
+        raw_result = {"error": "invalid_arguments", "details": exc.message}
+        return raw_result, raw_result
+    if tool["type"] == "native":
+        try:
+            raw = await native.execute(
+                tool.get("native_kind") or tool["name"],
+                arguments,
+                tenant_id,
+                repo,
+                cipher,
+                call,
+            )
+        except (httpx.HTTPError, RuntimeError, KeyError, ValueError) as exc:
+            raw = {"error": "integration_failed", "message": str(exc)}
+        return (raw if isinstance(raw, dict) else {"value": raw}), (
+            raw if isinstance(raw, dict) else {"value": raw}
+        )
+    secret = await _resolve_tool_secret(repo, cipher, tenant_id, tool)
+    result = await executor.execute(
+        tool,
+        arguments,
+        {
+            "tenant_id": tenant_id,
+            "session_variables": session_variables or {},
+            "end_user": end_user or {},
+            "call": call,
+            "secret": secret,
+        },
+    )
+    raw_result = result.get("result", result)
+    llm_result = raw_result if isinstance(raw_result, dict) else {"value": raw_result}
+    return llm_result, result
 
 
 async def _ingest_document(
@@ -1066,6 +1242,82 @@ async def create_session(body: SessionCreate, auth: Auth, repo: Repo, rtc: Rtc) 
     }
 
 
+@v1.post("/public/tenants/{tenant_id}/widget/sessions", status_code=201)
+async def create_public_widget_session(
+    tenant_id: UUID,
+    body: SessionCreate,
+    repo: Repo,
+    rtc: Rtc,
+    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+    origin: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    api_key = await _require_public_widget_api_key(repo, tenant_id, x_api_key, origin)
+    await _enforce_call_limit(Principal("widget-public", tenant_id, "viewer"), repo, "web")
+    agent = await repo.get_agent(tenant_id, body.agent_id)
+    if not agent or agent["status"] != "active":
+        raise HTTPException(
+            404, detail={"code": "agent_not_found", "message": "Active agent not found"}
+        )
+    end_user = None
+    if body.end_user:
+        try:
+            end_user = await repo.upsert_end_user(tenant_id, body.end_user)
+        except ValueError as exc:
+            raise HTTPException(
+                422, detail={"code": "invalid_end_user", "message": str(exc)}
+            ) from exc
+    metadata = {
+        **body.metadata,
+        "widget_session": True,
+        "public_api_key_prefix": api_key["prefix"],
+        "origin": origin,
+    }
+    call = await repo.create_call(
+        tenant_id,
+        body.agent_id,
+        body.variables,
+        metadata,
+        agent_version_id=agent["current_version_id"],
+        end_user_id=end_user["id"] if end_user else None,
+    )
+    call_id = call["id"]
+    session = await rtc.provision(
+        call_id=call_id,
+        agent_id=body.agent_id,
+        version="current",
+        variables=body.variables,
+        end_user=body.end_user,
+    )
+    await repo.update_call(tenant_id, call_id, {"livekit_room": session["room_name"]})
+    return {
+        "session_id": call_id,
+        "call_id": call_id,
+        "livekit_url": get_settings().livekit_url,
+        "token": session["token"],
+        "expires_at": datetime.now(UTC) + timedelta(hours=1),
+    }
+
+
+@v1.delete("/public/tenants/{tenant_id}/widget/sessions/{session_id}", status_code=204)
+async def delete_public_widget_session(
+    tenant_id: UUID,
+    session_id: UUID,
+    repo: Repo,
+    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+    origin: Annotated[str | None, Header()] = None,
+) -> None:
+    await _require_public_widget_api_key(repo, tenant_id, x_api_key, origin)
+    call = await repo.update_call(
+        tenant_id,
+        session_id,
+        {"status": "cancelled", "end_reason": "user_hangup", "ended_at": datetime.now(UTC)},
+    )
+    if not call:
+        raise HTTPException(
+            404, detail={"code": "session_not_found", "message": "Session not found"}
+        )
+
+
 @v1.delete("/sessions/{session_id}", status_code=204)
 async def delete_session(session_id: UUID, auth: Auth, repo: Repo) -> None:
     call = await repo.update_call(
@@ -1661,6 +1913,83 @@ async def hangup_call(call_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
     return call
 
 
+@v1.post("/calls/{call_id}/whatsapp-handoff")
+async def send_whatsapp_handoff_message(
+    call_id: UUID,
+    body: WhatsAppHandoffMessage,
+    auth: Auth,
+    repo: Repo,
+    cipher: Cipher,
+    bus: Bus,
+) -> dict[str, Any]:
+    if auth.role not in {"owner", "admin", "operator"}:
+        raise HTTPException(403, detail={"code": "forbidden", "message": "Operator role required"})
+    call = await repo.get_call_detail(auth.tenant_id, call_id)
+    if not call:
+        raise HTTPException(404, detail={"code": "call_not_found", "message": "Call not found"})
+    if call.get("channel") != "whatsapp":
+        raise HTTPException(
+            409,
+            detail={"code": "invalid_channel", "message": "Call is not a WhatsApp conversation"},
+        )
+    integration = await repo.get_integration(auth.tenant_id, "whatsapp")
+    if not integration or integration.get("status") != "active":
+        raise HTTPException(
+            409,
+            detail={
+                "code": "integration_unavailable",
+                "message": "WhatsApp integration is not connected",
+            },
+        )
+    secret_id_raw = integration.get("refresh_token_secret_id")
+    try:
+        secret_id = UUID(str(secret_id_raw))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            409,
+            detail={"code": "secret_missing", "message": "WhatsApp access token is unavailable"},
+        )
+    secret = await repo.get_secret(auth.tenant_id, secret_id)
+    if not secret:
+        raise HTTPException(
+            409,
+            detail={"code": "secret_missing", "message": "WhatsApp access token is unavailable"},
+        )
+    config = dict(integration.get("config") or {})
+    phone_number_id = str(config.get("phone_number_id") or "")
+    recipient = str(call.get("from_number") or "")
+    if not phone_number_id or not recipient:
+        raise HTTPException(
+            409,
+            detail={"code": "handoff_unavailable", "message": "Missing WhatsApp routing data"},
+        )
+    access_token = await cipher.decrypt(secret["ciphertext"], str(secret["kms_key_id"]))
+    message_id = await WhatsAppGateway(get_settings(), access_token, phone_number_id).send_text(
+        recipient, body.text
+    )
+    metadata = dict(call.get("metadata") or {})
+    metadata["human_handoff"] = True
+    await repo.update_call(auth.tenant_id, call_id, {"metadata": metadata})
+    turn = {
+        "ordinal": len(call.get("turns") or []),
+        "role": "operator",
+        "text": body.text,
+        "started_at": datetime.now(UTC),
+        "ended_at": datetime.now(UTC),
+        "audio_offset_ms": 0,
+    }
+    await repo.append_call_turns(call_id, [turn])
+    event = {
+        "type": "operator.message",
+        "turn": {"role": "operator", "text": body.text},
+        "provider_message_id": message_id,
+        "at": datetime.now(UTC),
+    }
+    await repo.append_call_events(call_id, [event])
+    await bus.publish(auth.tenant_id, call_id, event)
+    return {"status": "sent", "provider_message_id": message_id}
+
+
 @v1.post("/tools", status_code=201)
 async def create_tool(body: ToolCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
     _require_admin(auth)
@@ -1772,13 +2101,40 @@ async def google_callback(
 @v1.get("/integrations")
 async def list_integrations(auth: Auth, repo: Repo) -> dict[str, Any]:
     _require_admin(auth)
-    google = await repo.get_integration(auth.tenant_id, "google")
-    sanitized = (
-        {key: value for key, value in google.items() if key != "refresh_token_secret_id"}
-        if google
-        else None
+    items = [
+        _sanitize_integration(await repo.get_integration(auth.tenant_id, provider))
+        for provider in ("google", "whatsapp")
+    ]
+    return {"data": [item for item in items if item], "next_cursor": None}
+
+
+@v1.post("/integrations/whatsapp", status_code=201)
+async def connect_whatsapp(
+    body: WhatsAppConnect, auth: Auth, repo: Repo, cipher: Cipher
+) -> dict[str, Any]:
+    _require_admin(auth)
+    if not await repo.get_agent(auth.tenant_id, body.agent_id):
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    ciphertext, key_id = await cipher.encrypt(body.access_token)
+    secret = await repo.create_secret(
+        auth.tenant_id, f"whatsapp_{body.phone_number_id}", ciphertext, key_id
     )
-    return {"data": [sanitized] if sanitized else []}
+    integration = await repo.upsert_integration(
+        auth.tenant_id,
+        "whatsapp",
+        {
+            "scopes": ["whatsapp_business_messaging"],
+            "refresh_token_secret_id": secret["id"],
+            "account_email": body.business_account_id,
+            "status": "active",
+            "config": {
+                "phone_number_id": body.phone_number_id,
+                "business_account_id": body.business_account_id,
+                "agent_id": str(body.agent_id),
+            },
+        },
+    )
+    return _sanitize_integration(integration) or {}
 
 
 @v1.put("/agents/{agent_id}/draft/tools")
@@ -1802,6 +2158,56 @@ async def get_draft_tools(agent_id: UUID, auth: Auth, repo: Repo) -> dict[str, A
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
     runtime = await repo.get_runtime(agent_id, "draft")
     return {"data": runtime.get("tools", []) if runtime else []}
+
+
+@v1.post("/simulations", status_code=201)
+async def create_simulation(body: SimulationCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    if not await repo.get_agent(auth.tenant_id, body.agent_id):
+        raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
+    simulation = await repo.create_simulation(auth.tenant_id, body.model_dump())
+    runtime = await repo.get_runtime(body.agent_id, "current") or await repo.get_runtime(
+        body.agent_id, "draft"
+    )
+    report = run_simulation(
+        body.persona,
+        body.objective,
+        body.conversation_count,
+        greeting=str((runtime or {}).get("greeting") or "Olá! Como posso ajudar?"),
+    )
+    completed = await repo.complete_simulation(auth.tenant_id, UUID(str(simulation["id"])), report)
+    return completed or simulation
+
+
+@v1.get("/simulations/{simulation_id}")
+async def get_simulation(simulation_id: UUID, auth: Auth, repo: Repo) -> dict[str, Any]:
+    _require_admin(auth)
+    item = await repo.get_simulation(auth.tenant_id, simulation_id)
+    if not item:
+        raise HTTPException(
+            404, detail={"code": "simulation_not_found", "message": "Simulation not found"}
+        )
+    return item
+
+
+@v1.get("/simulations/{simulation_id}/yaml")
+async def get_simulation_yaml(simulation_id: UUID, auth: Auth, repo: Repo) -> Response:
+    _require_admin(auth)
+    item = await repo.get_simulation(auth.tenant_id, simulation_id)
+    if not item:
+        raise HTTPException(
+            404, detail={"code": "simulation_not_found", "message": "Simulation not found"}
+        )
+    report = dict(item.get("report") or {})
+    if not report:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "simulation_pending",
+                "message": "Simulation report is not available yet",
+            },
+        )
+    return Response(content=simulation_yaml(report), media_type="application/yaml")
 
 
 @v1.get("/knowledge-bases")
@@ -2132,6 +2538,181 @@ async def outgoing_webhook_tick(repo: Repo, cipher: Cipher) -> dict[str, int]:
     return {"claimed": len(deliveries), "delivered": delivered, "retrying": retrying, "failed": failed}
 
 
+@internal.post("/whatsapp/tick")
+async def whatsapp_tick(
+    repo: Repo, cipher: Cipher, bus: Bus, voice: Voice, executor: Executor, native: Native
+) -> dict[str, int]:
+    messages = await repo.claim_whatsapp_messages()
+    processed = failed = handoffs = tool_runs = 0
+    settings = get_settings()
+    for item in messages:
+        tenant_id = UUID(str(item["tenant_id"]))
+        call_id = UUID(str(item["call_id"]))
+        try:
+            call = dict(item.get("call") or {})
+            config = dict(item.get("config") or {})
+            metadata = dict(call.get("metadata") or {})
+            phone_number_id = str(
+                config.get("phone_number_id")
+                or metadata.get("phone_number_id")
+                or item.get("phone_number_id")
+                or ""
+            )
+            if not phone_number_id:
+                raise ValueError("WhatsApp phone_number_id is missing")
+            access_token = await cipher.decrypt(bytes(item["ciphertext"]), str(item["kms_key_id"]))
+            gateway = WhatsAppGateway(settings, access_token, phone_number_id)
+            runtime = (
+                await repo.get_runtime(UUID(str(call["agent_id"])), "current")
+                if call.get("agent_id")
+                else None
+            ) or (
+                await repo.get_runtime(UUID(str(call["agent_id"])), "draft")
+                if call.get("agent_id")
+                else None
+            )
+            inbound_type = str(item.get("type") or "text")
+            user_text = str(item.get("text") or "").strip()
+            if inbound_type == "audio" and item.get("media_id"):
+                try:
+                    media = await gateway.download_media(str(item["media_id"]))
+                    if not user_text:
+                        user_text = await transcribe_whatsapp_audio(settings, runtime, media)
+                except Exception:
+                    if not user_text:
+                        user_text = "Mensagem de voz recebida."
+            elif not user_text:
+                user_text = f"Mensagem recebida pelo canal WhatsApp ({inbound_type})."
+            callback_tenant_id = tenant_id
+            callback_call_id = call_id
+            callback_call = dict(call)
+            callback_session_variables = dict(call.get("variables") or {})
+
+            async def execute_tool_callback(
+                tool: dict[str, Any],
+                arguments: dict[str, Any],
+                callback_tenant_id: UUID = callback_tenant_id,
+                callback_call_id: UUID = callback_call_id,
+                callback_call: dict[str, Any] = callback_call,
+                callback_session_variables: dict[str, Any] = callback_session_variables,
+            ) -> dict[str, Any]:
+                nonlocal tool_runs
+                started = datetime.now(UTC)
+                llm_result, raw_result = await _execute_runtime_tool(
+                    repo,
+                    executor,
+                    cipher,
+                    native,
+                    callback_tenant_id,
+                    callback_call,
+                    tool,
+                    arguments,
+                    session_variables=callback_session_variables,
+                )
+                duration_ms = round((datetime.now(UTC) - started).total_seconds() * 1000)
+                item = await repo.append_call_tool_call(
+                    callback_call_id,
+                    {
+                        "id": None,
+                        "turn_id": None,
+                        "tool_id": tool.get("id"),
+                        "name": tool["name"],
+                        "arguments": arguments,
+                        "result": llm_result,
+                        "status": "error" if "error" in llm_result else "ok",
+                        "duration_ms": raw_result.get("latency_ms", duration_ms),
+                        "started_at": started,
+                    },
+                )
+                if item:
+                    await bus.publish(
+                        callback_tenant_id,
+                        callback_call_id,
+                        {"type": "tool.called", "tool_call": item},
+                    )
+                tool_runs += 1
+                return llm_result
+
+            mode = _whatsapp_reply_mode(runtime)
+            agent_text, handoff, _tool_records = await generate_whatsapp_reply(
+                settings,
+                runtime,
+                user_text,
+                inbound_type,
+                execute_tool=execute_tool_callback if list((runtime or {}).get("tools") or []) else None,
+            )
+            if not agent_text:
+                agent_text, handoff = fallback_reply(runtime, user_text, inbound_type)
+            mode = _whatsapp_reply_mode(runtime)
+            recipient = str(item.get("from") or call.get("from_number") or "")
+            if not recipient:
+                raise ValueError("WhatsApp recipient is missing")
+            provider_message_ids: list[str] = []
+            if mode != "audio":
+                provider_message_ids.append(await gateway.send_text(recipient, agent_text))
+            audio_payload = (
+                await synthesize_whatsapp_audio(settings, runtime, agent_text, voice)
+                if mode in {"audio", "both"}
+                else None
+            )
+            if audio_payload:
+                audio, filename, content_type = audio_payload
+                provider_message_ids.append(
+                    await gateway.send_audio_bytes(
+                        recipient,
+                        audio,
+                        filename=filename,
+                        content_type=content_type,
+                    )
+                )
+            elif mode == "audio":
+                provider_message_ids.append(await gateway.send_text(recipient, agent_text))
+            await repo.complete_whatsapp_message(
+                UUID(str(item["id"])),
+                {
+                    "user_text": user_text,
+                    "agent_text": agent_text,
+                    "handoff": handoff,
+                    "status": "done",
+                },
+            )
+            user_event = {
+                "type": "turn.user",
+                "turn": {"role": "user", "text": user_text},
+                "at": datetime.now(UTC),
+            }
+            agent_event = {
+                "type": "turn.agent",
+                "turn": {"role": "agent", "text": agent_text},
+                "provider_message_ids": provider_message_ids,
+                "at": datetime.now(UTC),
+            }
+            await bus.publish(tenant_id, call_id, user_event)
+            await bus.publish(tenant_id, call_id, agent_event)
+            if handoff:
+                handoff_event = {
+                    "type": "operator.takeover_requested",
+                    "payload": {"source": "whatsapp"},
+                    "at": datetime.now(UTC),
+                }
+                await repo.append_call_events(call_id, [handoff_event])
+                await bus.publish(tenant_id, call_id, handoff_event)
+                handoffs += 1
+            processed += 1
+        except Exception as exc:
+            await repo.complete_whatsapp_message(
+                UUID(str(item["id"])), {"status": "failed", "error": type(exc).__name__}
+            )
+            failed += 1
+    return {
+        "claimed": len(messages),
+        "processed": processed,
+        "failed": failed,
+        "handoffs": handoffs,
+        "tool_runs": tool_runs,
+    }
+
+
 @internal.post("/exports/tick")
 async def export_tick(repo: Repo, storage: ExportStore) -> dict[str, int]:
     exports = await repo.claim_exports()
@@ -2293,33 +2874,18 @@ async def execute_tool(
         raw_result: Any = {"error": "invalid_arguments", "details": exc.message}
         result: dict[str, Any] = raw_result
     else:
-        if tool["type"] == "native":
-            try:
-                raw_result = await native.execute(
-                    tool.get("native_kind") or tool["name"],
-                    body.arguments,
-                    tenant_id,
-                    repo,
-                    cipher,
-                    call,
-                )
-            except (httpx.HTTPError, RuntimeError, KeyError, ValueError) as exc:
-                raw_result = {"error": "integration_failed", "message": str(exc)}
-            result = raw_result
-        else:
-            secret = await _resolve_tool_secret(repo, cipher, tenant_id, tool)
-            result = await executor.execute(
-                tool,
-                body.arguments,
-                {
-                    "tenant_id": tenant_id,
-                    "session_variables": body.session_variables,
-                    "end_user": body.end_user,
-                    "call": call,
-                    "secret": secret,
-                },
-            )
-            raw_result = result.get("result", result)
+        raw_result, result = await _execute_runtime_tool(
+            repo,
+            executor,
+            cipher,
+            native,
+            tenant_id,
+            call,
+            tool,
+            body.arguments,
+            session_variables=body.session_variables,
+            end_user=body.end_user,
+        )
     llm_result: dict[str, Any] = (
         raw_result if isinstance(raw_result, dict) else {"value": raw_result}
     )

@@ -1,0 +1,37 @@
+{
+  "date": "2026-08-25",
+  "scope": "phase4_evidence_summary",
+  "passed": false,
+  "local_acceptance": {
+    "path": "reports/phase4-local-acceptance.json",
+    "available": true,
+    "passed": false,
+    "server_readiness": {
+      "web_login": true,
+      "api_health": true,
+      "mock_health": true
+    },
+    "step_counts": {
+      "total": 4,
+      "ok": 3,
+      "failed": 1
+    },
+    "environment_blocker": {
+      "type": "node_g_drive_eperm",
+      "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+      "current_gap": "phase4_playwright_executor_blocked"
+    }
+  },
+  "remote_readiness": {
+    "path": "reports/phase4-remote-readiness.json",
+    "available": true,
+    "passed": false,
+    "repo": "mariohidifira/voice_os",
+    "step_counts": {
+      "total": 5,
+      "ok": 1,
+      "failed": 4
+    }
+  },
+  "next_gap": "remote_repo_access"
+}

@@ -15,6 +15,8 @@ class MemoryStore:
         self.webhook_deliveries: dict[UUID, dict[str, Any]] = {}
         self.exports: dict[UUID, dict[str, Any]] = {}
         self.billing_usage_alerts: dict[tuple[UUID, str, int], dict[str, Any]] = {}
+        self.whatsapp_messages: dict[UUID, dict[str, Any]] = {}
+        self.simulations: dict[UUID, dict[str, Any]] = {}
         self.calls: dict[UUID, dict[str, Any]] = {}
         self.call_events: dict[UUID, list[dict[str, Any]]] = {}
         self.call_turns: dict[UUID, list[dict[str, Any]]] = {}

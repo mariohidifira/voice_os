@@ -1,0 +1,45 @@
+{
+  "date": "2026-08-25",
+  "scope": "phase4_local_acceptance",
+  "passed": false,
+  "server_readiness": {
+    "web_login": true,
+    "api_health": true,
+    "mock_health": true
+  },
+  "steps": [
+    {
+      "name": "whatsapp_gateway_stub",
+      "ok": true,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider G:\\DEV\\VOICE_OS\\tests\\test_whatsapp_gateway.py",
+      "exit_code": 0,
+      "output": "[step output omitted on success]"
+    },
+    {
+      "name": "whatsapp_handoff_api",
+      "ok": true,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider G:\\DEV\\VOICE_OS\\tests\\test_api.py -k whatsapp_handoff_route_sends_operator_message or whatsapp_handoff_route_accepts_string_secret_id",
+      "exit_code": 0,
+      "output": "[step output omitted on success]"
+    },
+    {
+      "name": "phase4_handoff_reproducer",
+      "ok": true,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\repro_phase4_handoff.py",
+      "exit_code": 0,
+      "output": "[step output omitted on success]"
+    },
+    {
+      "name": "phase4_dashboard_e2e",
+      "ok": false,
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File G:\\DEV\\VOICE_OS\\scripts\\run_phase4_playwright.ps1",
+      "exit_code": 1,
+      "output": "--- direct ---\nAccess is denied.\n\n--- powershell_fallback ---\nnode:fs:2734\n    const out = binding.lstat(base, false, undefined, true /* throwIfNoEntry */);\n                        ^\n\nError: EPERM: operation not permitted, lstat 'G:\\'\n    at Object.realpathSync (node:fs:2734:25)\n    at toRealPath (node:internal/modules/helpers:63:13)\n    at Module._findPath (node:internal/modules/cjs/loader:781:22)\n    at resolveMainPath (node:internal/modules/run_main:35:21)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:146:20)\n    at node:internal/main/run_main_module:33:47 {\n  errno: -4048,\n  code: 'EPERM',\n  syscall: 'lstat',\n  path: 'G:\\\\'\n}\n\nNode.js v24.15.0",
+      "environment_blocker": {
+        "type": "node_g_drive_eperm",
+        "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+        "current_gap": "phase4_playwright_executor_blocked"
+      }
+    }
+  ]
+}

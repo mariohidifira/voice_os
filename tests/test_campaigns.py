@@ -3,6 +3,8 @@ from uuid import UUID, uuid4
 
 import jwt
 from fastapi.testclient import TestClient
+from voiceos_api import repository as repository_module
+from voiceos_api import routes as routes_module
 from voiceos_api.campaigns import dialing_allowed, retry_at, select_dispatchable
 from voiceos_api.config import get_settings
 from voiceos_api.idempotency import MemoryIdempotencyStore, get_idempotency_store
@@ -212,8 +214,19 @@ def test_runner_selection_honors_concurrency_due_dnc_and_retry_policy() -> None:
     assert retry_at("failed", 3, {"max_attempts": 3}, now=now) is None
 
 
-def test_periodic_tick_dispatches_and_call_result_reconciles_contact() -> None:
+def test_periodic_tick_dispatches_and_call_result_reconciles_contact(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     reset()
+    fixed_now = datetime(2026, 8, 25, 14, 0, tzinfo=UTC)
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            if tz is None:
+                return fixed_now.replace(tzinfo=None)
+            return fixed_now.astimezone(tz)
+
+    monkeypatch.setattr(repository_module, "datetime", FrozenDateTime)
+    monkeypatch.setattr(routes_module, "datetime", FrozenDateTime)
     tenant = uuid4()
     agent = store.create_agent(tenant, "Runner agent")
     agent["status"] = "active"
@@ -264,7 +277,7 @@ def test_periodic_tick_dispatches_and_call_result_reconciles_contact() -> None:
     )
     assert stored["status"] == "retry"
     assert stored["next_attempt_at"] is not None
-    stored["next_attempt_at"] = datetime.now(UTC)
+    stored["next_attempt_at"] = fixed_now
     assert client.post("/internal/campaigns/tick", headers=internal_headers).json()["dispatched"] == 1
     second_call_id = stored["last_call_id"]
     assert second_call_id != call_id

@@ -1,0 +1,74 @@
+{
+  "scope": "external_execution_checklist",
+  "status_date": "2026-08-25",
+  "artifacts": {
+    "phase4_evidence_bundle": {
+      "path": "reports/phase4-evidence-bundle.zip",
+      "sha256": "cfc8756d09b2ca22ebd7b7d59894c53b79ddfde891f0c4ec18c2a35b555fedee",
+      "bytes": 11300
+    },
+    "phase5_evidence_bundle": {
+      "path": "reports/phase5-evidence-bundle.zip",
+      "sha256": "1fdfd5a76d2f7e38570076cdb9252cb354c7b88f1e2289f93c7ac0d149eef8e0",
+      "bytes": 29899
+    },
+    "final_handoff_bundle_manifest": {
+      "path": "reports/final-handoff-bundle.manifest.json",
+      "bundle_path": "reports/final-handoff-bundle.zip"
+    }
+  },
+  "phase4": {
+    "current_gap": "remote_repo_access",
+    "environment_blocker": {
+      "type": "node_g_drive_eperm",
+      "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+      "current_gap": "phase4_playwright_executor_blocked"
+    },
+    "commands": [
+      "npm --prefix G:\\DEV\\VOICE_OS run phase4:remote:ready",
+      "gh workflow run phase4-nightly-whatsapp.yml --repo mariohidifira/voice_os",
+      "gh run list --repo mariohidifira/voice_os --workflow phase4-nightly-whatsapp.yml --limit 5",
+      "python scripts/verify_phase4_remote_artifact.py <artifact_dir>"
+    ],
+    "reports": [
+      "reports/phase4-remote-readiness.json",
+      "reports/phase4-remote-artifact-verification.json"
+    ],
+    "steps": [
+      "Restore GitHub and repository credentials in an executor that can access mariohidifira/voice_os",
+      "Run the Phase 4 nightly workflow in GitHub Actions",
+      "Retain the uploaded Phase 4 artifacts from the successful run",
+      "After provider credentials are available, measure real WhatsApp audio reply latency against the <= 8 s p50 target"
+    ]
+  },
+  "phase5": {
+    "current_gap": "external_deploy_and_host_validation",
+    "environment_blocker": null,
+    "commands": [
+      "npm --prefix G:\\DEV\\VOICE_OS run phase5:widget:fallback",
+      "npm --prefix G:\\DEV\\VOICE_OS run phase5:asset:ready",
+      "npm --prefix G:\\DEV\\VOICE_OS run phase5:acceptance",
+      "python scripts/check_phase5_external_delivery.py --base-url https://<host>",
+      "npm --prefix G:\\DEV\\VOICE_OS run phase5:evidence:package",
+      "npm --prefix G:\\DEV\\VOICE_OS run phase5:evidence:verify"
+    ],
+    "reports": [
+      "reports/phase5-hosted-asset-readiness.json",
+      "reports/phase5-acceptance-summary.json",
+      "reports/phase5-external-delivery.json"
+    ],
+    "steps": [
+      "Deploy the hosted asset and verify `/voiceos.js` is externally reachable",
+      "Validate custom-domain TLS in staging",
+      "Collect host-site Lighthouse impact evidence"
+    ]
+  },
+  "global": {
+    "project_completion_estimate_percent": 95,
+    "required_external_capabilities": [
+      "GitHub/repository access",
+      "Provider credentials and live accounts",
+      "Reachable staging/production deployment surface"
+    ]
+  }
+}

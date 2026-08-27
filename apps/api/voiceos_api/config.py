@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     twilio_account_sid: str | None = None
     twilio_auth_token: str | None = None
     twilio_messaging_service_sid: str | None = None
+    deepgram_api_key: str | None = None
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
     elevenlabs_api_key: str | None = None
@@ -34,6 +35,9 @@ class Settings(BaseSettings):
     resend_api_key: str | None = None
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
+    whatsapp_verify_token: str | None = None
+    whatsapp_app_secret: str | None = None
+    whatsapp_graph_version: str = "v23.0"
     email_from: str = "VoiceOS <noreply@example.invalid>"
     google_client_id: str | None = None
     google_client_secret: str | None = None

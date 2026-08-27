@@ -1,0 +1,86 @@
+{
+  "scope": "final_handoff_summary",
+  "status_date": "2026-08-25",
+  "project_completion_estimate_percent": 95,
+  "local_proven": {
+    "final_local_audit": {
+      "passed": true,
+      "pytest_suite_green": true,
+      "pytest_command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider --basetemp G:\\DEV\\VOICE_OS\\.pytest-tmp\\final-local-audit"
+    },
+    "phase4": {
+      "implemented_and_locally_validated": true,
+      "evidence_summary_passed": false,
+      "next_gap": "remote_repo_access",
+      "environment_blocker": {
+        "type": "node_g_drive_eperm",
+        "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+        "current_gap": "phase4_playwright_executor_blocked"
+      }
+    },
+    "phase5": {
+      "acceptance_passed": true,
+      "hosted_asset_contract_green": true,
+      "next_gap": null,
+      "environment_blocker": null
+    }
+  },
+  "external_pending": [
+    {
+      "area": "phase4",
+      "item": "First successful GitHub Actions Phase 4 nightly run artifact",
+      "current_gap": "remote_repo_access",
+      "environment_blocker": {
+        "type": "node_g_drive_eperm",
+        "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+        "current_gap": "phase4_playwright_executor_blocked"
+      }
+    },
+    {
+      "area": "phase4",
+      "item": "Real provider-backed WhatsApp audio latency evidence against <= 8 s p50",
+      "current_gap": "provider_credentials_and_runtime_measurement"
+    },
+    {
+      "area": "phase5",
+      "item": "Externally reachable hosted /voiceos.js proof, custom-domain TLS, and host-site Lighthouse evidence",
+      "current_gap": "external_deploy_and_host_validation"
+    }
+  ],
+  "recommended_next_external_steps": [
+    "Resolve GitHub/repository credentials for remote workflow execution",
+    "Run the Phase 4 nightly workflow and retain uploaded artifacts",
+    "Provide provider credentials and measure real WhatsApp audio reply latency",
+    "Deploy the hosted asset and collect external reachability, TLS, and Lighthouse evidence"
+  ],
+  "external_verifiers": [
+    {
+      "area": "phase4",
+      "command": "python scripts/verify_phase4_remote_artifact.py <artifact_dir>",
+      "output_report": "reports/phase4-remote-artifact-verification.json"
+    },
+    {
+      "area": "phase5",
+      "command": "python scripts/check_phase5_external_delivery.py --base-url https://<host> --expected-host <domain>",
+      "output_report": "reports/phase5-external-delivery.json"
+    }
+  ],
+  "pending_external_reports": [
+    "reports/phase4-remote-artifact-verification.json",
+    "reports/phase5-external-delivery.json",
+    "reports/external-closeout-status.json"
+  ],
+  "evidence_files": [
+    "reports/phase4-evidence-summary.json",
+    "reports/phase4-evidence-bundle.zip",
+    "reports/phase4-evidence-bundle.manifest.json",
+    "reports/phase5-hosted-asset-readiness.json",
+    "reports/phase5-acceptance-summary.json",
+    "reports/phase5-evidence-bundle.zip",
+    "reports/phase5-evidence-bundle.manifest.json",
+    "reports/final-local-audit.json",
+    "reports/final-refresh-status.json",
+    "reports/external-execution-checklist.json",
+    "reports/external-closeout-status.json"
+  ]
+}

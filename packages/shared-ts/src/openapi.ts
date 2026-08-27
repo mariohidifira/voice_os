@@ -544,6 +544,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/tenants/{tenant_id}/widget/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Public Widget Session */
+        post: operations["create_public_widget_session_v1_public_tenants__tenant_id__widget_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/tenants/{tenant_id}/widget/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Public Widget Session */
+        delete: operations["delete_public_widget_session_v1_public_tenants__tenant_id__widget_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sessions/{session_id}": {
         parameters: {
             query?: never;
@@ -905,6 +939,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/calls/{call_id}/whatsapp-handoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Whatsapp Handoff Message */
+        post: operations["send_whatsapp_handoff_message_v1_calls__call_id__whatsapp_handoff_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tools": {
         parameters: {
             query?: never;
@@ -1045,6 +1096,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/integrations/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect Whatsapp */
+        post: operations["connect_whatsapp_v1_integrations_whatsapp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/agents/{agent_id}/draft/tools": {
         parameters: {
             query?: never;
@@ -1056,6 +1124,57 @@ export interface paths {
         get: operations["get_draft_tools_v1_agents__agent_id__draft_tools_get"];
         /** Set Draft Tools */
         put: operations["set_draft_tools_v1_agents__agent_id__draft_tools_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/simulations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Simulation */
+        post: operations["create_simulation_v1_simulations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/simulations/{simulation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Simulation */
+        get: operations["get_simulation_v1_simulations__simulation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/simulations/{simulation_id}/yaml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Simulation Yaml */
+        get: operations["get_simulation_yaml_v1_simulations__simulation_id__yaml_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1305,6 +1424,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/whatsapp/tick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Whatsapp Tick */
+        post: operations["whatsapp_tick_internal_whatsapp_tick_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/exports/tick": {
         parameters: {
             query?: never;
@@ -1469,6 +1605,24 @@ export interface paths {
         put?: never;
         /** Stripe Webhook */
         post: operations["stripe_webhook_webhooks_stripe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whatsapp Webhook Verify */
+        get: operations["whatsapp_webhook_verify_webhooks_whatsapp_get"];
+        put?: never;
+        /** Whatsapp Webhook */
+        post: operations["whatsapp_webhook_webhooks_whatsapp_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2014,6 +2168,40 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** SimulationCreate */
+        SimulationCreate: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Persona */
+            persona: string;
+            /** Objective */
+            objective: string;
+            /**
+             * Conversation Count
+             * @default 20
+             */
+            conversation_count: number;
+        };
+        /** TenantBrandingPatch */
+        TenantBrandingPatch: {
+            /** Product Name */
+            product_name?: string | null;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Favicon Url */
+            favicon_url?: string | null;
+            /** Primary Color */
+            primary_color?: string | null;
+            /** Accent Color */
+            accent_color?: string | null;
+            /** Email From Name */
+            email_from_name?: string | null;
+            /** Custom Domain */
+            custom_domain?: string | null;
+        };
         /** TenantPatch */
         TenantPatch: {
             /** Name */
@@ -2032,6 +2220,19 @@ export interface components {
             retention_days?: number | null;
             /** Anonymize Transcripts */
             anonymize_transcripts?: boolean | null;
+            branding?: components["schemas"]["TenantBrandingPatch"] | null;
+            widget?: components["schemas"]["TenantWidgetPatch"] | null;
+        };
+        /** TenantWidgetPatch */
+        TenantWidgetPatch: {
+            /** Button Label */
+            button_label?: string | null;
+            /** Theme */
+            theme?: string | null;
+            /** Position */
+            position?: string | null;
+            /** Livekit Module Url */
+            livekit_module_url?: string | null;
         };
         /** ToolCreate */
         ToolCreate: {
@@ -2138,6 +2339,25 @@ export interface components {
             events?: string[] | null;
             /** Enabled */
             enabled?: boolean | null;
+        };
+        /** WhatsAppConnect */
+        WhatsAppConnect: {
+            /** Phone Number Id */
+            phone_number_id: string;
+            /** Business Account Id */
+            business_account_id: string;
+            /** Access Token */
+            access_token: string;
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+        };
+        /** WhatsAppHandoffMessage */
+        WhatsAppHandoffMessage: {
+            /** Text */
+            text: string;
         };
     };
     responses: never;
@@ -3756,6 +3976,79 @@ export interface operations {
             };
         };
     };
+    create_public_widget_session_v1_public_tenants__tenant_id__widget_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+                origin?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_public_widget_session_v1_public_tenants__tenant_id__widget_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+                origin?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     delete_session_v1_sessions__session_id__delete: {
         parameters: {
             query?: never;
@@ -4667,6 +4960,46 @@ export interface operations {
             };
         };
     };
+    send_whatsapp_handoff_message_v1_calls__call_id__whatsapp_handoff_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-tenant-id"?: string | null;
+            };
+            path: {
+                call_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatsAppHandoffMessage"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_tools_v1_tools_get: {
         parameters: {
             query?: never;
@@ -5093,6 +5426,44 @@ export interface operations {
             };
         };
     };
+    connect_whatsapp_v1_integrations_whatsapp_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-tenant-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatsAppConnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_draft_tools_v1_agents__agent_id__draft_tools_get: {
         parameters: {
             query?: never;
@@ -5156,6 +5527,114 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_simulation_v1_simulations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-tenant-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_simulation_v1_simulations__simulation_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-tenant-id"?: string | null;
+            };
+            path: {
+                simulation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_simulation_yaml_v1_simulations__simulation_id__yaml_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-tenant-id"?: string | null;
+            };
+            path: {
+                simulation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -5811,6 +6290,39 @@ export interface operations {
             };
         };
     };
+    whatsapp_tick_internal_whatsapp_tick_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-internal-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_tick_internal_exports_tick_post: {
         parameters: {
             query?: never;
@@ -6161,6 +6673,72 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    whatsapp_webhook_verify_webhooks_whatsapp_get: {
+        parameters: {
+            query?: {
+                "hub.mode"?: string | null;
+                "hub.verify_token"?: string | null;
+                "hub.challenge"?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    whatsapp_webhook_webhooks_whatsapp_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Hub-Signature-256"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
                     };
                 };
             };

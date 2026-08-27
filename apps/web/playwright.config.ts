@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const externalServer = process.env.PLAYWRIGHT_EXTERNAL_SERVER === "1";
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
+const localBaseUrl = "http://localhost:3100";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? localBaseUrl;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -24,13 +25,13 @@ export default defineConfig({
     ? undefined
     : {
         command: "npm run dev -- --port 3100",
-        url: "http://localhost:3100/login",
+        url: `${localBaseUrl}/login`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
         env: {
           APP_ENV: "dev",
-          APP_BASE_URL: "http://localhost:3100",
-          AUTH_URL: "http://localhost:3100",
+          APP_BASE_URL: localBaseUrl,
+          AUTH_URL: localBaseUrl,
           AUTH_TRUST_HOST: "true",
           AUTH_SECRET: "dev-secret-change-me-at-least-32-bytes",
           DATABASE_URL: "postgresql://voiceos:voiceos@127.0.0.1:5432/voiceos",

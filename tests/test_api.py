@@ -1,8 +1,12 @@
+import hashlib
+import hmac
+import json
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import jwt
 from fastapi.testclient import TestClient
+import voiceos_api.routes as api_routes
 from voiceos_api.config import get_settings
 from voiceos_api.health import get_health_checker
 from voiceos_api.live import get_event_bus
@@ -91,6 +95,11 @@ def headers(tenant: str, role: str = "owner") -> dict[str, str]:
     return {"Authorization": f"Bearer {token}", "X-Tenant-Id": tenant}
 
 
+def meta_signature(secret: str, payload: bytes) -> str:
+    digest = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    return f"sha256={digest}"
+
+
 def test_health_and_error_contract() -> None:
     assert client.get("/health").json()["status"] == "ok"
     response = client.get("/v1/me")
@@ -112,6 +121,17 @@ def test_tenant_general_settings_are_scoped_and_admin_mutable() -> None:
                 "timezone": "America/Fortaleza",
                 "recording_enabled": False,
                 "retention_days": 180,
+                "branding": {
+                    "product_name": "ClÃ­nica Voz",
+                    "primary_color": "#123456",
+                    "custom_domain": "voz.clinicavoz.example",
+                },
+                "widget": {
+                    "button_label": "Falar com a clÃ­nica",
+                    "theme": "dark",
+                    "position": "bottom-left",
+                    "livekit_module_url": "https://cdn.example.com/livekit.esm.js",
+                },
             },
         },
         headers=owner,
@@ -120,6 +140,11 @@ def test_tenant_general_settings_are_scoped_and_admin_mutable() -> None:
     assert changed.json()["name"] == "Clínica Voz"
     assert changed.json()["settings"]["locale"] == "pt-BR"
     assert changed.json()["settings"]["retention_days"] == 180
+    assert changed.json()["settings"]["branding"]["primary_color"] == "#123456"
+    assert changed.json()["settings"]["widget"]["position"] == "bottom-left"
+    assert changed.json()["settings"]["widget"]["livekit_module_url"] == (
+        "https://cdn.example.com/livekit.esm.js"
+    )
     viewer = headers(tenant, "viewer")
     assert client.get(f"/v1/tenants/{tenant}", headers=viewer).status_code == 200
     assert (
@@ -682,6 +707,53 @@ def test_call_lifecycle_internal_batches_and_detail() -> None:
     assert client.get(f"/v1/calls/{uuid4()}/live", headers=auth).status_code == 404
 
 
+def test_public_widget_session_requires_valid_origin_and_public_key() -> None:
+    store.api_keys.clear()
+    store.agents.clear()
+    store.agent_versions.clear()
+    store.calls.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Widget Agent"}, headers=auth).json()
+    client.post(f"/v1/agents/{agent['id']}/publish", headers=auth)
+    key = client.post(
+        "/v1/api-keys",
+        json={
+            "name": "widget",
+            "scope": "public",
+            "allowed_origins": ["https://app.example.com"],
+        },
+        headers=auth,
+    ).json()
+
+    denied = client.post(
+        f"/v1/public/tenants/{tenant}/widget/sessions",
+        json={"agent_id": agent["id"]},
+        headers={"X-API-Key": key["key"], "Origin": "https://evil.example.com"},
+    )
+    assert denied.status_code == 403
+
+    created = client.post(
+        f"/v1/public/tenants/{tenant}/widget/sessions",
+        json={"agent_id": agent["id"], "metadata": {"source": "embedded_widget"}},
+        headers={"X-API-Key": key["key"], "Origin": "https://app.example.com"},
+    )
+    assert created.status_code == 201
+    session = created.json()
+    call = client.get(f"/v1/calls/{session['call_id']}", headers=auth).json()
+    assert call["metadata"]["widget_session"] is True
+    assert call["metadata"]["origin"] == "https://app.example.com"
+    assert call["metadata"]["public_api_key_prefix"] == key["prefix"]
+    ended = client.delete(
+        f"/v1/public/tenants/{tenant}/widget/sessions/{session['session_id']}",
+        headers={"X-API-Key": key["key"], "Origin": "https://app.example.com"},
+    )
+    assert ended.status_code == 204
+    ended_call = client.get(f"/v1/calls/{session['call_id']}", headers=auth).json()
+    assert ended_call["status"] == "cancelled"
+    assert ended_call["end_reason"] == "user_hangup"
+
+
 def test_invalid_token_and_wrong_tenant() -> None:
     tenant = str(uuid4())
     assert (
@@ -776,3 +848,696 @@ def test_knowledge_base_and_document_crud_is_tenant_scoped() -> None:
         == 204
     )
     assert client.delete(f"/v1/knowledge-bases/{kb_id}", headers=auth_a).status_code == 204
+
+
+def test_whatsapp_connect_and_list_integrations() -> None:
+    store.integrations.clear()
+    store.secrets.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "WhatsApp Agent"}, headers=auth).json()
+
+    connected = client.post(
+        "/v1/integrations/whatsapp",
+        json={
+            "phone_number_id": "phone-123",
+            "business_account_id": "waba-456",
+            "access_token": "token-1234567890",
+            "agent_id": agent["id"],
+        },
+        headers=auth,
+    )
+    assert connected.status_code == 201
+    payload = connected.json()
+    assert payload["provider"] == "whatsapp"
+    assert payload["config"]["phone_number_id"] == "phone-123"
+    assert "refresh_token_secret_id" not in payload
+
+    listed = client.get("/v1/integrations", headers=auth)
+    assert listed.status_code == 200
+    items = listed.json()["data"]
+    assert any(item["provider"] == "whatsapp" for item in items)
+
+
+def test_whatsapp_webhook_verify_and_ingest_message() -> None:
+    store.integrations.clear()
+    store.secrets.clear()
+    store.whatsapp_messages.clear()
+    store.calls.clear()
+    store.end_users.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Webhook Agent"}, headers=auth).json()
+    settings = get_settings()
+    previous_verify = settings.whatsapp_verify_token
+    previous_secret = settings.whatsapp_app_secret
+    settings.whatsapp_verify_token = "verify-token"
+    settings.whatsapp_app_secret = "meta-secret"
+    try:
+        client.post(
+            "/v1/integrations/whatsapp",
+            json={
+                "phone_number_id": "phone-789",
+                "business_account_id": "waba-789",
+                "access_token": "token-abcdefghij",
+                "agent_id": agent["id"],
+            },
+            headers=auth,
+        )
+        verify = client.get(
+            "/webhooks/whatsapp",
+            params={
+                "hub.mode": "subscribe",
+                "hub.verify_token": "verify-token",
+                "hub.challenge": "12345",
+            },
+        )
+        assert verify.status_code == 200
+        assert verify.text == "12345"
+
+        body = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "metadata": {"phone_number_id": "phone-789"},
+                                "messages": [
+                                    {
+                                        "id": "wamid-1",
+                                        "from": "+5511999999999",
+                                        "type": "text",
+                                        "text": {"body": "Preciso falar com humano"},
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        payload = json.dumps(body).encode()
+        response = client.post(
+            "/webhooks/whatsapp",
+            content=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": meta_signature("meta-secret", payload),
+            },
+        )
+        assert response.status_code == 200
+        assert response.json() == {"received": True, "accepted": 1}
+        assert len(store.whatsapp_messages) == 1
+        assert len(store.calls) == 1
+    finally:
+        settings.whatsapp_verify_token = previous_verify
+        settings.whatsapp_app_secret = previous_secret
+
+
+def test_internal_whatsapp_tick_processes_queue_and_requests_handoff(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    store.integrations.clear()
+    store.secrets.clear()
+    store.whatsapp_messages.clear()
+    store.calls.clear()
+    store.call_turns.clear()
+    store.call_events.clear()
+    store.end_users.clear()
+    event_bus.events.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Async Agent"}, headers=auth).json()
+    settings = get_settings()
+    previous_secret = settings.whatsapp_app_secret
+    settings.whatsapp_app_secret = "tick-secret"
+
+    class FakeGateway:
+        def __init__(self, settings: object, access_token: str, phone_number_id: str) -> None:
+            self.access_token = access_token
+            self.phone_number_id = phone_number_id
+
+        async def download_media(self, media_id: str) -> bytes:
+            return b"audio"
+
+        async def send_text(self, recipient: str, text: str) -> str:
+            assert recipient == "+5511888888888"
+            assert "atendente humano" in text
+            return "wamid-out-1"
+
+        async def send_audio_bytes(self, recipient: str, audio: bytes, **kwargs: object) -> str:
+            raise AssertionError("audio should not be sent in text mode")
+
+    monkeypatch.setattr(api_routes, "WhatsAppGateway", FakeGateway)
+    try:
+        client.post(
+            "/v1/integrations/whatsapp",
+            json={
+                "phone_number_id": "phone-tick",
+                "business_account_id": "waba-tick",
+                "access_token": "token-zxywvutsrq",
+                "agent_id": agent["id"],
+            },
+            headers=auth,
+        )
+        body = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "metadata": {"phone_number_id": "phone-tick"},
+                                "messages": [
+                                    {
+                                        "id": "wamid-in-1",
+                                        "from": "+5511888888888",
+                                        "type": "text",
+                                        "text": {"body": "Quero falar com humano"},
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        payload = json.dumps(body).encode()
+        client.post(
+            "/webhooks/whatsapp",
+            content=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": meta_signature("tick-secret", payload),
+            },
+        )
+        tick = client.post(
+            "/internal/whatsapp/tick",
+            headers={"X-Internal-Token": get_settings().internal_api_token},
+        )
+        assert tick.status_code == 200
+        assert tick.json()["processed"] == 1
+        assert tick.json()["handoffs"] == 1
+        message = next(iter(store.whatsapp_messages.values()))
+        assert message["status"] == "done"
+        call = next(iter(store.calls.values()))
+        assert call["metadata"]["human_handoff"] is True
+        assert len(store.call_turns[call["id"]]) == 2
+        assert any(event[2]["type"] == "operator.takeover_requested" for event in event_bus.events)
+    finally:
+        settings.whatsapp_app_secret = previous_secret
+
+
+def test_internal_whatsapp_tick_executes_runtime_tool(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    store.integrations.clear()
+    store.secrets.clear()
+    store.whatsapp_messages.clear()
+    store.calls.clear()
+    store.call_turns.clear()
+    store.call_events.clear()
+    store.call_tool_calls.clear()
+    store.end_users.clear()
+    event_bus.events.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Tool Agent"}, headers=auth).json()
+    settings = get_settings()
+    previous_secret = settings.whatsapp_app_secret
+    settings.whatsapp_app_secret = "tool-secret"
+
+    class FakeGateway:
+        def __init__(self, settings: object, access_token: str, phone_number_id: str) -> None:
+            self.access_token = access_token
+            self.phone_number_id = phone_number_id
+
+        async def download_media(self, media_id: str) -> bytes:
+            return b"audio"
+
+        async def send_text(self, recipient: str, text: str) -> str:
+            assert recipient == "+5511777777777"
+            assert text == "Tool executada."
+            return "wamid-out-tool"
+
+        async def send_audio_bytes(self, recipient: str, audio: bytes, **kwargs: object) -> str:
+            raise AssertionError("audio should not be sent")
+
+    async def fake_generate_reply(
+        settings: object,
+        runtime: dict[str, object] | None,
+        user_text: str,
+        inbound_type: str,
+        execute_tool=None,
+        transport=None,
+    ) -> tuple[str, bool, list[dict[str, object]]]:
+        assert user_text == "Consultar agenda"
+        assert inbound_type == "text"
+        assert runtime is not None
+        assert execute_tool is not None
+        tool = list(runtime.get("tools") or [])[0]
+        result = await execute_tool(tool, {"date": "2026-08-26"})
+        assert result["available"] == ["2026-08-26T10:00:00Z"]
+        return "Tool executada.", False, []
+
+    monkeypatch.setattr(api_routes, "WhatsAppGateway", FakeGateway)
+    monkeypatch.setattr(api_routes, "generate_whatsapp_reply", fake_generate_reply)
+    async def fake_execute_runtime_tool(
+        repo: object,
+        executor: object,
+        cipher: object,
+        native: object,
+        tenant_id: UUID,
+        call: dict[str, object],
+        tool: dict[str, object],
+        arguments: dict[str, object],
+        *,
+        session_variables: dict[str, object] | None = None,
+        end_user: dict[str, object] | None = None,
+    ) -> tuple[dict[str, object], dict[str, object]]:
+        return {"available": ["2026-08-26T10:00:00Z"]}, {"latency_ms": 12}
+
+    monkeypatch.setattr(api_routes, "_execute_runtime_tool", fake_execute_runtime_tool)
+    try:
+        client.post(
+            "/v1/integrations/whatsapp",
+            json={
+                "phone_number_id": "phone-tool",
+                "business_account_id": "waba-tool",
+                "access_token": "token-tool-abcdefgh",
+                "agent_id": agent["id"],
+            },
+            headers=auth,
+        )
+        tool = client.post(
+            "/v1/tools",
+            json={
+                "name": "google_calendar_check",
+                "description": "Consulta agenda",
+                "type": "native",
+                "native_kind": "google_calendar_check",
+                "parameters_schema": {
+                    "type": "object",
+                    "properties": {"date": {"type": "string"}},
+                    "required": ["date"],
+                },
+            },
+            headers=auth,
+        ).json()
+        client.put(
+            f"/v1/agents/{agent['id']}/draft/tools",
+            json={"tool_ids": [tool["id"]]},
+            headers=auth,
+        )
+        body = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "metadata": {"phone_number_id": "phone-tool"},
+                                "messages": [
+                                    {
+                                        "id": "wamid-tool-1",
+                                        "from": "+5511777777777",
+                                        "type": "text",
+                                        "text": {"body": "Consultar agenda"},
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        payload = json.dumps(body).encode()
+        client.post(
+            "/webhooks/whatsapp",
+            content=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": meta_signature("tool-secret", payload),
+            },
+        )
+        tick = client.post(
+            "/internal/whatsapp/tick",
+            headers={"X-Internal-Token": get_settings().internal_api_token},
+        )
+        assert tick.status_code == 200
+        assert tick.json()["processed"] == 1
+        assert tick.json()["tool_runs"] == 1
+        call_id = next(iter(store.calls.keys()))
+        assert len(store.call_tool_calls[call_id]) == 1
+        assert store.call_tool_calls[call_id][0]["name"] == "google_calendar_check"
+        assert any(event[2]["type"] == "tool.called" for event in event_bus.events)
+    finally:
+        settings.whatsapp_app_secret = previous_secret
+
+
+def test_internal_whatsapp_tick_processes_audio_and_sends_text_plus_audio(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    store.integrations.clear()
+    store.secrets.clear()
+    store.whatsapp_messages.clear()
+    store.calls.clear()
+    store.call_turns.clear()
+    store.call_events.clear()
+    store.call_tool_calls.clear()
+    store.end_users.clear()
+    event_bus.events.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Audio Agent"}, headers=auth).json()
+    client.patch(
+        f"/v1/agents/{agent['id']}/draft",
+        json={
+            "behavior": {"whatsapp_reply_mode": "both"},
+            "tts": {"voice_id": "voice-1", "model": "eleven_flash_v2_5"},
+        },
+        headers=auth,
+    )
+    settings = get_settings()
+    previous_secret = settings.whatsapp_app_secret
+    settings.whatsapp_app_secret = "audio-secret"
+    sent: list[tuple[str, object]] = []
+
+    class FakeGateway:
+        def __init__(self, settings: object, access_token: str, phone_number_id: str) -> None:
+            self.access_token = access_token
+            self.phone_number_id = phone_number_id
+
+        async def download_media(self, media_id: str) -> bytes:
+            assert media_id == "media-1"
+            return b"ogg-audio"
+
+        async def send_text(self, recipient: str, text: str) -> str:
+            sent.append(("text", {"recipient": recipient, "text": text}))
+            return "wamid-text-audio"
+
+        async def send_audio_bytes(self, recipient: str, audio: bytes, **kwargs: object) -> str:
+            sent.append(
+                (
+                    "audio",
+                    {
+                        "recipient": recipient,
+                        "audio": audio,
+                        "filename": kwargs.get("filename"),
+                        "content_type": kwargs.get("content_type"),
+                    },
+                )
+            )
+            return "wamid-audio-audio"
+
+    async def fake_transcribe(
+        settings: object,
+        runtime: dict[str, object] | None,
+        audio: bytes,
+        transport=None,
+    ) -> str:
+        assert audio == b"ogg-audio"
+        return "Transcricao do audio"
+
+    async def fake_generate_reply(
+        settings: object,
+        runtime: dict[str, object] | None,
+        user_text: str,
+        inbound_type: str,
+        execute_tool=None,
+        transport=None,
+    ) -> tuple[str, bool, list[dict[str, object]]]:
+        assert user_text == "Transcricao do audio"
+        assert inbound_type == "audio"
+        return "Resposta com audio", False, []
+
+    async def fake_synthesize(
+        settings: object,
+        runtime: dict[str, object] | None,
+        text: str,
+        voice_preview: object,
+        transport=None,
+    ) -> tuple[bytes, str, str]:
+        assert text == "Resposta com audio"
+        return (b"OGGDATA", "reply.ogg", "audio/ogg")
+
+    monkeypatch.setattr(api_routes, "WhatsAppGateway", FakeGateway)
+    monkeypatch.setattr(api_routes, "transcribe_whatsapp_audio", fake_transcribe)
+    monkeypatch.setattr(api_routes, "generate_whatsapp_reply", fake_generate_reply)
+    monkeypatch.setattr(api_routes, "synthesize_whatsapp_audio", fake_synthesize)
+    try:
+        client.post(
+            "/v1/integrations/whatsapp",
+            json={
+                "phone_number_id": "phone-audio",
+                "business_account_id": "waba-audio",
+                "access_token": "token-audio-abcdefgh",
+                "agent_id": agent["id"],
+            },
+            headers=auth,
+        )
+        body = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "metadata": {"phone_number_id": "phone-audio"},
+                                "messages": [
+                                    {
+                                        "id": "wamid-audio-1",
+                                        "from": "+5511666666666",
+                                        "type": "audio",
+                                        "audio": {"id": "media-1"},
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        payload = json.dumps(body).encode()
+        client.post(
+            "/webhooks/whatsapp",
+            content=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": meta_signature("audio-secret", payload),
+            },
+        )
+        tick = client.post(
+            "/internal/whatsapp/tick",
+            headers={"X-Internal-Token": get_settings().internal_api_token},
+        )
+        assert tick.status_code == 200
+        assert tick.json()["processed"] == 1
+        assert [kind for kind, _ in sent] == ["text", "audio"]
+        assert sent[0][1]["text"] == "Resposta com audio"  # type: ignore[index]
+        assert sent[1][1]["filename"] == "reply.ogg"  # type: ignore[index]
+        assert sent[1][1]["content_type"] == "audio/ogg"  # type: ignore[index]
+        call = next(iter(store.calls.values()))
+        turns = store.call_turns[call["id"]]
+        assert turns[0]["text"] == "Transcricao do audio"
+        assert turns[1]["text"] == "Resposta com audio"
+    finally:
+        settings.whatsapp_app_secret = previous_secret
+
+
+def test_whatsapp_handoff_route_sends_operator_message(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    store.integrations.clear()
+    store.secrets.clear()
+    store.whatsapp_messages.clear()
+    store.calls.clear()
+    store.call_turns.clear()
+    store.call_events.clear()
+    store.end_users.clear()
+    event_bus.events.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    operator_auth = headers(tenant, "operator")
+    agent = client.post("/v1/agents", json={"name": "Handoff Agent"}, headers=auth).json()
+    settings = get_settings()
+    previous_secret = settings.whatsapp_app_secret
+    settings.whatsapp_app_secret = "handoff-secret"
+
+    class FakeGateway:
+        def __init__(self, settings: object, access_token: str, phone_number_id: str) -> None:
+            self.access_token = access_token
+            self.phone_number_id = phone_number_id
+
+        async def send_text(self, recipient: str, text: str) -> str:
+            assert recipient == "+5511555555555"
+            assert text == "Operador assumiu a conversa."
+            return "wamid-handoff-out"
+
+    monkeypatch.setattr(api_routes, "WhatsAppGateway", FakeGateway)
+    try:
+        client.post(
+            "/v1/integrations/whatsapp",
+            json={
+                "phone_number_id": "phone-handoff",
+                "business_account_id": "waba-handoff",
+                "access_token": "token-handoff-abcdefgh",
+                "agent_id": agent["id"],
+            },
+            headers=auth,
+        )
+        body = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "metadata": {"phone_number_id": "phone-handoff"},
+                                "messages": [
+                                    {
+                                        "id": "wamid-handoff-1",
+                                        "from": "+5511555555555",
+                                        "type": "text",
+                                        "text": {"body": "Preciso de ajuda"},
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        payload = json.dumps(body).encode()
+        client.post(
+            "/webhooks/whatsapp",
+            content=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": meta_signature("handoff-secret", payload),
+            },
+        )
+        call_id = str(next(iter(store.calls.keys())))
+        response = client.post(
+            f"/v1/calls/{call_id}/whatsapp-handoff",
+            json={"text": "Operador assumiu a conversa."},
+            headers=operator_auth,
+        )
+        assert response.status_code == 200
+        assert response.json()["provider_message_id"] == "wamid-handoff-out"
+        call = next(iter(store.calls.values()))
+        assert call["metadata"]["human_handoff"] is True
+        assert store.call_turns[call["id"]][-1]["role"] == "operator"
+        assert store.call_turns[call["id"]][-1]["text"] == "Operador assumiu a conversa."
+        assert event_bus.events[-1][2]["type"] == "operator.message"
+    finally:
+        settings.whatsapp_app_secret = previous_secret
+
+
+def test_whatsapp_handoff_route_accepts_string_secret_id(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    store.integrations.clear()
+    store.secrets.clear()
+    store.whatsapp_messages.clear()
+    store.calls.clear()
+    store.call_turns.clear()
+    store.call_events.clear()
+    store.end_users.clear()
+    event_bus.events.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    operator_auth = headers(tenant, "operator")
+    agent = client.post("/v1/agents", json={"name": "String Secret Agent"}, headers=auth).json()
+    settings = get_settings()
+    previous_secret = settings.whatsapp_app_secret
+    settings.whatsapp_app_secret = "handoff-string-secret"
+
+    class FakeGateway:
+        def __init__(self, settings: object, access_token: str, phone_number_id: str) -> None:
+            self.access_token = access_token
+            self.phone_number_id = phone_number_id
+
+        async def send_text(self, recipient: str, text: str) -> str:
+            assert recipient == "+5511444444444"
+            assert text == "Operador assumiu com secret string."
+            return "wamid-handoff-string"
+
+    original_get_integration = MemoryRepository.get_integration
+
+    async def fake_get_integration(
+        self: MemoryRepository, tenant_id: UUID, provider: str
+    ) -> dict[str, object] | None:
+        item = await original_get_integration(self, tenant_id, provider)
+        if item and provider == "whatsapp" and item.get("refresh_token_secret_id"):
+            altered = dict(item)
+            altered["refresh_token_secret_id"] = str(item["refresh_token_secret_id"])
+            return altered
+        return item
+
+    monkeypatch.setattr(api_routes, "WhatsAppGateway", FakeGateway)
+    monkeypatch.setattr(MemoryRepository, "get_integration", fake_get_integration)
+    try:
+        client.post(
+            "/v1/integrations/whatsapp",
+            json={
+                "phone_number_id": "phone-handoff-string",
+                "business_account_id": "waba-handoff-string",
+                "access_token": "token-handoff-string-abcdefgh",
+                "agent_id": agent["id"],
+            },
+            headers=auth,
+        )
+        body = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "metadata": {"phone_number_id": "phone-handoff-string"},
+                                "messages": [
+                                    {
+                                        "id": "wamid-handoff-string-1",
+                                        "from": "+5511444444444",
+                                        "type": "text",
+                                        "text": {"body": "Preciso de ajuda"},
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        payload = json.dumps(body).encode()
+        client.post(
+            "/webhooks/whatsapp",
+            content=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": meta_signature("handoff-string-secret", payload),
+            },
+        )
+        call_id = str(next(iter(store.calls.keys())))
+        response = client.post(
+            f"/v1/calls/{call_id}/whatsapp-handoff",
+            json={"text": "Operador assumiu com secret string."},
+            headers=operator_auth,
+        )
+        assert response.status_code == 200
+        assert response.json()["provider_message_id"] == "wamid-handoff-string"
+    finally:
+        settings.whatsapp_app_secret = previous_secret
+
+
+def test_simulation_endpoints_return_report_and_yaml() -> None:
+    store.simulations.clear()
+    tenant = str(uuid4())
+    auth = headers(tenant)
+    agent = client.post("/v1/agents", json={"name": "Simulator Agent"}, headers=auth).json()
+    created = client.post(
+        "/v1/simulations",
+        json={
+            "agent_id": agent["id"],
+            "persona": "Paciente com dúvida recorrente sobre agendamento e retorno.",
+            "objective": "Validar se o agente conduz a conversa com clareza.",
+            "conversation_count": 20,
+        },
+        headers=auth,
+    )
+    assert created.status_code == 201
+    simulation = created.json()
+    assert simulation["status"] == "completed"
+    assert simulation["report"]["conversation_count"] == 20
+    fetched = client.get(f"/v1/simulations/{simulation['id']}", headers=auth)
+    assert fetched.status_code == 200
+    assert fetched.json()["report"]["pass_rate"] > 0
+    yaml_response = client.get(f"/v1/simulations/{simulation['id']}/yaml", headers=auth)
+    assert yaml_response.status_code == 200
+    assert "channel: whatsapp" in yaml_response.text

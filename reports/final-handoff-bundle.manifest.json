@@ -1,0 +1,148 @@
+{
+  "scope": "final_handoff_bundle",
+  "bundle_path": "reports/final-handoff-bundle.zip",
+  "included": [
+    {
+      "path": "FINAL-HANDOFF-2026-08-25.md",
+      "bytes": 5214,
+      "sha256": "c2b3a0b73402566a3c8e79c691f5008bbca64fb7425d185988f36a1a6e256f5c"
+    },
+    {
+      "path": "EXTERNAL-EXECUTION-CHECKLIST-2026-08-25.md",
+      "bytes": 2853,
+      "sha256": "4c2486529884190496be2739375bb0fca950d9dcb83449abeaba2c6f06825d9d"
+    },
+    {
+      "path": "scripts/check_phase4_remote_ready.ps1",
+      "bytes": 2029,
+      "sha256": "8fc24948ecc7c4a0505179db834b3362c141ae62cd52c324f89f17ac59117f43"
+    },
+    {
+      "path": "scripts/verify_phase4_remote_artifact.py",
+      "bytes": 4337,
+      "sha256": "6faeb6a2dceb21286e82705d3065411d91bf562960bdde9993c61c65faf624e7"
+    },
+    {
+      "path": "scripts/check_phase5_external_delivery.py",
+      "bytes": 8373,
+      "sha256": "f8b7090d95ee01832f9ba5b02925dbd3a143f105632eadbb34a1614a8cd395d0"
+    },
+    {
+      "path": "scripts/check_external_closeout_complete.py",
+      "bytes": 3326,
+      "sha256": "b96a6c0920e697eebb1df0ceb411af2df94a2b826f0dfe7c928625b5f778f0b8"
+    },
+    {
+      "path": "scripts/materialize_pending_external_reports.py",
+      "bytes": 3867,
+      "sha256": "20e0fb196fbb151f73e7c1ea475f9800cf4764a6e61cfafb36e9cf4fbba27609"
+    },
+    {
+      "path": "scripts/refresh_final_handoff.py",
+      "bytes": 10686,
+      "sha256": "c1cad274ec98afe8e6bd16a1242304475a808b4bbde4fddba890317baaeb4c47"
+    },
+    {
+      "path": "reports/final-handoff-summary.json",
+      "bytes": 3350,
+      "sha256": "7f7491605820b2d800345e334886c2d08f118b9ae2fb1d2054d63d3f60ff4ab4"
+    },
+    {
+      "path": "reports/final-local-audit.json",
+      "bytes": 8473,
+      "sha256": "ad5bef6f27845f5313807e758a35e030f782e42b1d61691b254a2adf71c5955e"
+    },
+    {
+      "path": "reports/final-refresh-status.json",
+      "bytes": 9571,
+      "sha256": "ffc12cb191e636cd318a85725f898012e83caa9fad5078b766249aa1981d717c"
+    },
+    {
+      "path": "reports/external-execution-checklist.json",
+      "bytes": 3005,
+      "sha256": "1a3552877aac7bb63752e7e09669951dd4776a92453db7816b0fc07f82040efe"
+    },
+    {
+      "path": "reports/phase4-remote-artifact-verification.json",
+      "bytes": 845,
+      "sha256": "2e15cabfc1c0f757f50af4ae915528ebfb7371dae2e3e3242081bb2e57445a61"
+    },
+    {
+      "path": "reports/phase5-external-delivery.json",
+      "bytes": 621,
+      "sha256": "b28a59640d582fdfaa50452c6c632c20d3d2ebe02d2e794953bf77a43e3fac59"
+    },
+    {
+      "path": "reports/external-closeout-status.json",
+      "bytes": 2972,
+      "sha256": "b5b9c13de4b4f6a938b233b93b1d2a61acd92365f7b455a59bb4293925ac9c8d"
+    },
+    {
+      "path": "PHASE-4-REPORT.md",
+      "bytes": 13484,
+      "sha256": "349c5a3eeeef6cf0063b86ff880662735b5c06de4c2e436eb576c71f03b51464"
+    },
+    {
+      "path": "PHASE-4-REMOTE-RUNBOOK.md",
+      "bytes": 4246,
+      "sha256": "a9880a72acdbec0f87ef730bdfa407465869707c7ba91eb5ddf7db025ac267cc"
+    },
+    {
+      "path": "reports/phase4-evidence-summary.json",
+      "bytes": 913,
+      "sha256": "b01e033dae06066ae335f465a486e7cdc2495a1a8516c1ea7a9b740b32488b11"
+    },
+    {
+      "path": "reports/phase4-evidence-bundle.zip",
+      "bytes": 11300,
+      "sha256": "cfc8756d09b2ca22ebd7b7d59894c53b79ddfde891f0c4ec18c2a35b555fedee"
+    },
+    {
+      "path": "reports/phase4-evidence-bundle.manifest.json",
+      "bytes": 1719,
+      "sha256": "0693b94376d3083a71b968afc97ffb411653f1f144edf2eca56a243cc2648d24"
+    },
+    {
+      "path": "PHASE-5-REPORT.md",
+      "bytes": 6057,
+      "sha256": "4690a82d2e0b9fcee05e0a3df1a893d596c03d6bd499d20238254857c14ee9b1"
+    },
+    {
+      "path": "PHASE-5-HOSTED-ASSET-RUNBOOK.md",
+      "bytes": 3952,
+      "sha256": "ee439fe260d66eba26960f62414205625df83fe22cde294b8309f9a0b22b4a7e"
+    },
+    {
+      "path": "reports/phase5-hosted-asset-readiness.json",
+      "bytes": 3015,
+      "sha256": "b6840f65bb4524b5c907b6bbe98919a8e7228e245d379db35390252e9389da34"
+    },
+    {
+      "path": "reports/phase5-acceptance-summary.json",
+      "bytes": 1278,
+      "sha256": "d0ba93e41f959e2a666896547c7850df87a7d4fcab5331d65001bc7dcfc31994"
+    },
+    {
+      "path": "reports/phase5-evidence-bundle.zip",
+      "bytes": 29899,
+      "sha256": "1fdfd5a76d2f7e38570076cdb9252cb354c7b88f1e2289f93c7ac0d149eef8e0"
+    },
+    {
+      "path": "reports/phase5-evidence-bundle.manifest.json",
+      "bytes": 3252,
+      "sha256": "f3874ed2c5c15051d192830873b40c05fd6a171bb9911dfe3c5f639d43c21b28"
+    }
+  ],
+  "missing": [],
+  "project_completion_estimate_percent": 95,
+  "phase4_next_gap": "remote_repo_access",
+  "phase4_environment_blocker": {
+    "type": "node_g_drive_eperm",
+    "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+    "current_gap": "phase4_playwright_executor_blocked"
+  },
+  "phase5_next_gap": null,
+  "phase5_environment_blocker": null,
+  "bundle_bytes": 72874,
+  "bundle_sha256": "6466d2129285b241e85be08b735815822f0be3b8c3713bf1819595e1c5de5796"
+}

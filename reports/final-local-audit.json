@@ -1,0 +1,210 @@
+{
+  "scope": "final_local_audit",
+  "status_date": "2026-08-25",
+  "passed": true,
+  "project_completion_estimate_percent": 95,
+  "phase4_next_gap": "remote_repo_access",
+  "phase4_environment_blocker": {
+    "type": "node_g_drive_eperm",
+    "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+    "current_gap": "phase4_playwright_executor_blocked"
+  },
+  "phase5_next_gap": null,
+  "phase5_environment_blocker": null,
+  "phase5_acceptance_passed": true,
+  "final_handoff_summary_present": true,
+  "expected_external_gaps": [
+    "remote_repo_access",
+    "phase4_remote_closeout_pending",
+    "phase5_external_closeout_pending"
+  ],
+  "steps": [
+    {
+      "name": "pytest_suite",
+      "ok": true,
+      "returncode": 0,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider --basetemp G:\\DEV\\VOICE_OS\\.pytest-tmp\\final-local-audit",
+      "output": "[pytest output omitted on success]",
+      "ok_local": true
+    },
+    {
+      "name": "phase4_evidence_summary",
+      "ok": true,
+      "returncode": 0,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\build_phase4_evidence_summary.py",
+      "output": "[phase4 evidence summary output omitted; see parsed]",
+      "parsed": {
+        "scope": "phase4_evidence_summary",
+        "date": "2026-08-25",
+        "passed": false,
+        "next_gap": "remote_repo_access",
+        "local_acceptance_passed": false,
+        "environment_blocker": {
+          "type": "node_g_drive_eperm",
+          "detail": "Node/Playwright cannot resolve G:\\ in this executor",
+          "current_gap": "phase4_playwright_executor_blocked"
+        },
+        "remote_readiness_passed": false,
+        "remote_repo": "mariohidifira/voice_os"
+      },
+      "ok_local": true
+    },
+    {
+      "name": "phase4_evidence_verify",
+      "ok": true,
+      "returncode": 0,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\verify_phase4_evidence_package.py",
+      "output": "[phase4 evidence verification output omitted; see parsed]",
+      "parsed": {
+        "scope": "phase4_evidence_bundle_verification",
+        "bundle_path": "reports/phase4-evidence-bundle.zip",
+        "bundle_exists": true,
+        "bundle_sha256_ok": true,
+        "missing_entries": [],
+        "failed_entries": [],
+        "passed": true
+      },
+      "ok_local": true
+    },
+    {
+      "name": "phase5_asset_ready",
+      "ok": true,
+      "returncode": 0,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\check_phase5_hosted_asset_ready.py",
+      "output": "[phase5 hosted-asset readiness output omitted; see parsed]",
+      "parsed": {
+        "scope": "phase5_hosted_asset_readiness",
+        "status_date": "2026-08-25",
+        "passed": true,
+        "next_gap": null,
+        "environment_blocker": null,
+        "artifacts": {
+          "public_directory": "apps/web/public",
+          "browser_bundle": "packages/widget/dist/voiceos.js",
+          "hosted_asset": "apps/web/public/voiceos.js",
+          "size_artifact": "packages/widget/dist/size.json"
+        },
+        "step_count": 15
+      },
+      "ok_local": true
+    },
+    {
+      "name": "phase5_acceptance",
+      "ok": true,
+      "returncode": 0,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\check_phase5_acceptance.py",
+      "output": "[phase5 acceptance output omitted; see parsed]",
+      "parsed": {
+        "scope": "phase5_acceptance_summary",
+        "status_date": "2026-08-25",
+        "passed": true,
+        "pending": [],
+        "hosted_asset_next_gap": null,
+        "environment_blocker": null,
+        "pytest_widget_origin": {
+          "passed": true,
+          "command": "pytest -q tests/test_api.py -k public_widget_session_requires_valid_origin_and_public_key",
+          "output": "[pytest output omitted on success]"
+        },
+        "step_count": 5
+      },
+      "ok_local": true
+    },
+    {
+      "name": "phase5_evidence_verify",
+      "ok": true,
+      "returncode": 0,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\verify_phase5_evidence_package.py",
+      "output": "[phase5 evidence verification output omitted; see parsed]",
+      "parsed": {
+        "scope": "phase5_evidence_bundle_verification",
+        "bundle_exists": true,
+        "manifest_exists": true,
+        "failed_entries": [],
+        "missing_entries": [],
+        "bundle_sha256_ok": true,
+        "passed": true
+      },
+      "ok_local": true
+    },
+    {
+      "name": "materialize_pending_external_reports",
+      "ok": true,
+      "returncode": 0,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\materialize_pending_external_reports.py",
+      "output": "{\n  \"scope\": \"materialize_pending_external_reports\",\n  \"status_date\": \"2026-08-25\",\n  \"results\": [\n    {\n      \"path\": \"reports/phase4-remote-artifact-verification.json\",\n      \"created\": false,\n      \"refreshed_placeholder\": true,\n      \"preserved_existing\": false\n    },\n    {\n      \"path\": \"reports/phase5-external-delivery.json\",\n      \"created\": false,\n      \"refreshed_placeholder\": true,\n      \"preserved_existing\": false\n    }\n  ]\n}",
+      "parsed": {
+        "scope": "materialize_pending_external_reports",
+        "status_date": "2026-08-25",
+        "results": [
+          {
+            "path": "reports/phase4-remote-artifact-verification.json",
+            "created": false,
+            "refreshed_placeholder": true,
+            "preserved_existing": false
+          },
+          {
+            "path": "reports/phase5-external-delivery.json",
+            "created": false,
+            "refreshed_placeholder": true,
+            "preserved_existing": false
+          }
+        ]
+      },
+      "ok_local": true
+    },
+    {
+      "name": "external_execution_checklist",
+      "ok": true,
+      "returncode": 0,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\build_external_execution_checklist.py",
+      "output": "[external execution checklist output omitted; see parsed]",
+      "parsed": {
+        "scope": "external_execution_checklist",
+        "status_date": "2026-08-25",
+        "artifacts": {
+          "phase4_evidence_bundle": {
+            "path": "reports/phase4-evidence-bundle.zip",
+            "sha256": "cfc8756d09b2ca22ebd7b7d59894c53b79ddfde891f0c4ec18c2a35b555fedee",
+            "bytes": 11300
+          },
+          "phase5_evidence_bundle": {
+            "path": "reports/phase5-evidence-bundle.zip",
+            "sha256": "1fdfd5a76d2f7e38570076cdb9252cb354c7b88f1e2289f93c7ac0d149eef8e0",
+            "bytes": 29899
+          },
+          "final_handoff_bundle_manifest": {
+            "path": "reports/final-handoff-bundle.manifest.json",
+            "bundle_path": "reports/final-handoff-bundle.zip"
+          }
+        },
+        "phase4_current_gap": "remote_repo_access",
+        "phase5_current_gap": "external_deploy_and_host_validation",
+        "project_completion_estimate_percent": 95
+      },
+      "ok_local": true
+    },
+    {
+      "name": "external_closeout_status",
+      "ok": false,
+      "returncode": 1,
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\check_external_closeout_complete.py",
+      "output": "[external closeout status output omitted; see parsed]",
+      "parsed": {
+        "scope": "external_closeout_status",
+        "status_date": "2026-08-25",
+        "project_completion_estimate_percent": 95,
+        "complete": false,
+        "remaining_gaps": [
+          "phase4_remote_closeout_pending",
+          "phase5_external_closeout_pending"
+        ]
+      },
+      "ok_local": true,
+      "expected_external_gaps": [
+        "phase4_remote_closeout_pending",
+        "phase5_external_closeout_pending"
+      ]
+    }
+  ]
+}

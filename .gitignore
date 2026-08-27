@@ -2,6 +2,7 @@
 .venv/
 __pycache__/
 .pytest_cache/
+.pytest-tmp/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -11,6 +12,7 @@ node_modules/
 playwright-report/
 test-results/
 dist/
+apps/web/public/voiceos.js
 *.pyc
 *.egg-info/
 *.tsbuildinfo

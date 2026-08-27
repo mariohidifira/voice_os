@@ -1,0 +1,90 @@
+{
+  "scope": "phase5_hosted_asset_readiness",
+  "status_date": "2026-08-25",
+  "passed": true,
+  "next_gap": null,
+  "environment_blocker": null,
+  "artifacts": {
+    "public_directory": "apps/web/public",
+    "browser_bundle": "packages/widget/dist/voiceos.js",
+    "hosted_asset": "apps/web/public/voiceos.js",
+    "size_artifact": "packages/widget/dist/size.json"
+  },
+  "steps": [
+    {
+      "name": "dashboard_snippet_hosted_path",
+      "ok": true,
+      "detail": "dashboard embed snippet should point to /voiceos.js on the same host origin"
+    },
+    {
+      "name": "dashboard_prebuild_widget_bundle",
+      "ok": true,
+      "detail": "dashboard build should invoke the widget build first"
+    },
+    {
+      "name": "widget_build_generates_hosted_asset",
+      "ok": true,
+      "detail": "widget build should generate the browser bundle and sync it to apps/web/public/voiceos.js"
+    },
+    {
+      "name": "widget_size_budget_enforced",
+      "ok": true,
+      "detail": "widget build should enforce the <= 60 KB gzip budget and expose a size check command"
+    },
+    {
+      "name": "host_page_uses_browser_bundle",
+      "ok": true,
+      "detail": "host-page example should reference the generated browser bundle"
+    },
+    {
+      "name": "widget_docs_describe_hosted_asset",
+      "ok": true,
+      "detail": "widget README should document the hosted asset path and size validation command"
+    },
+    {
+      "name": "public_directory_present",
+      "ok": true,
+      "detail": "apps/web/public should exist as the target directory for the hosted widget asset"
+    },
+    {
+      "name": "browser_bundle_present",
+      "ok": true,
+      "detail": "packages/widget/dist/voiceos.js should exist after a successful widget build"
+    },
+    {
+      "name": "hosted_asset_present",
+      "ok": true,
+      "detail": "apps/web/public/voiceos.js should exist after a successful widget build"
+    },
+    {
+      "name": "size_artifact_present",
+      "ok": true,
+      "detail": "packages/widget/dist/size.json should exist after a successful widget build"
+    },
+    {
+      "name": "widget_package_declares_esbuild",
+      "ok": true,
+      "detail": "widget workspace should declare esbuild for the browser bundle step"
+    },
+    {
+      "name": "browser_and_hosted_assets_match",
+      "ok": true,
+      "detail": "dist/voiceos.js and apps/web/public/voiceos.js should be byte-identical"
+    },
+    {
+      "name": "size_metadata_matches_bundle",
+      "ok": true,
+      "detail": "size.json should match the generated bundle bytes and deterministic gzip size"
+    },
+    {
+      "name": "bundle_hashes_match",
+      "ok": true,
+      "detail": "size.json should carry the SHA-256 shared by dist and hosted assets"
+    },
+    {
+      "name": "materialized_bundle_within_budget",
+      "ok": true,
+      "detail": "the materialized browser bundle should stay within the <= 60 KB gzip budget"
+    }
+  ]
+}

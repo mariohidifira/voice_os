@@ -1,9 +1,11 @@
 import importlib.util
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def load_initial_migration():
-    path = Path("apps/api/alembic/versions/0001_initial.py")
+    path = REPO_ROOT / "apps" / "api" / "alembic" / "versions" / "0001_initial.py"
     spec = importlib.util.spec_from_file_location("initial_migration", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -35,4 +37,3 @@ def test_required_phase_zero_tables_exist() -> None:
         "call_turns", "call_events", "knowledge_bases", "documents", "chunks", "tools",
     }
     assert required <= set(migration.TABLES)
-

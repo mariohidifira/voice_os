@@ -7,7 +7,7 @@
 - Cliente: LiveKit JS SDK; pedir permissão de microfone; publicar track com `echoCancellation`, `noiseSuppression`, `autoGainControl` on.
 - Fim: cliente sai da room ou `DELETE /v1/sessions/{id}`; room `empty_timeout=30s`.
 - Segurança: allowlist de origens na API key; token TTL 1 h; uma sessão por token.
-- Fase 5: `packages/widget` gera `voiceos.js` (`<script src=... data-agent-id=... data-key=vk_pub_...>`), botão flutuante, temas, eventos JS (`onStart`, `onEnd`, `onTranscript`), e SDK npm `@voiceos/web`.
+- Fase 5: `packages/widget` gera `voiceos.js` (`<script type="module" src=... data-agent-id=... data-key=vos_pk_... data-api-url=.../v1/public/tenants/{tenant_id}/widget/sessions>`), botão flutuante, temas, posição, eventos JS (`voiceos:start`, `voiceos:end`), e SDK npm `@voiceos/web` com `livekitModuleUrl` opcional para bundle browser pinado/self-hosted.
 
 ## Telefone (PSTN) — Fase 2
 

@@ -32,6 +32,9 @@ class Repository(Protocol):
     async def list_api_keys(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
     async def create_api_key(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
     async def revoke_api_key(self, tenant_id: UUID, key_id: UUID) -> bool: ...
+    async def get_api_key_by_hash(
+        self, tenant_id: UUID, prefix: str, hash_value: str
+    ) -> dict[str, Any] | None: ...
     async def list_agents(self, tenant_id: UUID) -> list[dict[str, Any]]: ...
     async def create_agent(self, tenant_id: UUID, name: str, user_id: str) -> dict[str, Any]: ...
     async def publish_agent(self, tenant_id: UUID, agent_id: UUID) -> dict[str, Any] | None: ...
@@ -203,6 +206,12 @@ class Repository(Protocol):
     async def admin_list_tenants(self) -> list[dict[str, Any]]: ...
     async def admin_update_tenant(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any] | None: ...
     async def admin_metrics(self) -> dict[str, Any]: ...
+    async def ingest_whatsapp_message(self, data: dict[str, Any]) -> bool: ...
+    async def claim_whatsapp_messages(self, limit: int = 100) -> list[dict[str, Any]]: ...
+    async def complete_whatsapp_message(self, message_id: UUID, data: dict[str, Any]) -> None: ...
+    async def create_simulation(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]: ...
+    async def get_simulation(self, tenant_id: UUID, simulation_id: UUID) -> dict[str, Any] | None: ...
+    async def complete_simulation(self, tenant_id: UUID, simulation_id: UUID, report: dict[str, Any]) -> dict[str, Any] | None: ...
 
 
 class PostgresRepository:
@@ -436,6 +445,20 @@ class PostgresRepository:
                 {"id": key_id},
             )
             return result.scalar_one_or_none() is not None
+
+    async def get_api_key_by_hash(
+        self, tenant_id: UUID, prefix: str, hash_value: str
+    ) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(
+                text(
+                    "SELECT id,tenant_id,name,prefix,scope,allowed_origins,last_used_at,revoked_at,created_at "
+                    "FROM api_keys WHERE prefix=:prefix AND hash=:hash AND revoked_at IS NULL LIMIT 1"
+                ),
+                {"prefix": prefix, "hash": hash_value},
+            )
+            item = row.mappings().first()
+            return dict(item) if item else None
 
     async def list_agents(self, tenant_id: UUID) -> list[dict[str, Any]]:
         async with self.tenant_session(tenant_id) as db:
@@ -1114,10 +1137,18 @@ class PostgresRepository:
                 return 0
             for turn in turns:
                 values = {
-                    **turn,
                     "id": turn.get("id") or uuid4(),
                     "tenant": tenant_id,
                     "call": call_id,
+                    "ordinal": turn["ordinal"],
+                    "role": turn["role"],
+                    "text": turn.get("text"),
+                    "started_at": turn.get("started_at"),
+                    "ended_at": turn.get("ended_at"),
+                    "interrupted": bool(turn.get("interrupted", False)),
+                    "ttfb_ms": turn.get("ttfb_ms"),
+                    "stt_confidence": turn.get("stt_confidence"),
+                    "audio_offset_ms": int(turn.get("audio_offset_ms", 0)),
                 }
                 await db.execute(
                     text(
@@ -1523,7 +1554,7 @@ class PostgresRepository:
             if existing:
                 row = await db.execute(
                     text(
-                        "UPDATE integrations SET scopes=:scopes,refresh_token_secret_id=:secret,account_email=:email,status=:status,updated_at=now() WHERE id=:id RETURNING *"
+                        "UPDATE integrations SET scopes=:scopes,refresh_token_secret_id=:secret,account_email=:email,status=:status,config=CAST(:config AS jsonb),updated_at=now() WHERE id=:id RETURNING *"
                     ),
                     {
                         "id": existing,
@@ -1531,12 +1562,13 @@ class PostgresRepository:
                         "secret": data.get("refresh_token_secret_id"),
                         "email": data.get("account_email"),
                         "status": data["status"],
+                        "config": json.dumps(data.get("config", {})),
                     },
                 )
             else:
                 row = await db.execute(
                     text(
-                        "INSERT INTO integrations(id,tenant_id,provider,scopes,refresh_token_secret_id,account_email,status) VALUES(:id,:tenant,:provider,:scopes,:secret,:email,:status) RETURNING *"
+                        "INSERT INTO integrations(id,tenant_id,provider,scopes,refresh_token_secret_id,account_email,status,config) VALUES(:id,:tenant,:provider,:scopes,:secret,:email,:status,CAST(:config AS jsonb)) RETURNING *"
                     ),
                     {
                         "id": uuid4(),
@@ -1546,6 +1578,7 @@ class PostgresRepository:
                         "secret": data.get("refresh_token_secret_id"),
                         "email": data.get("account_email"),
                         "status": data["status"],
+                        "config": json.dumps(data.get("config", {})),
                     },
                 )
             return dict(row.mappings().one())
@@ -2061,6 +2094,65 @@ class PostgresRepository:
             row = await db.execute(text("SELECT (SELECT count(*) FROM tenants WHERE deleted_at IS NULL)::int tenants,(SELECT count(*) FROM calls)::int calls,(SELECT COALESCE(sum(COALESCE(billable_seconds,duration_s,0))/60.0,0) FROM calls)::float minutes,(SELECT COALESCE(sum((cost->>'total')::numeric),0) FROM calls)::float cost,(SELECT count(*) FROM calls WHERE status IN ('queued','ringing','in_progress'))::int active_rooms"))
             return dict(row.mappings().one())
 
+    async def ingest_whatsapp_message(self, data: dict[str, Any]) -> bool:
+        async with self._internal_session() as db:
+            integration = (await db.execute(text("SELECT * FROM integrations WHERE provider='whatsapp' AND status='active' AND config->>'phone_number_id'=:phone LIMIT 1"), {"phone": data["phone_number_id"]})).mappings().first()
+            if not integration:
+                return False
+            tenant_id = integration["tenant_id"]
+            end_user_id = (await db.execute(text("SELECT id FROM end_users WHERE tenant_id=:tenant AND phone=:phone LIMIT 1"), {"tenant": tenant_id, "phone": data["from"]})).scalar_one_or_none()
+            if not end_user_id:
+                end_user_id = uuid4()
+                await db.execute(text("INSERT INTO end_users(id,tenant_id,phone,metadata,first_seen_at,last_seen_at) VALUES(:id,:tenant,:phone,'{}'::jsonb,now(),now())"), {"id": end_user_id, "tenant": tenant_id, "phone": data["from"]})
+            call_id = (await db.execute(text("SELECT id FROM calls WHERE tenant_id=:tenant AND channel='whatsapp' AND end_user_id=:user AND started_at>=now()-interval '24 hours' AND status='in_progress' ORDER BY started_at DESC LIMIT 1"), {"tenant": tenant_id, "user": end_user_id})).scalar_one_or_none()
+            if not call_id:
+                call_id = uuid4()
+                await db.execute(text("INSERT INTO calls(id,tenant_id,agent_id,end_user_id,channel,status,from_number,started_at,metadata) VALUES(:id,:tenant,CAST(:agent AS uuid),:user,'whatsapp','in_progress',:phone,now(),CAST(:metadata AS jsonb))"), {"id": call_id, "tenant": tenant_id, "agent": integration["config"]["agent_id"], "user": end_user_id, "phone": data["from"], "metadata": json.dumps({"phone_number_id": data["phone_number_id"]})})
+            result = await db.execute(text("INSERT INTO whatsapp_messages(id,tenant_id,call_id,provider_message_id,direction,type,text,media_id,status,payload) VALUES(:id,:tenant,:call,:provider,'inbound',:type,:text,:media,'pending',CAST(:payload AS jsonb)) ON CONFLICT(provider_message_id) DO NOTHING RETURNING id"), {"id": uuid4(), "tenant": tenant_id, "call": call_id, "provider": data["provider_message_id"], "type": data["type"], "text": data.get("text"), "media": data.get("media_id"), "payload": json.dumps(data)})
+            return bool(result.scalar_one_or_none())
+
+    async def claim_whatsapp_messages(self, limit: int = 100) -> list[dict[str, Any]]:
+        async with self._internal_session() as db:
+            rows = await db.execute(text("WITH picked AS (SELECT id FROM whatsapp_messages WHERE status='pending' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT :limit) UPDATE whatsapp_messages m SET status='processing',updated_at=now() FROM picked WHERE m.id=picked.id RETURNING m.*"), {"limit": limit})
+            messages = [dict(row) for row in rows.mappings()]
+            for item in messages:
+                integration = (await db.execute(text("SELECT i.config,s.ciphertext,s.kms_key_id FROM integrations i JOIN secrets s ON s.id=i.refresh_token_secret_id WHERE i.tenant_id=:tenant AND i.provider='whatsapp' AND i.status='active' LIMIT 1"), {"tenant": item["tenant_id"]})).mappings().first()
+                call = (await db.execute(text("SELECT c.*,av.system_prompt,av.behavior FROM calls c LEFT JOIN agents a ON a.id=c.agent_id LEFT JOIN agent_versions av ON av.id=a.current_version_id WHERE c.id=:id"), {"id": item["call_id"]})).mappings().first()
+                if integration and call:
+                    item.update(dict(integration))
+                    item["call"] = dict(call)
+            return [item for item in messages if item.get("ciphertext")]
+
+    async def complete_whatsapp_message(self, message_id: UUID, data: dict[str, Any]) -> None:
+        async with self._internal_session() as db:
+            message = (await db.execute(text("SELECT * FROM whatsapp_messages WHERE id=:id"), {"id": message_id})).mappings().first()
+            if not message:
+                return
+            ordinal = int((await db.execute(text("SELECT COALESCE(max(ordinal),-1)+1 FROM call_turns WHERE call_id=:call"), {"call": message["call_id"]})).scalar_one())
+            for offset, (role, value) in enumerate((("user", data.get("user_text")), ("agent", data.get("agent_text")))):
+                if value:
+                    await db.execute(text("INSERT INTO call_turns(id,tenant_id,call_id,ordinal,role,text,started_at,ended_at) VALUES(gen_random_uuid(),:tenant,:call,:ordinal,:role,:text,now(),now())"), {"tenant": message["tenant_id"], "call": message["call_id"], "ordinal": ordinal + offset, "role": role, "text": value})
+            await db.execute(text("UPDATE whatsapp_messages SET status=:status,error=:error,updated_at=now() WHERE id=:id"), {"id": message_id, "status": data.get("status", "done"), "error": data.get("error")})
+            if data.get("handoff"):
+                await db.execute(text("UPDATE calls SET metadata=metadata || '{\"human_handoff\":true}'::jsonb,updated_at=now() WHERE id=:id"), {"id": message["call_id"]})
+
+    async def create_simulation(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("INSERT INTO simulations(id,tenant_id,agent_id,persona,objective,conversation_count,status) VALUES(:id,:tenant,:agent,:persona,:objective,:count,'pending') RETURNING *"), {"id": uuid4(), "tenant": tenant_id, "agent": data["agent_id"], "persona": data["persona"], "objective": data["objective"], "count": data["conversation_count"]})
+            return dict(row.mappings().one())
+
+    async def get_simulation(self, tenant_id: UUID, simulation_id: UUID) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("SELECT * FROM simulations WHERE id=:id"), {"id": simulation_id})
+            item = row.mappings().first()
+            return dict(item) if item else None
+
+    async def complete_simulation(self, tenant_id: UUID, simulation_id: UUID, report: dict[str, Any]) -> dict[str, Any] | None:
+        async with self.tenant_session(tenant_id) as db:
+            row = await db.execute(text("UPDATE simulations SET status='completed',report=CAST(:report AS jsonb),updated_at=now() WHERE id=:id RETURNING *"), {"id": simulation_id, "report": json.dumps(report)})
+            item = row.mappings().first()
+            return dict(item) if item else None
+
 
 class MemoryRepository:
     def __init__(self, memory: MemoryStore = store) -> None:
@@ -2173,6 +2265,19 @@ class MemoryRepository:
             return False
         item["revoked_at"] = datetime.now(UTC)
         return True
+
+    async def get_api_key_by_hash(
+        self, tenant_id: UUID, prefix: str, hash_value: str
+    ) -> dict[str, Any] | None:
+        for item in self.memory.api_keys.values():
+            if (
+                item["tenant_id"] == tenant_id
+                and item["prefix"] == prefix
+                and item["hash"] == hash_value
+                and item["revoked_at"] is None
+            ):
+                return {key: value for key, value in item.items() if key != "hash"}
+        return None
 
     async def list_agents(self, tenant_id: UUID) -> list[dict[str, Any]]:
         return [a for a in self.memory.agents.values() if a["tenant_id"] == tenant_id]
@@ -3157,7 +3262,7 @@ class MemoryRepository:
         return [{**item, "avg_duration_ms": item.pop("total_duration_ms") / item["calls"]} for item in grouped.values()]
 
     async def admin_list_tenants(self) -> list[dict[str, Any]]:
-        result = []
+        result: list[dict[str, Any]] = []
         for tenant in self.memory.tenants.values():
             subscription = next((item for item in self.memory.subscriptions.values() if item["tenant_id"] == tenant["id"]), None)
             result.append({**tenant, "plan_code": (subscription or {}).get("plan_code", "trial"), "subscription_status": (subscription or {}).get("status", "trialing"), "agents_count": sum(item["tenant_id"] == tenant["id"] for item in self.memory.agents.values()), "calls_count": sum(item["tenant_id"] == tenant["id"] for item in self.memory.calls.values())})
@@ -3180,6 +3285,65 @@ class MemoryRepository:
 
     async def admin_metrics(self) -> dict[str, Any]:
         return {"tenants": len(self.memory.tenants), "calls": len(self.memory.calls), "minutes": sum(float(item.get("billable_seconds") or item.get("duration_s") or 0) for item in self.memory.calls.values()) / 60, "cost": sum(float((item.get("cost") or {}).get("total", 0)) for item in self.memory.calls.values()), "active_rooms": sum(item.get("status") in {"queued", "ringing", "in_progress"} for item in self.memory.calls.values())}
+
+    async def ingest_whatsapp_message(self, data: dict[str, Any]) -> bool:
+        if any(item["provider_message_id"] == data["provider_message_id"] for item in self.memory.whatsapp_messages.values()):
+            return False
+        integration = next((item for item in self.memory.integrations.values() if item["provider"] == "whatsapp" and item.get("status") == "active" and (item.get("config") or {}).get("phone_number_id") == data["phone_number_id"]), None)
+        if not integration:
+            return False
+        tenant_id = integration["tenant_id"]
+        end_user = await self.upsert_end_user(tenant_id, {"phone": data["from"]})
+        call = next((item for item in self.memory.calls.values() if item["tenant_id"] == tenant_id and item["channel"] == "whatsapp" and item.get("end_user_id") == end_user["id"] and item["status"] == "in_progress" and item["created_at"] >= datetime.now(UTC) - timedelta(hours=24)), None)
+        if not call:
+            call = await self.create_call(tenant_id, UUID(str(integration["config"]["agent_id"])), {}, {"phone_number_id": data["phone_number_id"]}, end_user_id=end_user["id"], channel="whatsapp", status="in_progress", from_number=data["from"])
+        now = datetime.now(UTC)
+        item = {"id": uuid4(), "tenant_id": tenant_id, "call_id": call["id"], **data, "direction": "inbound", "status": "pending", "created_at": now, "updated_at": now}
+        self.memory.whatsapp_messages[item["id"]] = item
+        return True
+
+    async def claim_whatsapp_messages(self, limit: int = 100) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for item in self.memory.whatsapp_messages.values():
+            if len(result) >= limit or item["status"] != "pending":
+                continue
+            integration = next((value for value in self.memory.integrations.values() if value["tenant_id"] == item["tenant_id"] and value["provider"] == "whatsapp"), None)
+            secret_id = integration.get("refresh_token_secret_id") if integration else None
+            secret = self.memory.secrets.get(secret_id) if isinstance(secret_id, UUID) else None
+            call = self.memory.calls.get(item["call_id"])
+            if integration and secret and call:
+                item["status"] = "processing"
+                result.append({**item, "config": integration["config"], "ciphertext": secret["ciphertext"], "kms_key_id": secret["kms_key_id"], "call": call})
+        return result
+
+    async def complete_whatsapp_message(self, message_id: UUID, data: dict[str, Any]) -> None:
+        item = self.memory.whatsapp_messages.get(message_id)
+        if not item:
+            return
+        turns = self.memory.call_turns.setdefault(item["call_id"], [])
+        for role, text_value in (("user", data.get("user_text")), ("agent", data.get("agent_text"))):
+            if text_value:
+                turns.append({"id": uuid4(), "tenant_id": item["tenant_id"], "call_id": item["call_id"], "ordinal": len(turns), "role": role, "text": text_value})
+        item.update({"status": data.get("status", "done"), "error": data.get("error")})
+        if data.get("handoff"):
+            self.memory.calls[item["call_id"]]["metadata"]["human_handoff"] = True
+
+    async def create_simulation(self, tenant_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        item = {"id": uuid4(), "tenant_id": tenant_id, **data, "status": "pending", "report": {}, "created_at": now, "updated_at": now}
+        self.memory.simulations[item["id"]] = item
+        return dict(item)
+
+    async def get_simulation(self, tenant_id: UUID, simulation_id: UUID) -> dict[str, Any] | None:
+        item = self.memory.simulations.get(simulation_id)
+        return dict(item) if item and item["tenant_id"] == tenant_id else None
+
+    async def complete_simulation(self, tenant_id: UUID, simulation_id: UUID, report: dict[str, Any]) -> dict[str, Any] | None:
+        item = self.memory.simulations.get(simulation_id)
+        if not item or item["tenant_id"] != tenant_id:
+            return None
+        item.update({"status": "completed", "report": report, "updated_at": datetime.now(UTC)})
+        return dict(item)
 
     async def delete_knowledge_base(self, tenant_id: UUID, kb_id: UUID) -> bool:
         if not await self.get_knowledge_base(tenant_id, kb_id):

@@ -10,12 +10,31 @@ class AgentCreate(BaseModel):
     template_id: str | None = None
 
 
+class TenantBrandingPatch(BaseModel):
+    product_name: str | None = Field(default=None, min_length=1, max_length=120)
+    logo_url: str | None = Field(default=None, pattern=r"^https?://", max_length=2048)
+    favicon_url: str | None = Field(default=None, pattern=r"^https?://", max_length=2048)
+    primary_color: str | None = Field(default=None, pattern=r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+    accent_color: str | None = Field(default=None, pattern=r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+    email_from_name: str | None = Field(default=None, min_length=1, max_length=120)
+    custom_domain: str | None = Field(default=None, min_length=3, max_length=255)
+
+
+class TenantWidgetPatch(BaseModel):
+    button_label: str | None = Field(default=None, min_length=1, max_length=60)
+    theme: str | None = Field(default=None, pattern=r"^(light|dark|system)$")
+    position: str | None = Field(default=None, pattern=r"^(bottom-right|bottom-left)$")
+    livekit_module_url: str | None = Field(default=None, pattern=r"^https?://", max_length=2048)
+
+
 class TenantSettingsPatch(BaseModel):
     timezone: str | None = Field(default=None, min_length=3, max_length=80)
     locale: str | None = Field(default=None, min_length=2, max_length=20)
     recording_enabled: bool | None = None
     retention_days: int | None = Field(default=None, ge=1, le=3650)
     anonymize_transcripts: bool | None = None
+    branding: TenantBrandingPatch | None = None
+    widget: TenantWidgetPatch | None = None
 
 
 class TenantPatch(BaseModel):
@@ -126,6 +145,24 @@ class CallQaPatch(BaseModel):
 class AdminTenantPatch(BaseModel):
     status: str | None = Field(default=None, pattern=r"^(trial|active|past_due|suspended|cancelled)$")
     plan_code: str | None = Field(default=None, pattern=r"^(trial|starter|pro|business|enterprise)$")
+
+
+class WhatsAppConnect(BaseModel):
+    phone_number_id: str = Field(min_length=3, max_length=100)
+    business_account_id: str = Field(min_length=3, max_length=100)
+    access_token: str = Field(min_length=10, max_length=4096)
+    agent_id: UUID
+
+
+class WhatsAppHandoffMessage(BaseModel):
+    text: str = Field(min_length=1, max_length=4096)
+
+
+class SimulationCreate(BaseModel):
+    agent_id: UUID
+    persona: str = Field(min_length=10, max_length=2000)
+    objective: str = Field(min_length=5, max_length=1000)
+    conversation_count: int = Field(default=20, ge=1, le=100)
 
 
 class CampaignCreate(BaseModel):
