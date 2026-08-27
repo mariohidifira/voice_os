@@ -78,7 +78,10 @@ def _healthcheck(url: str, attempts: int = 45, sleep_s: float = 1.0) -> bool:
             with urlopen(url, timeout=5) as response:  # noqa: S310
                 if response.status == 200:
                     return True
-        except URLError:
+        # A dev server can accept the TCP connection before it is ready to
+        # return an HTTP response.  Treat that transient timeout like any
+        # other readiness failure and keep polling until the deadline.
+        except (TimeoutError, URLError):
             pass
         time.sleep(sleep_s)
     return False
