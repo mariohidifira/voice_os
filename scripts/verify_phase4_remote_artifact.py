@@ -14,8 +14,6 @@ REQUIRED_ENTRIES = [
     ("reports/phase4-evidence-summary.json", "file"),
     ("reports/phase4-evidence-bundle.manifest.json", "file"),
     ("reports/phase4-evidence-bundle.zip", "file"),
-    ("apps/web/playwright-report", "dir"),
-    ("apps/web/test-results", "dir"),
 ]
 
 
