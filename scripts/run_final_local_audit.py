@@ -4,11 +4,12 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORT_PATH = REPO_ROOT / "reports" / "final-local-audit.json"
 SCRIPTS_DIR = REPO_ROOT / "scripts"
-PYTEST_BASETEMP = REPO_ROOT / ".pytest-tmp" / "final-local-audit"
+PYTEST_BASETEMP = REPO_ROOT / ".pytest-tmp" / f"final-local-audit-{uuid4().hex}"
 BASE_PROJECT_COMPLETION_ESTIMATE_PERCENT = 93
 SANITIZED_JSON_STEPS = {
     "phase4_evidence_summary": "[phase4 evidence summary output omitted; see parsed]",
@@ -210,7 +211,7 @@ def main() -> int:
             step["ok_local"] = (
                 isinstance(remaining, list) and set(str(item) for item in remaining) == expected
             ) or bool(step["ok"])
-            step["expected_external_gaps"] = sorted(expected)
+            step["expected_external_gaps"] = [] if step["ok"] else sorted(expected)
         else:
             step["ok_local"] = bool(step["ok"])
 
@@ -223,28 +224,48 @@ def main() -> int:
     phase5_hosted = json.loads(
         (REPO_ROOT / "reports" / "phase5-hosted-asset-readiness.json").read_text(encoding="utf-8")
     )
-    final_summary_path = REPO_ROOT / "reports" / "final-handoff-summary.json"
-    completion_estimate = BASE_PROJECT_COMPLETION_ESTIMATE_PERCENT + (
-        2 if phase5_hosted.get("passed") is True else 0
+    phase4_remote = json.loads(
+        (REPO_ROOT / "reports" / "phase4-remote-artifact-verification.json").read_text(
+            encoding="utf-8"
+        )
     )
-    expected_external_gaps = [
-        phase4_summary.get("next_gap"),
-        phase5_hosted.get("next_gap"),
-        "phase4_remote_closeout_pending",
-        "phase5_external_closeout_pending",
-    ]
+    phase5_external = json.loads(
+        (REPO_ROOT / "reports" / "phase5-external-delivery.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    final_summary_path = REPO_ROOT / "reports" / "final-handoff-summary.json"
+    phase4_remote_complete = phase4_remote.get("passed") is True
+    phase5_external_complete = phase5_external.get("passed") is True
+    completion_estimate = (
+        100
+        if phase4_remote_complete and phase5_external_complete
+        else BASE_PROJECT_COMPLETION_ESTIMATE_PERCENT
+        + (2 if phase5_hosted.get("passed") is True else 0)
+    )
+    expected_external_gaps = []
+    if not phase4_remote_complete:
+        expected_external_gaps.extend(
+            [phase4_summary.get("next_gap"), "phase4_remote_closeout_pending"]
+        )
+    if not phase5_external_complete:
+        expected_external_gaps.extend(
+            [phase5_hosted.get("next_gap"), "phase5_external_closeout_pending"]
+        )
 
     report = {
         "scope": "final_local_audit",
         "status_date": "2026-08-25",
         "passed": all(bool(step["ok_local"]) for step in steps),
         "project_completion_estimate_percent": completion_estimate,
-        "phase4_next_gap": phase4_summary.get("next_gap"),
-        "phase4_environment_blocker": phase4_summary.get("local_acceptance", {}).get(
-            "environment_blocker"
-        ),
-        "phase5_next_gap": phase5_hosted.get("next_gap"),
-        "phase5_environment_blocker": phase5_hosted.get("environment_blocker"),
+        "phase4_next_gap": None if phase4_remote_complete else phase4_summary.get("next_gap"),
+        "phase4_environment_blocker": None
+        if phase4_remote_complete
+        else phase4_summary.get("local_acceptance", {}).get("environment_blocker"),
+        "phase5_next_gap": None if phase5_external_complete else phase5_hosted.get("next_gap"),
+        "phase5_environment_blocker": None
+        if phase5_external_complete
+        else phase5_hosted.get("environment_blocker"),
         "phase5_acceptance_passed": phase5_acceptance.get("passed"),
         "final_handoff_summary_present": final_summary_path.is_file(),
         "expected_external_gaps": [gap for gap in expected_external_gaps if gap],

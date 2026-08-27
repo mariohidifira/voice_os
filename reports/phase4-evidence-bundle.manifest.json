@@ -20,8 +20,8 @@
     },
     {
       "path": "scripts/verify_phase4_remote_artifact.py",
-      "bytes": 4337,
-      "sha256": "6faeb6a2dceb21286e82705d3065411d91bf562960bdde9993c61c65faf624e7"
+      "bytes": 4256,
+      "sha256": "406e9730029ba6fc89ddcbff842b846c9ef940295ff1ac3514ea8f08e80724bf"
     },
     {
       "path": "reports/phase4-local-acceptance.json",
@@ -40,8 +40,8 @@
     }
   ],
   "missing": [],
-  "bundle_bytes": 11300,
-  "bundle_sha256": "cfc8756d09b2ca22ebd7b7d59894c53b79ddfde891f0c4ec18c2a35b555fedee",
+  "bundle_bytes": 11269,
+  "bundle_sha256": "ad83d022e97c63169fa552b68496c4bc0659ff22017581a24af9dff6bca104df",
   "next_gap": "remote_repo_access",
   "environment_blocker": {
     "type": "node_g_drive_eperm",

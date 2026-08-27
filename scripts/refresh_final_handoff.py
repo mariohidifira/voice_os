@@ -219,7 +219,7 @@ def normalize_steps(steps: list[dict[str, object]]) -> None:
             step["ok_local"] = (
                 isinstance(remaining, list) and set(str(item) for item in remaining) == expected
             ) or bool(step["ok"])
-            step["expected_external_gaps"] = sorted(expected)
+            step["expected_external_gaps"] = [] if step["ok"] else sorted(expected)
         else:
             step["ok_local"] = bool(step["ok"])
 

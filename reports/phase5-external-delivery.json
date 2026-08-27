@@ -1,18 +1,115 @@
 {
   "scope": "phase5_external_delivery",
   "status_date": "2026-08-25",
-  "base_url": null,
-  "asset_url": null,
-  "passed": false,
-  "pending": true,
-  "current_gap": "phase5_external_closeout_pending",
-  "detail": "Awaiting externally hosted widget delivery verification outside this executor.",
-  "expected_input": {
-    "verifier_command": "python scripts/check_phase5_external_delivery.py --base-url https://<host> --expected-host <domain>",
-    "output_report": "reports/phase5-external-delivery.json"
+  "base_url": "https://mariohidifira.github.io",
+  "asset_url": "https://mariohidifira.github.io/voiceos.js",
+  "passed": true,
+  "steps": [
+    {
+      "name": "base_url_uses_https",
+      "ok": true,
+      "detail": "base URL should use HTTPS so custom-domain TLS is exercised",
+      "base_url": "https://mariohidifira.github.io"
+    },
+    {
+      "name": "base_url_has_hostname",
+      "ok": true,
+      "detail": "base URL should contain a hostname",
+      "hostname": "mariohidifira.github.io"
+    },
+    {
+      "name": "expected_hostname_match",
+      "ok": true,
+      "detail": "base URL hostname should match the expected custom/staging domain",
+      "expected_host": "mariohidifira.github.io",
+      "actual_host": "mariohidifira.github.io"
+    },
+    {
+      "name": "local_hosted_asset_present",
+      "ok": true,
+      "detail": "apps/web/public/voiceos.js should exist before claiming external delivery",
+      "path": "G:\\DEV\\VOICE_OS\\apps\\web\\public\\voiceos.js"
+    },
+    {
+      "name": "local_size_artifact_present",
+      "ok": true,
+      "detail": "packages/widget/dist/size.json should exist before claiming external delivery",
+      "path": "G:\\DEV\\VOICE_OS\\packages\\widget\\dist\\size.json"
+    },
+    {
+      "name": "bundle_within_budget",
+      "ok": true,
+      "detail": "browser bundle should stay within the <= 60 KB gzip budget",
+      "gzip_bytes": 3686,
+      "gzip_budget_bytes": 61440
+    },
+    {
+      "name": "hosted_asset_http_200",
+      "ok": true,
+      "detail": "hosted /voiceos.js should return HTTP 200",
+      "url": "https://mariohidifira.github.io/voiceos.js",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8",
+      "content_length_header": "10431",
+      "bytes": 10431,
+      "sample_prefix": "var m=Object.defineProperty;var "
+    },
+    {
+      "name": "hosted_asset_non_empty",
+      "ok": true,
+      "detail": "hosted /voiceos.js should return a non-empty response body",
+      "url": "https://mariohidifira.github.io/voiceos.js",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8",
+      "content_length_header": "10431",
+      "bytes": 10431,
+      "sample_prefix": "var m=Object.defineProperty;var "
+    },
+    {
+      "name": "hosted_asset_content_type_js",
+      "ok": true,
+      "detail": "hosted /voiceos.js should expose a JavaScript-compatible content type",
+      "url": "https://mariohidifira.github.io/voiceos.js",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8",
+      "content_length_header": "10431",
+      "bytes": 10431,
+      "sample_prefix": "var m=Object.defineProperty;var "
+    },
+    {
+      "name": "lighthouse_report_present",
+      "ok": true,
+      "detail": "optional Lighthouse JSON report should exist when provided",
+      "path": "G:\\DEV\\VOICE_OS\\reports\\phase5-lighthouse-widget.json"
+    }
+  ],
+  "size_artifact": {
+    "build_method": "esbuild_native_stdin_fallback",
+    "source_sha256": "27e384aaa886d3a0a045b44d405c9fd3e3dfe0ff4172d7225e6b97592401122c",
+    "browser_bundle": {
+      "path": "dist/voiceos.js",
+      "bytes": 10431,
+      "gzip_bytes": 3686,
+      "gzip_budget_bytes": 61440,
+      "sha256": "cf0dd9118e4e74d9574e07bbba3d6b8d8b02a1aeb3aec9d2bf3111acf2a9039c"
+    },
+    "hosted_asset": {
+      "path": "apps/web/public/voiceos.js",
+      "bytes": 10431,
+      "sha256": "cf0dd9118e4e74d9574e07bbba3d6b8d8b02a1aeb3aec9d2bf3111acf2a9039c"
+    }
   },
-  "local_reference": {
-    "phase5_next_gap": null,
-    "environment_blocker": null
+  "fetch_result": {
+    "url": "https://mariohidifira.github.io/voiceos.js",
+    "status": 200,
+    "content_type": "application/javascript; charset=utf-8",
+    "content_length_header": "10431",
+    "bytes": 10431,
+    "sample_prefix": "var m=Object.defineProperty;var "
+  },
+  "fetch_error": null,
+  "lighthouse_summary": {
+    "path": "G:\\DEV\\VOICE_OS\\reports\\phase5-lighthouse-widget.json",
+    "performance_score": 0.89
   }
 }

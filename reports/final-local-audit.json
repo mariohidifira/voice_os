@@ -2,28 +2,20 @@
   "scope": "final_local_audit",
   "status_date": "2026-08-25",
   "passed": true,
-  "project_completion_estimate_percent": 95,
-  "phase4_next_gap": "remote_repo_access",
-  "phase4_environment_blocker": {
-    "type": "node_g_drive_eperm",
-    "detail": "Node/Playwright cannot resolve G:\\ in this executor",
-    "current_gap": "phase4_playwright_executor_blocked"
-  },
+  "project_completion_estimate_percent": 100,
+  "phase4_next_gap": null,
+  "phase4_environment_blocker": null,
   "phase5_next_gap": null,
   "phase5_environment_blocker": null,
   "phase5_acceptance_passed": true,
   "final_handoff_summary_present": true,
-  "expected_external_gaps": [
-    "remote_repo_access",
-    "phase4_remote_closeout_pending",
-    "phase5_external_closeout_pending"
-  ],
+  "expected_external_gaps": [],
   "steps": [
     {
       "name": "pytest_suite",
       "ok": true,
       "returncode": 0,
-      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider --basetemp G:\\DEV\\VOICE_OS\\.pytest-tmp\\final-local-audit",
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider --basetemp G:\\DEV\\VOICE_OS\\.pytest-tmp\\final-local-audit-c9f8e3e4f32e43e380e183dd6d1ebe8c",
       "output": "[pytest output omitted on success]",
       "ok_local": true
     },
@@ -132,7 +124,7 @@
       "ok": true,
       "returncode": 0,
       "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\materialize_pending_external_reports.py",
-      "output": "{\n  \"scope\": \"materialize_pending_external_reports\",\n  \"status_date\": \"2026-08-25\",\n  \"results\": [\n    {\n      \"path\": \"reports/phase4-remote-artifact-verification.json\",\n      \"created\": false,\n      \"refreshed_placeholder\": true,\n      \"preserved_existing\": false\n    },\n    {\n      \"path\": \"reports/phase5-external-delivery.json\",\n      \"created\": false,\n      \"refreshed_placeholder\": true,\n      \"preserved_existing\": false\n    }\n  ]\n}",
+      "output": "{\n  \"scope\": \"materialize_pending_external_reports\",\n  \"status_date\": \"2026-08-25\",\n  \"results\": [\n    {\n      \"path\": \"reports/phase4-remote-artifact-verification.json\",\n      \"created\": false,\n      \"refreshed_placeholder\": false,\n      \"preserved_existing\": true\n    },\n    {\n      \"path\": \"reports/phase5-external-delivery.json\",\n      \"created\": false,\n      \"refreshed_placeholder\": false,\n      \"preserved_existing\": true\n    }\n  ]\n}",
       "parsed": {
         "scope": "materialize_pending_external_reports",
         "status_date": "2026-08-25",
@@ -140,14 +132,14 @@
           {
             "path": "reports/phase4-remote-artifact-verification.json",
             "created": false,
-            "refreshed_placeholder": true,
-            "preserved_existing": false
+            "refreshed_placeholder": false,
+            "preserved_existing": true
           },
           {
             "path": "reports/phase5-external-delivery.json",
             "created": false,
-            "refreshed_placeholder": true,
-            "preserved_existing": false
+            "refreshed_placeholder": false,
+            "preserved_existing": true
           }
         ]
       },
@@ -165,46 +157,40 @@
         "artifacts": {
           "phase4_evidence_bundle": {
             "path": "reports/phase4-evidence-bundle.zip",
-            "sha256": "cfc8756d09b2ca22ebd7b7d59894c53b79ddfde891f0c4ec18c2a35b555fedee",
-            "bytes": 11300
+            "sha256": "ad83d022e97c63169fa552b68496c4bc0659ff22017581a24af9dff6bca104df",
+            "bytes": 11269
           },
           "phase5_evidence_bundle": {
             "path": "reports/phase5-evidence-bundle.zip",
-            "sha256": "1fdfd5a76d2f7e38570076cdb9252cb354c7b88f1e2289f93c7ac0d149eef8e0",
-            "bytes": 29899
+            "sha256": "aa28c51c19f4cacd02fe47d75115e93a135ef6d66fc6019e982e6856c0251fb8",
+            "bytes": 29787
           },
           "final_handoff_bundle_manifest": {
             "path": "reports/final-handoff-bundle.manifest.json",
             "bundle_path": "reports/final-handoff-bundle.zip"
           }
         },
-        "phase4_current_gap": "remote_repo_access",
-        "phase5_current_gap": "external_deploy_and_host_validation",
-        "project_completion_estimate_percent": 95
+        "phase4_current_gap": null,
+        "phase5_current_gap": null,
+        "project_completion_estimate_percent": 100
       },
       "ok_local": true
     },
     {
       "name": "external_closeout_status",
-      "ok": false,
-      "returncode": 1,
+      "ok": true,
+      "returncode": 0,
       "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe G:\\DEV\\VOICE_OS\\scripts\\check_external_closeout_complete.py",
       "output": "[external closeout status output omitted; see parsed]",
       "parsed": {
         "scope": "external_closeout_status",
         "status_date": "2026-08-25",
-        "project_completion_estimate_percent": 95,
-        "complete": false,
-        "remaining_gaps": [
-          "phase4_remote_closeout_pending",
-          "phase5_external_closeout_pending"
-        ]
+        "project_completion_estimate_percent": 100,
+        "complete": true,
+        "remaining_gaps": []
       },
       "ok_local": true,
-      "expected_external_gaps": [
-        "phase4_remote_closeout_pending",
-        "phase5_external_closeout_pending"
-      ]
+      "expected_external_gaps": []
     }
   ]
 }

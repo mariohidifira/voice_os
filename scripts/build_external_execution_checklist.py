@@ -112,11 +112,15 @@ def render_markdown(checklist: dict[str, object]) -> str:
 def main() -> int:
     phase4 = read_json("reports/phase4-evidence-summary.json")
     phase5_hosted = read_json("reports/phase5-hosted-asset-readiness.json")
+    phase4_remote = read_json("reports/phase4-remote-artifact-verification.json")
+    phase5_external = read_json("reports/phase5-external-delivery.json")
     final_summary = read_json("reports/final-handoff-summary.json")
     phase4_manifest = read_json("reports/phase4-evidence-bundle.manifest.json")
     phase5_manifest = read_json("reports/phase5-evidence-bundle.manifest.json")
     final_manifest = read_json("reports/final-handoff-bundle.manifest.json")
     phase5_local_complete = phase5_hosted.get("passed") is True
+    phase4_remote_complete = phase4_remote.get("passed") is True
+    phase5_external_complete = phase5_external.get("passed") is True
     phase5_steps = [
         "Deploy the hosted asset and verify `/voiceos.js` is externally reachable",
         "Validate custom-domain TLS in staging",
@@ -129,6 +133,8 @@ def main() -> int:
             "Confirm `packages/widget/dist/size.json` exists",
             *phase5_steps,
         ]
+    if phase5_external_complete:
+        phase5_steps = []
 
     checklist = {
         "scope": "external_execution_checklist",
@@ -150,10 +156,10 @@ def main() -> int:
             },
         },
         "phase4": {
-            "current_gap": phase4.get("next_gap"),
-            "environment_blocker": phase4.get("local_acceptance", {}).get(
-                "environment_blocker"
-            ),
+            "current_gap": None if phase4_remote_complete else phase4.get("next_gap"),
+            "environment_blocker": None
+            if phase4_remote_complete
+            else phase4.get("local_acceptance", {}).get("environment_blocker"),
             "commands": [
                 "npm --prefix G:\\DEV\\VOICE_OS run phase4:remote:ready",
                 "gh workflow run phase4-nightly-whatsapp.yml --repo mariohidifira/voice_os",
@@ -164,17 +170,21 @@ def main() -> int:
                 "reports/phase4-remote-readiness.json",
                 "reports/phase4-remote-artifact-verification.json",
             ],
-            "steps": [
+            "steps": []
+            if phase4_remote_complete
+            else [
                 "Restore GitHub and repository credentials in an executor that can access mariohidifira/voice_os",
                 "Run the Phase 4 nightly workflow in GitHub Actions",
                 "Retain the uploaded Phase 4 artifacts from the successful run",
-                "After provider credentials are available, measure real WhatsApp audio reply latency against the <= 8 s p50 target",
             ],
         },
         "phase5": {
-            "current_gap": phase5_hosted.get("next_gap")
-            or "external_deploy_and_host_validation",
-            "environment_blocker": phase5_hosted.get("environment_blocker"),
+            "current_gap": None
+            if phase5_external_complete
+            else phase5_hosted.get("next_gap") or "external_deploy_and_host_validation",
+            "environment_blocker": None
+            if phase5_external_complete
+            else phase5_hosted.get("environment_blocker"),
             "commands": [
                 "npm --prefix G:\\DEV\\VOICE_OS run phase5:widget:fallback",
                 "npm --prefix G:\\DEV\\VOICE_OS run phase5:asset:ready",
@@ -194,12 +204,19 @@ def main() -> int:
             "project_completion_estimate_percent": final_summary.get(
                 "project_completion_estimate_percent"
             ),
-            "required_external_capabilities": [
+            "development_complete": phase4_remote_complete and phase5_external_complete,
+            "required_external_capabilities": []
+            if phase4_remote_complete and phase5_external_complete
+            else [
                 "GitHub/repository access",
-                "Provider credentials and live accounts",
-                "Reachable staging/production deployment surface",
+                "Reachable staging deployment surface",
             ]
             + ([] if phase5_local_complete else ["Node-capable environment without G:\\ EPERM"]),
+            "production_readiness_capabilities": [
+                "Provider credentials and live accounts",
+                "Owned production domain and SaaS hosting",
+                "Production observability, security, compliance, and support operations",
+            ],
         },
     }
 

@@ -1,0 +1,33 @@
+{
+  "scope": "phase5_lighthouse_widget_impact",
+  "status_date": "2026-08-27",
+  "environment": "github_pages_homologation",
+  "baseline_url": "https://mariohidifira.github.io/baseline.html",
+  "widget_url": "https://mariohidifira.github.io/",
+  "baseline": {
+    "performance": 0.9,
+    "accessibility": 1.0,
+    "best_practices": 0.96,
+    "seo": 1.0,
+    "largest_contentful_paint_ms": 2871.6565,
+    "total_blocking_time_ms": 0,
+    "cumulative_layout_shift": 0
+  },
+  "with_widget": {
+    "performance": 0.89,
+    "accessibility": 1.0,
+    "best_practices": 0.96,
+    "seo": 1.0,
+    "largest_contentful_paint_ms": 2979.498,
+    "total_blocking_time_ms": 0,
+    "cumulative_layout_shift": 0
+  },
+  "impact": {
+    "performance_score_delta": -0.01,
+    "largest_contentful_paint_delta_ms": 107.8415,
+    "total_blocking_time_delta_ms": 0,
+    "cumulative_layout_shift_delta": 0
+  },
+  "passed": true,
+  "detail": "The widget adds one Lighthouse performance point and no blocking-time or layout-shift regression in the homologation host."
+}

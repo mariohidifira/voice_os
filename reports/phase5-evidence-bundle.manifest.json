@@ -84,13 +84,13 @@
     },
     {
       "path": "reports/final-handoff-summary.json",
-      "bytes": 3350,
-      "sha256": "7f7491605820b2d800345e334886c2d08f118b9ae2fb1d2054d63d3f60ff4ab4"
+      "bytes": 2880,
+      "sha256": "5866d1ff01e8465de93e61095e1feefc7516df97bef553a052bea223bc4923b9"
     }
   ],
   "missing": [],
   "next_gap": null,
   "environment_blocker": null,
-  "bundle_bytes": 29899,
-  "bundle_sha256": "1fdfd5a76d2f7e38570076cdb9252cb354c7b88f1e2289f93c7ac0d149eef8e0"
+  "bundle_bytes": 29783,
+  "bundle_sha256": "18f599557dd66993d48e6cff78c83f915998bc12535d012eeb24140afb0d49a0"
 }

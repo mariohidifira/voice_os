@@ -9,8 +9,8 @@
     },
     {
       "path": "EXTERNAL-EXECUTION-CHECKLIST-2026-08-25.md",
-      "bytes": 2853,
-      "sha256": "4c2486529884190496be2739375bb0fca950d9dcb83449abeaba2c6f06825d9d"
+      "bytes": 2339,
+      "sha256": "31f5d09ec1e146ed32b6faf2d59db149d3c2d1a5d6a79eacfe1b6f70faf64473"
     },
     {
       "path": "scripts/check_phase4_remote_ready.ps1",
@@ -19,8 +19,8 @@
     },
     {
       "path": "scripts/verify_phase4_remote_artifact.py",
-      "bytes": 4337,
-      "sha256": "6faeb6a2dceb21286e82705d3065411d91bf562960bdde9993c61c65faf624e7"
+      "bytes": 4256,
+      "sha256": "406e9730029ba6fc89ddcbff842b846c9ef940295ff1ac3514ea8f08e80724bf"
     },
     {
       "path": "scripts/check_phase5_external_delivery.py",
@@ -29,8 +29,8 @@
     },
     {
       "path": "scripts/check_external_closeout_complete.py",
-      "bytes": 3326,
-      "sha256": "b96a6c0920e697eebb1df0ceb411af2df94a2b826f0dfe7c928625b5f778f0b8"
+      "bytes": 3372,
+      "sha256": "f86e5acaa7e2c95d59c5b87a3f42fd6ecdd3b61bf7cd0767ab1ad27dca46ed7a"
     },
     {
       "path": "scripts/materialize_pending_external_reports.py",
@@ -39,43 +39,43 @@
     },
     {
       "path": "scripts/refresh_final_handoff.py",
-      "bytes": 10686,
-      "sha256": "c1cad274ec98afe8e6bd16a1242304475a808b4bbde4fddba890317baaeb4c47"
+      "bytes": 10708,
+      "sha256": "45ec57624ca02b43d77907da931c8cd63ef5e83f6bf3eabc5034e158678456b0"
     },
     {
       "path": "reports/final-handoff-summary.json",
-      "bytes": 3350,
-      "sha256": "7f7491605820b2d800345e334886c2d08f118b9ae2fb1d2054d63d3f60ff4ab4"
+      "bytes": 2880,
+      "sha256": "5866d1ff01e8465de93e61095e1feefc7516df97bef553a052bea223bc4923b9"
     },
     {
       "path": "reports/final-local-audit.json",
-      "bytes": 8473,
-      "sha256": "ad5bef6f27845f5313807e758a35e030f782e42b1d61691b254a2adf71c5955e"
+      "bytes": 7971,
+      "sha256": "b5a7f5d5be74212861fd95469c47da753d9d3960146f5057e9b4b67522f69ba8"
     },
     {
       "path": "reports/final-refresh-status.json",
-      "bytes": 9571,
-      "sha256": "ffc12cb191e636cd318a85725f898012e83caa9fad5078b766249aa1981d717c"
+      "bytes": 8531,
+      "sha256": "c01df627998b62ceb585b1ac0e8e521fef1c80ef799b9e72081cb15e1835b361"
     },
     {
       "path": "reports/external-execution-checklist.json",
-      "bytes": 3005,
-      "sha256": "1a3552877aac7bb63752e7e09669951dd4776a92453db7816b0fc07f82040efe"
+      "bytes": 2345,
+      "sha256": "1f1f093e176084a61d3854c2884ca6a3934c8eba2c9185b94cc815501e5f383f"
     },
     {
       "path": "reports/phase4-remote-artifact-verification.json",
-      "bytes": 845,
-      "sha256": "2e15cabfc1c0f757f50af4ae915528ebfb7371dae2e3e3242081bb2e57445a61"
+      "bytes": 2036,
+      "sha256": "b1a8c2eea5f04f67fcf09de1208d9a488574e0e718e8df342d1d8b7333f457c3"
     },
     {
       "path": "reports/phase5-external-delivery.json",
-      "bytes": 621,
-      "sha256": "b28a59640d582fdfaa50452c6c632c20d3d2ebe02d2e794953bf77a43e3fac59"
+      "bytes": 4103,
+      "sha256": "829597212d95c8075794c4d3ea087b1944b89fbbb38752267aecea22590a8345"
     },
     {
       "path": "reports/external-closeout-status.json",
-      "bytes": 2972,
-      "sha256": "b5b9c13de4b4f6a938b233b93b1d2a61acd92365f7b455a59bb4293925ac9c8d"
+      "bytes": 8066,
+      "sha256": "d585f12260f9efb8f86d36b47f1bcc3d610784aef6ddc49081f2abdcb6a2b52d"
     },
     {
       "path": "PHASE-4-REPORT.md",
@@ -94,13 +94,13 @@
     },
     {
       "path": "reports/phase4-evidence-bundle.zip",
-      "bytes": 11300,
-      "sha256": "cfc8756d09b2ca22ebd7b7d59894c53b79ddfde891f0c4ec18c2a35b555fedee"
+      "bytes": 11269,
+      "sha256": "ad83d022e97c63169fa552b68496c4bc0659ff22017581a24af9dff6bca104df"
     },
     {
       "path": "reports/phase4-evidence-bundle.manifest.json",
       "bytes": 1719,
-      "sha256": "0693b94376d3083a71b968afc97ffb411653f1f144edf2eca56a243cc2648d24"
+      "sha256": "5bef163e237c48bf7b3137f7d1702be845dcc9eb71d575ce53502b743ab92df7"
     },
     {
       "path": "PHASE-5-REPORT.md",
@@ -124,25 +124,21 @@
     },
     {
       "path": "reports/phase5-evidence-bundle.zip",
-      "bytes": 29899,
-      "sha256": "1fdfd5a76d2f7e38570076cdb9252cb354c7b88f1e2289f93c7ac0d149eef8e0"
+      "bytes": 29783,
+      "sha256": "18f599557dd66993d48e6cff78c83f915998bc12535d012eeb24140afb0d49a0"
     },
     {
       "path": "reports/phase5-evidence-bundle.manifest.json",
       "bytes": 3252,
-      "sha256": "f3874ed2c5c15051d192830873b40c05fd6a171bb9911dfe3c5f639d43c21b28"
+      "sha256": "67848e387c39ae0deaede622af7d4ca7be9362ee87e8d88b926b9b045a78bb11"
     }
   ],
   "missing": [],
-  "project_completion_estimate_percent": 95,
-  "phase4_next_gap": "remote_repo_access",
-  "phase4_environment_blocker": {
-    "type": "node_g_drive_eperm",
-    "detail": "Node/Playwright cannot resolve G:\\ in this executor",
-    "current_gap": "phase4_playwright_executor_blocked"
-  },
+  "project_completion_estimate_percent": 100,
+  "phase4_next_gap": null,
+  "phase4_environment_blocker": null,
   "phase5_next_gap": null,
   "phase5_environment_blocker": null,
-  "bundle_bytes": 72874,
-  "bundle_sha256": "6466d2129285b241e85be08b735815822f0be3b8c3713bf1819595e1c5de5796"
+  "bundle_bytes": 73432,
+  "bundle_sha256": "705dce4ebd786307c87497f5e6a42b8e68dcdb9b02449059c6c4c8e0e1ff1f30"
 }

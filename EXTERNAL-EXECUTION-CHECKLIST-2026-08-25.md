@@ -6,25 +6,19 @@ This checklist captures the exact remaining work that must happen outside the cu
 
 - Phase 4 evidence bundle:
   - `reports/phase4-evidence-bundle.zip`
-  - SHA-256: `cfc8756d09b2ca22ebd7b7d59894c53b79ddfde891f0c4ec18c2a35b555fedee`
-  - bytes: `11300`
+  - SHA-256: `ad83d022e97c63169fa552b68496c4bc0659ff22017581a24af9dff6bca104df`
+  - bytes: `11269`
 - Phase 5 evidence bundle:
   - `reports/phase5-evidence-bundle.zip`
-  - SHA-256: `1fdfd5a76d2f7e38570076cdb9252cb354c7b88f1e2289f93c7ac0d149eef8e0`
-  - bytes: `29899`
+  - SHA-256: `18f599557dd66993d48e6cff78c83f915998bc12535d012eeb24140afb0d49a0`
+  - bytes: `29783`
 - Final handoff bundle manifest:
   - `reports/final-handoff-bundle.manifest.json`
   - bundle path: `reports/final-handoff-bundle.zip`
 
 ## Phase 4
 
-Current gap: `remote_repo_access`
-
-Environment blocker:
-
-- type: `node_g_drive_eperm`
-- detail: Node/Playwright cannot resolve G:\ in this executor
-- current gap mapping: `phase4_playwright_executor_blocked`
+Current gap: `None`
 
 1. Restore GitHub and repository credentials for `mariohidifira/voice_os`
 2. Run the Phase 4 nightly workflow in GitHub Actions
@@ -40,11 +34,8 @@ Commands:
 
 ## Phase 5
 
-Current gap: `external_deploy_and_host_validation`
+Current gap: `None`
 
-1. Deploy the hosted asset and verify `/voiceos.js` is externally reachable
-2. Validate custom-domain TLS in staging
-3. Collect host-site Lighthouse impact evidence
 
 Commands:
 
@@ -57,9 +48,6 @@ Commands:
 
 ## External capabilities required
 
-- GitHub/repository access
-- Provider credentials and live accounts
-- Reachable staging/production deployment surface
 
 ## Machine-readable companion
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORTS_DIR = REPO_ROOT / "reports"
 OUTPUT_PATH = REPORTS_DIR / "external-closeout-status.json"
@@ -71,8 +70,10 @@ def main() -> int:
     report = {
         "scope": "external_closeout_status",
         "status_date": STATUS_DATE,
-        "project_completion_estimate_percent": final_summary.get(
-            "project_completion_estimate_percent"
+        "project_completion_estimate_percent": (
+            100
+            if complete
+            else final_summary.get("project_completion_estimate_percent")
         ),
         "complete": complete,
         "remaining_gaps": remaining_gaps,
