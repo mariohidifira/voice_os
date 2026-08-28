@@ -33,6 +33,7 @@ from livekit.plugins import anthropic, cartesia, deepgram, elevenlabs, openai, s
 from .accounting import CallAccounting
 from .api_client import RedisRuntimeCache, WorkerAPI
 from .flow import FlowConfigError, FlowEngine, match_intent
+from .flow_adapter import HybridFlowLLM
 from .phone_runtime import (
     AnthropicAMDClassifier,
     HeuristicAMDClassifier,
@@ -587,11 +588,20 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
     if not tts_providers:
         raise RuntimeError("ELEVENLABS_API_KEY or CARTESIA_API_KEY is required for TTS")
 
+    selected_llm = (
+        llm_providers[0]
+        if len(llm_providers) == 1
+        else llm.FallbackAdapter(llm_providers, attempt_timeout=8, max_retry_per_llm=1)
+        if llm_providers
+        else None
+    )
+    if execution_mode == "hybrid" and selected_llm is not None:
+        selected_llm = HybridFlowLLM(selected_llm, dict((runtime.get("behavior") or {}).get("process") or {}))
     return {
         "stt": stt_providers[0]
         if len(stt_providers) == 1
         else stt.FallbackAdapter(stt_providers, attempt_timeout=3, max_retry_per_stt=1),
-        **({"llm": llm_providers[0] if len(llm_providers) == 1 else llm.FallbackAdapter(llm_providers, attempt_timeout=8, max_retry_per_llm=1)} if llm_providers else {}),
+        **({"llm": selected_llm} if selected_llm is not None else {}),
         "tts": tts_providers[0]
         if len(tts_providers) == 1
         else tts.FallbackAdapter(tts_providers, max_retry_per_tts=1),

@@ -216,12 +216,14 @@ O VoiceOS já possui configuração de idioma, LLM, STT, TTS, ferramentas, vers�
 - validação de `behavior.execution_mode` na API;
 - validação de estados e destinos de transição antes de aceitar um draft;
 - execução determinística no worker sem inicializar LLM;
+- execução híbrida no worker: intenções conhecidas são resolvidas localmente e as demais são delegadas à LLM;
 - correspondência local de intenções por exemplos configurados;
+- adaptador LiveKit que mantém a decisão local dentro do ciclo normal de turnos;
 - fallback inicial único para OpenAI Whisper quando Deepgram não estiver disponível;
 - seleção fixa do provedor configurado para LLM e TTS;
 - testes unitários do motor e regressão da pipeline de provedores.
 
-Próximo passo recomendado: concluir o modo híbrido, adicionar editor/simulador na UI e publicar o fluxo atrás de feature flag até a conclusão dos testes E2E.
+Próximo passo recomendado: adicionar publicação/rollback e permissões específicas para processos, além de executar testes E2E de chamadas com fluxos publicados.
 
 ## Handoff técnico para outra equipe ou IA
 
