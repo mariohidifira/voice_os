@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ZIP_PATH = REPO_ROOT / "reports" / "final-handoff-bundle.zip"
 MANIFEST_PATH = REPO_ROOT / "reports" / "final-handoff-bundle.manifest.json"

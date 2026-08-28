@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 from zipfile import BadZipFile, ZipFile
 
-
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS_DIR = ROOT / "reports"
 PACKAGE_PATH = REPORTS_DIR / "phase4-evidence-bundle.zip"

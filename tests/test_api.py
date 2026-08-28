@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import jwt
-from fastapi.testclient import TestClient
 import voiceos_api.routes as api_routes
+from fastapi.testclient import TestClient
 from voiceos_api.config import get_settings
 from voiceos_api.health import get_health_checker
 from voiceos_api.live import get_event_bus

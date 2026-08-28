@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORT_PATH = REPO_ROOT / "reports" / "phase4-remote-artifact-verification.json"
 REQUIRED_ENTRIES = [

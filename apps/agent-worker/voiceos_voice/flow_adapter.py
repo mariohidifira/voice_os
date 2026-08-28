@@ -4,7 +4,7 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from livekit.agents import APIConnectOptions, DEFAULT_API_CONNECT_OPTIONS, NOT_GIVEN, llm
+from livekit.agents import DEFAULT_API_CONNECT_OPTIONS, NOT_GIVEN, APIConnectOptions, llm
 from livekit.agents.llm import ChatContext, ChoiceDelta, FunctionToolCall
 
 from .flow import FlowEngine, match_intent

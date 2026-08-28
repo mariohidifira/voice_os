@@ -1,7 +1,5 @@
-import json
 
 import httpx
-
 from voiceos_api.config import Settings
 from voiceos_api.whatsapp_runtime import (
     fallback_reply,

@@ -1984,7 +1984,7 @@ async def send_whatsapp_handoff_message(
         raise HTTPException(
             409,
             detail={"code": "secret_missing", "message": "WhatsApp access token is unavailable"},
-        )
+        ) from None
     secret = await repo.get_secret(auth.tenant_id, secret_id)
     if not secret:
         raise HTTPException(

@@ -9,7 +9,6 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REPORT = REPO_ROOT / "reports" / "phase5-external-delivery.json"
 DEFAULT_HOSTED_ASSET = REPO_ROOT / "apps" / "web" / "public" / "voiceos.js"
