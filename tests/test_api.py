@@ -323,6 +323,36 @@ def test_required_agent_templates_create_configured_drafts() -> None:
     assert invalid.json()["error"]["code"] == "template_not_found"
 
 
+def test_process_draft_can_be_simulated_without_livekit() -> None:
+    store.agents.clear()
+    store.agent_versions.clear()
+    auth = headers(str(uuid4()))
+    agent = client.post("/v1/agents", json={"name": "Fluxo"}, headers=auth).json()
+    process = {
+        "initial_state": "start",
+        "states": [
+            {"id": "start", "transitions": [{"intent": "yes", "next": "done"}]},
+            {"id": "done", "prompt": "Concluído.", "terminal": True},
+        ],
+        "intents": [{"id": "yes", "examples": ["sim"]}],
+    }
+    updated = client.patch(
+        f"/v1/agents/{agent['id']}/draft",
+        json={"behavior": {"execution_mode": "deterministic", "process": process}},
+        headers=auth,
+    )
+    assert updated.status_code == 200
+    result = client.post(
+        f"/v1/agents/{agent['id']}/draft/process-simulate",
+        json={"text": "sim"},
+        headers=auth,
+    )
+    assert result.status_code == 200
+    assert result.json()["intent"] == "yes"
+    assert result.json()["state"] == "done"
+    assert result.json()["terminal"] is True
+
+
 def test_session_end_user_filters_and_draft_test_session() -> None:
     store.agents.clear()
     store.agent_versions.clear()
