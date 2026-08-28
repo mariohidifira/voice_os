@@ -67,3 +67,4 @@ Versão 1.0 · Documento-mestre para execução por agente de código (Claude Co
 | `15-glossario.md` | Termos e siglas |
 | `docker-homologacao.md` | Backup, restauração e reprodução do ambiente Docker de homologação |
 | `instalacao-local-llm-api.md` | Requisitos e procedimento para executar localmente com LLM e voz via APIs externas |
+| `../COMMERCIAL-READINESS.md` | Gate de prontidÃ£o comercial e evidÃªncias externas obrigatÃ³rias antes da produÃ§Ã£o |
