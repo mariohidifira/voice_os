@@ -14,6 +14,7 @@ from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from jsonschema import ValidationError, validate
 from livekit import api as livekit_api
 from pydantic import ValidationError as PydanticValidationError
+from voiceos_voice.flow import FlowConfigError, FlowEngine, match_intent
 
 from .agent_templates import get_agent_template, list_agent_templates
 from .auth import Principal, internal_token, principal
@@ -63,6 +64,7 @@ from .schemas import (
     OutboundCallCreate,
     PhoneNumberPatch,
     PhoneNumberPurchase,
+    ProcessSimulationRequest,
     PromptImproveRequest,
     SecretCreate,
     SessionCreate,
@@ -939,6 +941,40 @@ async def update_draft(
     if not draft:
         raise HTTPException(404, detail={"code": "draft_not_found", "message": "Draft not found"})
     return draft
+
+
+@v1.post("/agents/{agent_id}/draft/process-simulate")
+async def simulate_agent_process(
+    agent_id: UUID,
+    body: ProcessSimulationRequest,
+    auth: Auth,
+    repo: Repo,
+) -> dict[str, Any]:
+    """Run one deterministic process turn without opening a LiveKit call."""
+    _require_admin(auth)
+    agent = await repo.get_agent_detail(auth.tenant_id, agent_id)
+    if not agent or not agent.get("draft"):
+        raise HTTPException(404, detail={"code": "draft_not_found", "message": "Draft not found"})
+    behavior = dict(agent["draft"].get("behavior") or {})
+    process = dict(behavior.get("process") or {})
+    try:
+        engine = FlowEngine(process)
+    except FlowConfigError as exc:
+        raise HTTPException(422, detail={"code": "invalid_process", "message": str(exc)}) from exc
+    if body.state:
+        if body.state not in engine.states:
+            raise HTTPException(422, detail={"code": "invalid_state", "message": "Unknown state"})
+        engine.state = body.state
+    intent = match_intent(process, body.text)
+    result = engine.handle(intent or "__unknown__")
+    return {
+        "intent": intent,
+        "state": result.state,
+        "next_state": result.next_state,
+        "response": result.response,
+        "terminal": result.terminal,
+        "action": result.action,
+    }
 
 
 @v1.post("/agents/{agent_id}/draft/improve-prompt")

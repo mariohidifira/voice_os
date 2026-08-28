@@ -615,6 +615,8 @@ export default function Dashboard({
   const [agentKnowledgeId, setAgentKnowledgeId] = useState("");
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [toolTestResult, setToolTestResult] = useState("");
+  const [processSimulationText, setProcessSimulationText] = useState("");
+  const [processSimulationResult, setProcessSimulationResult] = useState("");
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [liveEvents, setLiveEvents] = useState<Array<Record<string, unknown>>>([]);
   const [watchedCallId, setWatchedCallId] = useState<string | null>(null);
@@ -801,6 +803,24 @@ export default function Dashboard({
     const existingRag = ((
       selectedAgent.draft as Record<string, unknown> | undefined
     )?.rag ?? {}) as Record<string, unknown>;
+    const existingBehavior = ((
+      selectedAgent.draft as Record<string, unknown> | undefined
+    )?.behavior ?? {}) as Record<string, unknown>;
+    let process: Record<string, unknown> | undefined;
+    const processText = String(form.get("process_json") ?? "").trim();
+    if (processText) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(processText);
+      } catch {
+        setNotice("O processo precisa ser um JSON válido.");
+        return;
+      }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("O processo deve ser um objeto JSON.");
+      }
+      process = parsed as Record<string, unknown>;
+    }
     const body = {
       system_prompt: String(form.get("system_prompt")),
       greeting: String(form.get("greeting")),
@@ -817,8 +837,11 @@ export default function Dashboard({
         allow_interruptions: form.get("allow_interruptions") === "on",
       },
       behavior: {
+        ...existingBehavior,
+        execution_mode: String(form.get("execution_mode") || "llm"),
         max_call_duration_s: Number(form.get("max_duration")),
         silence_timeout_s: Number(form.get("silence_timeout")),
+        ...(process ? { process } : {}),
       },
       knowledge_base_id: form.get("knowledge_base_id") || null,
       rag: {
@@ -915,6 +938,29 @@ export default function Dashboard({
       setNotice(String(error));
     } finally {
       setPreviewingVoice(false);
+    }
+  }
+
+  async function simulateProcess() {
+    if (!selectedAgent || !processSimulationText.trim()) return;
+    try {
+      const result = await api<{
+        intent: string | null;
+        state: string;
+        next_state: string | null;
+        response: string | null;
+        terminal: boolean;
+      }>(`agents/${selectedAgent.id}/draft/process-simulate`, {
+        method: "POST",
+        body: JSON.stringify({ text: processSimulationText }),
+      });
+      setProcessSimulationResult(
+        `${result.intent ?? "intenção desconhecida"} → ${result.state}${
+          result.terminal ? " (final)" : ""
+        }: ${result.response ?? "sem resposta"}`,
+      );
+    } catch (error) {
+      setProcessSimulationResult(String(error));
     }
   }
   async function saveAdvanced(patch: Record<string, unknown>) {
@@ -2105,6 +2151,53 @@ export default function Dashboard({
                           className="tabPanel"
                           hidden={agentTab !== "conversation"}
                         >
+                          <Field label="Modo de execução">
+                            <select
+                              name="execution_mode"
+                              defaultValue={String(
+                                (draft.behavior as Record<string, unknown> | undefined)
+                                  ?.execution_mode ?? "llm",
+                              )}
+                            >
+                              <option value="llm">LLM conversacional</option>
+                              <option value="hybrid">Híbrido (regras + LLM)</option>
+                              <option value="deterministic">Determinístico (sem LLM)</option>
+                            </select>
+                          </Field>
+                          <Field label="Processo (JSON: estados, intenções e transições)">
+                            <textarea
+                              name="process_json"
+                              rows={10}
+                              defaultValue={JSON.stringify(
+                                (draft.behavior as Record<string, unknown> | undefined)
+                                  ?.process ?? {},
+                                null,
+                                2,
+                              )}
+                            />
+                          </Field>
+                          <Field label="Simular uma fala">
+                            <div className="two">
+                              <input
+                                value={processSimulationText}
+                                onChange={(event) =>
+                                  setProcessSimulationText(event.target.value)
+                                }
+                                placeholder="Ex.: sim, pode confirmar"
+                              />
+                              <button
+                                type="button"
+                                className="secondary"
+                                onClick={() => void simulateProcess()}
+                                disabled={!processSimulationText.trim()}
+                              >
+                                Simular
+                              </button>
+                            </div>
+                            {processSimulationResult && (
+                              <small>{processSimulationResult}</small>
+                            )}
+                          </Field>
                           <div className="two">
                             <Field label="Duração máxima (s)">
                               <input

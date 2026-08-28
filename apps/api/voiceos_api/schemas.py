@@ -79,6 +79,11 @@ class AgentDraftPatch(BaseModel):
         return self
 
 
+class ProcessSimulationRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+    state: str | None = Field(default=None, min_length=1, max_length=120)
+
+
 class AgentRollback(BaseModel):
     version_id: UUID
 
