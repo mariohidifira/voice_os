@@ -266,7 +266,7 @@ async def _enforce_call_limit(auth: Principal, repo: Repository, channel: str) -
         )
     period = datetime.now(UTC).date().replace(day=1)
     usage = await repo.get_billing_usage(auth.tenant_id, period)
-    if plan["code"] == "trial":
+    if plan["code"] == "trial" and get_settings().app_env not in {"dev", "test"}:
         created_at = plan.get("tenant_created_at")
         expired = bool(created_at and datetime.now(UTC) >= created_at + timedelta(days=14))
         if expired or int(usage["minutes"]) >= int(plan["included_minutes"]):
@@ -2363,8 +2363,10 @@ async def runtime(agent_id: UUID, repo: Repo, version: str = "current") -> dict[
         raise HTTPException(404, detail={"code": "agent_not_found", "message": "Agent not found"})
     return {
         "tenant_id": agent["tenant_id"],
+        "tenant_name": agent.get("tenant_name") or "sua empresa",
         "tenant_settings": agent.get("tenant_settings") or {},
         "agent_id": agent_id,
+        "name": agent.get("name") or "agente",
         "version_id": agent["version_id"],
         "system_prompt": agent["system_prompt"],
         "greeting": agent["greeting"],

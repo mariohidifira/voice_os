@@ -1308,7 +1308,7 @@ class PostgresRepository:
                 return None
             row = await db.execute(
                 text(
-                    "SELECT a.id agent_id,a.tenant_id,a.name,t.settings tenant_settings,v.id version_id,v.system_prompt,"
+                    "SELECT a.id agent_id,a.tenant_id,a.name,t.name tenant_name,t.settings tenant_settings,v.id version_id,v.system_prompt,"
                     "v.greeting,v.language,v.extra_languages,v.llm,v.stt,v.tts,v.turn_config,"
                     "v.behavior,v.knowledge_base_id,v.rag,v.variables "
                     "FROM agents a JOIN tenants t ON t.id=a.tenant_id JOIN agent_versions v "

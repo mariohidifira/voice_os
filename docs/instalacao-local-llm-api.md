@@ -145,6 +145,29 @@ docker compose ps
 
 Se `.docker-data` estiver íntegro, o PostgreSQL e o Redis reutilizarão os dados armazenados na unidade G. Se os dados estiverem ausentes ou corrompidos, siga o procedimento de restauração descrito em `docs/docker-homologacao.md`.
 
+### Inicialização segura pelo Windows Credential Manager
+
+Para evitar segredos em texto puro no `.env`, instale o suporte ao keyring no Python do Windows:
+
+```powershell
+py -m pip install keyring
+```
+
+Confira somente a disponibilidade das credenciais, sem mostrar seus valores:
+
+```powershell
+Set-Location G:\DEV\VOICE_OS
+py scripts\start_local_with_keyring.py --check
+```
+
+Inicie a pilha completa carregando as credenciais apenas no ambiente do processo do Docker Compose:
+
+```powershell
+py scripts\start_local_with_keyring.py --build
+```
+
+O inicializador aceita os nomes canônicos `VOICEOS.<VARIAVEL>` e os aliases legados já usados localmente. Os valores nunca são impressos nem gravados pelo script. Como ocorre com qualquer segredo fornecido a um contêiner por variável de ambiente, um administrador local do Docker ainda pode inspecionar o ambiente do contêiner.
+
 ## 9. Instalação limpa, sem reutilizar os dados existentes
 
 Para criar um ambiente novo:

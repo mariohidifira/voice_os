@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field, is_dataclass
@@ -48,6 +49,8 @@ DTMF_CODES = {
     "C": 14,
     "D": 15,
 }
+
+logger = logging.getLogger(__name__)
 
 
 async def send_dtmf(participant: Any, digits: str) -> None:
@@ -492,48 +495,91 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
     llm_config = runtime.get("llm") or {}
     tts_config = runtime.get("tts") or {}
     language = str(runtime.get("language") or "pt-BR")
-    primary_stt = deepgram.STT(
-        model=str(stt_config.get("model") or "nova-3"),
-        language=language,
-        interim_results=True,
-        smart_format=True,
-        endpointing_ms=int(stt_config.get("endpointing_ms", 300)),
-        utterance_end_ms=int(stt_config.get("utterance_end_ms", 1000)),
-    )
-    fallback_stt = openai.STT(
-        model=str(stt_config.get("fallback_model") or "whisper-1"), language=language
-    )
-    primary_llm = anthropic.LLM(
-        model=str(llm_config.get("model") or "claude-sonnet-4-6"),
-        temperature=float(llm_config.get("temperature", 0.3)),
-        max_tokens=int(llm_config.get("max_tokens", 350)),
-        max_retries=1,
-    )
-    fallback_llm = openai.LLM(
-        model=str(llm_config.get("fallback_model") or "gpt-4.1"), temperature=0.3
-    )
+
+    stt_providers: list[Any] = []
+    if os.getenv("DEEPGRAM_API_KEY"):
+        stt_providers.append(
+            deepgram.STT(
+                model=str(stt_config.get("model") or "nova-3"),
+                language=language,
+                interim_results=True,
+                smart_format=True,
+                endpointing_ms=int(stt_config.get("endpointing_ms", 300)),
+                utterance_end_ms=int(stt_config.get("utterance_end_ms", 1000)),
+            )
+        )
+    if os.getenv("OPENAI_API_KEY"):
+        stt_providers.append(
+            openai.STT(
+                model=str(stt_config.get("fallback_model") or "whisper-1"), language=language
+            )
+        )
+    if not stt_providers:
+        raise RuntimeError("DEEPGRAM_API_KEY or OPENAI_API_KEY is required for STT")
+
+    llm_providers: list[Any] = []
+    if os.getenv("ANTHROPIC_API_KEY"):
+        try:
+            llm_providers.append(
+                anthropic.LLM(
+                    model=str(llm_config.get("model") or "claude-sonnet-4-6"),
+                    temperature=float(llm_config.get("temperature", 0.3)),
+                    max_tokens=int(llm_config.get("max_tokens", 350)),
+                    max_retries=1,
+                )
+            )
+        except Exception as exc:
+            logger.warning(
+                "Anthropic provider unavailable; trying configured fallback",
+                extra={"error": type(exc).__name__},
+            )
+    if os.getenv("OPENAI_API_KEY"):
+        llm_providers.append(
+            openai.LLM(
+                model=str(llm_config.get("fallback_model") or "gpt-4.1"), temperature=0.3
+            )
+        )
+    if not llm_providers:
+        raise RuntimeError("ANTHROPIC_API_KEY or OPENAI_API_KEY is required for LLM")
+
     voice = str(
         tts_config.get("voice_id") or os.getenv("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL"
     )
-    primary_tts = elevenlabs.TTS(
-        voice_id=voice,
-        model=str(tts_config.get("model") or "eleven_flash_v2_5"),
-        streaming_latency=3,
-        language=language,
-    )
-    fallback_tts = cartesia.TTS(
-        model=str(tts_config.get("fallback_model") or "sonic-3"),
-        voice=str(tts_config.get("fallback_voice_id") or "f786b574-daa5-4673-aa0c-cbe3e8534c02"),
-        language=language,
-    )
+    tts_providers: list[Any] = []
+    if os.getenv("ELEVENLABS_API_KEY"):
+        tts_providers.append(
+            elevenlabs.TTS(
+                voice_id=voice,
+                model=str(tts_config.get("model") or "eleven_flash_v2_5"),
+                api_key=os.environ["ELEVENLABS_API_KEY"],
+                streaming_latency=3,
+                language=language,
+            )
+        )
+    if os.getenv("CARTESIA_API_KEY"):
+        tts_providers.append(
+            cartesia.TTS(
+                model=str(tts_config.get("fallback_model") or "sonic-3"),
+                voice=str(
+                    tts_config.get("fallback_voice_id")
+                    or "f786b574-daa5-4673-aa0c-cbe3e8534c02"
+                ),
+                language=language,
+            )
+        )
+    if not tts_providers:
+        raise RuntimeError("ELEVENLABS_API_KEY or CARTESIA_API_KEY is required for TTS")
+
     return {
-        "stt": stt.FallbackAdapter(
-            [primary_stt, fallback_stt], attempt_timeout=3, max_retry_per_stt=1
-        ),
-        "llm": llm.FallbackAdapter(
-            [primary_llm, fallback_llm], attempt_timeout=8, max_retry_per_llm=1
-        ),
-        "tts": tts.FallbackAdapter([primary_tts, fallback_tts], max_retry_per_tts=1),
+        "stt": stt_providers[0]
+        if len(stt_providers) == 1
+        else stt.FallbackAdapter(stt_providers, attempt_timeout=3, max_retry_per_stt=1),
+        "llm": llm_providers[0]
+        if len(llm_providers) == 1
+        else llm.FallbackAdapter(llm_providers, attempt_timeout=8, max_retry_per_llm=1),
+        "tts": tts_providers[0]
+        if len(tts_providers) == 1
+        else tts.FallbackAdapter(tts_providers, max_retry_per_tts=1),
         "vad": silero.VAD.load(
             min_speech_duration=0.05,
             min_silence_duration=float(
@@ -549,7 +595,10 @@ server = AgentServer()
 
 @server.rtc_session(agent_name="voiceos-agent")
 async def voiceos_agent(ctx: JobContext) -> None:
-    metadata = room_metadata(ctx.room.metadata)
+    # The room is not connected when the entrypoint starts, so its properties
+    # (including metadata) may still be empty. Explicit agent dispatches carry
+    # the same payload on the job and make it available before ctx.connect().
+    metadata = room_metadata(ctx.job.metadata or ctx.room.metadata)
     if not metadata.get("agent_id"):
         raise ValueError("room metadata requires agent_id")
     api = WorkerAPI(
@@ -592,7 +641,7 @@ async def voiceos_agent(ctx: JobContext) -> None:
         )
     bridge = LiveKitCallBridge(api, call_id, variables)
     prompt = build_system_prompt(
-        {"id": runtime["tenant_id"]},
+        {"id": runtime["tenant_id"], "name": runtime.get("tenant_name") or "sua empresa"},
         runtime,
         channel=str(metadata.get("channel") or "web"),
         variables=variables,

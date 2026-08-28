@@ -16,6 +16,12 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://voiceos:voiceos@db:5432/voiceos
       REDIS_URL: redis://redis:6379/0
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
     depends_on: {db: {condition: service_healthy}, redis: {condition: service_healthy}}
     ports: ["8005:8000"]
   web:
@@ -35,6 +41,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://voiceos:voiceos@db:5432/voiceos
       REDIS_URL: redis://redis:6379/0
       WORKER_API_URL: http://api:8000
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      CARTESIA_API_KEY: ${CARTESIA_API_KEY:-}
     depends_on: [api]
     ports: ["8081:8081"]
   worker:

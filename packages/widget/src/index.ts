@@ -450,8 +450,8 @@ export class VoiceOSWidget {
       zIndex: String(this.options.zIndex + 1),
     } satisfies Partial<CSSStyleDeclaration>);
 
+    this.card.style.setProperty("--voiceos-level", "0.05");
     Object.assign(this.card.style, {
-      "--voiceos-level": "0.05",
       width: "min(420px, calc(100vw - 32px))",
       borderRadius: "24px",
       border: `1px solid ${palette.border}`,

@@ -134,6 +134,8 @@ Invoke-WebRequest http://localhost:9000/health
 
 Portas locais: painel `3000`, API `8005`, agente `8081`, mock `9000`, PostgreSQL `5432` e Redis `6379`.
 
+As funções globais do PostgreSQL não fazem parte de um backup criado apenas com `pg_dump`. A migração `0011` recria de forma idempotente o papel `voiceos_app` e suas permissões após uma restauração em outro mecanismo PostgreSQL.
+
 ## Nova instalação sem o backup
 
 Quando os dados históricos não forem necessários, crie o schema e os dados mínimos de demonstração a partir do Git:
