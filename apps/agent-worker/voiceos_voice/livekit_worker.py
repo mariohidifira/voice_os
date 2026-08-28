@@ -32,6 +32,7 @@ from livekit.plugins import anthropic, cartesia, deepgram, elevenlabs, openai, s
 
 from .accounting import CallAccounting
 from .api_client import RedisRuntimeCache, WorkerAPI
+from .flow import FlowConfigError, FlowEngine, match_intent
 from .phone_runtime import (
     AnthropicAMDClassifier,
     HeuristicAMDClassifier,
@@ -495,9 +496,11 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
     llm_config = runtime.get("llm") or {}
     tts_config = runtime.get("tts") or {}
     language = str(runtime.get("language") or "pt-BR")
+    execution_mode = str((runtime.get("behavior") or {}).get("execution_mode") or "llm").lower()
 
     stt_providers: list[Any] = []
-    if os.getenv("DEEPGRAM_API_KEY"):
+    stt_provider = str(stt_config.get("provider") or "deepgram").lower()
+    if stt_provider == "deepgram" and os.getenv("DEEPGRAM_API_KEY"):
         stt_providers.append(
             deepgram.STT(
                 model=str(stt_config.get("model") or "nova-3"),
@@ -508,7 +511,19 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
                 utterance_end_ms=int(stt_config.get("utterance_end_ms", 1000)),
             )
         )
-    if os.getenv("OPENAI_API_KEY"):
+    if stt_provider == "openai" and os.getenv("OPENAI_API_KEY"):
+        stt_providers.append(
+            openai.STT(
+                model=str(stt_config.get("fallback_model") or "whisper-1"), language=language
+            )
+        )
+    # Local installations may not have a Deepgram key. Use OpenAI Whisper as
+    # a one-time startup fallback, never as a per-request provider switch.
+    if not stt_providers and os.getenv("OPENAI_API_KEY"):
+        logger.warning(
+            "Configured STT provider unavailable; using OpenAI Whisper fallback",
+            extra={"configured_provider": stt_provider},
+        )
         stt_providers.append(
             openai.STT(
                 model=str(stt_config.get("fallback_model") or "whisper-1"), language=language
@@ -518,7 +533,8 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError("DEEPGRAM_API_KEY or OPENAI_API_KEY is required for STT")
 
     llm_providers: list[Any] = []
-    if os.getenv("ANTHROPIC_API_KEY"):
+    llm_provider = str(llm_config.get("provider") or "anthropic").lower()
+    if execution_mode != "deterministic" and llm_provider == "anthropic" and os.getenv("ANTHROPIC_API_KEY"):
         try:
             llm_providers.append(
                 anthropic.LLM(
@@ -533,20 +549,21 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
                 "Anthropic provider unavailable; trying configured fallback",
                 extra={"error": type(exc).__name__},
             )
-    if os.getenv("OPENAI_API_KEY"):
+    if execution_mode != "deterministic" and llm_provider == "openai" and os.getenv("OPENAI_API_KEY"):
         llm_providers.append(
             openai.LLM(
                 model=str(llm_config.get("fallback_model") or "gpt-4.1"), temperature=0.3
             )
         )
-    if not llm_providers:
+    if not llm_providers and execution_mode != "deterministic":
         raise RuntimeError("ANTHROPIC_API_KEY or OPENAI_API_KEY is required for LLM")
 
     voice = str(
         tts_config.get("voice_id") or os.getenv("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL"
     )
     tts_providers: list[Any] = []
-    if os.getenv("ELEVENLABS_API_KEY"):
+    tts_provider = str(tts_config.get("provider") or "elevenlabs").lower()
+    if tts_provider == "elevenlabs" and os.getenv("ELEVENLABS_API_KEY"):
         tts_providers.append(
             elevenlabs.TTS(
                 voice_id=voice,
@@ -556,7 +573,7 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
                 language=language,
             )
         )
-    if os.getenv("CARTESIA_API_KEY"):
+    if tts_provider == "cartesia" and os.getenv("CARTESIA_API_KEY"):
         tts_providers.append(
             cartesia.TTS(
                 model=str(tts_config.get("fallback_model") or "sonic-3"),
@@ -574,9 +591,7 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
         "stt": stt_providers[0]
         if len(stt_providers) == 1
         else stt.FallbackAdapter(stt_providers, attempt_timeout=3, max_retry_per_stt=1),
-        "llm": llm_providers[0]
-        if len(llm_providers) == 1
-        else llm.FallbackAdapter(llm_providers, attempt_timeout=8, max_retry_per_llm=1),
+        **({"llm": llm_providers[0] if len(llm_providers) == 1 else llm.FallbackAdapter(llm_providers, attempt_timeout=8, max_retry_per_llm=1)} if llm_providers else {}),
         "tts": tts_providers[0]
         if len(tts_providers) == 1
         else tts.FallbackAdapter(tts_providers, max_retry_per_tts=1),
@@ -652,6 +667,14 @@ async def voiceos_agent(ctx: JobContext) -> None:
     pipeline = provider_pipeline(runtime)
     turn = runtime.get("turn") or {}
     behavior = runtime.get("behavior") or {}
+    execution_mode = str(behavior.get("execution_mode") or "llm").lower()
+    flow_engine: FlowEngine | None = None
+    flow_config = dict(behavior.get("process") or {})
+    if execution_mode == "deterministic":
+        try:
+            flow_engine = FlowEngine(flow_config)
+        except FlowConfigError as exc:
+            raise ValueError(f"invalid deterministic process: {exc}") from exc
     amd_transcript: list[str] = []
     session_ref: dict[str, AgentSession[Any]] = {}
     tools = dynamic_tools(
@@ -669,11 +692,27 @@ async def voiceos_agent(ctx: JobContext) -> None:
         if str(metadata.get("channel") or "web").startswith("phone_")
         else None,
     )
+
+    @function_tool(description="Encerra a conversa depois de uma despedida curta.")
+    async def end_call(reason: str = "agent_hangup", farewell: str = "") -> str:
+        """Say a final farewell and terminate the LiveKit room."""
+        bridge.end_reason = reason or "agent_hangup"
+        final_text = farewell or "Obrigado pelo contato. Até logo!"
+        speech = session_ref["session"].say(final_text, allow_interruptions=False)
+        await speech.wait_for_playout()
+        session_ref["session"].shutdown(drain=True)
+        return "conversation_ended"
+
+    if not any(getattr(tool, "name", "") == "end_call" for tool in tools):
+        tools.append(end_call)
     session = AgentSession(
         **pipeline,
         tools=tools,
-        min_endpointing_delay=float(turn.get("min_endpointing_delay", 0.5)),
-        max_endpointing_delay=float(turn.get("max_endpointing_delay", 3.0)),
+        # Keep the demo responsive: cloud STT/LLM/TTS already add network
+        # latency, so waiting up to three seconds after speech makes the
+        # interaction feel stuck on modest local machines.
+        min_endpointing_delay=float(turn.get("min_endpointing_delay", 0.35)),
+        max_endpointing_delay=float(turn.get("max_endpointing_delay", 1.5)),
         allow_interruptions=True,
         min_interruption_duration=float(turn.get("min_interruption_duration", 0.5)),
         min_interruption_words=int(turn.get("min_interruption_words", 1)),
@@ -700,15 +739,39 @@ async def voiceos_agent(ctx: JobContext) -> None:
     session.on("session_usage_updated", lambda event: bridge.spawn(bridge.usage(event)))
     session.on("user_state_changed", lambda event: bridge.spawn(guards.user_state(event)))
 
+    if flow_engine is not None:
+        async def deterministic_turn(event: UserInputTranscribedEvent) -> None:
+            if not event.is_final or flow_engine is None or flow_engine.ended:
+                return
+            intent = match_intent(flow_config, event.transcript)
+            result = flow_engine.handle(intent or "__unknown__")
+            if result.response:
+                await session.say(result.response, allow_interruptions=True)
+            await bridge.persist_event(
+                "process.transition",
+                {"state": result.state, "intent": intent, "terminal": result.terminal},
+            )
+            if result.terminal:
+                bridge.end_reason = str((result.action or {}).get("reason") or "agent_hangup")
+                session.shutdown(drain=True)
+
+        session.on("user_input_transcribed", lambda event: asyncio.create_task(deterministic_turn(event)))
+
     async def close_session(event: CloseEvent) -> None:
         guards.cancel()
         await bridge.close(event)
+        # A session shutdown does not necessarily close the LiveKit room. End
+        # the room as well so the browser receives Disconnected and closes the
+        # test dialog instead of remaining in an apparent connected state.
+        ctx.room.disconnect()
 
     session.on("close", lambda event: asyncio.create_task(close_session(event)))
     await session.start(room=ctx.room, agent=Agent(instructions=prompt))
     guards.start()
     await ctx.connect()
     greeting = str(runtime.get("greeting") or "Olá! Como posso ajudar?")
+    if flow_engine is not None:
+        greeting = flow_engine.greeting().response or greeting
     tenant_settings = dict(runtime.get("tenant_settings") or {})
     if metadata.get("channel") == "phone_inbound" and not business_hours_open(
         dict(behavior.get("business_hours") or {}), datetime.now(UTC)

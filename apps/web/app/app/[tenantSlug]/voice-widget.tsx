@@ -11,6 +11,8 @@ export default function VoiceWidget({ agentId, onClose, onNotice }: { agentId: s
   const [level, setLevel] = useState(0);
   const roomRef = useRef<Room | null>(null);
   const sessionRef = useRef<Session | null>(null);
+  const closingRef = useRef(false);
+  const connectedRef = useRef(false);
   const audioRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => { void roomRef.current?.disconnect(); }, []);
@@ -32,10 +34,23 @@ export default function VoiceWidget({ agentId, onClose, onNotice }: { agentId: s
         if (track.kind === Track.Kind.Audio && audioRef.current) audioRef.current.appendChild(track.attach());
       });
       room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => track.detach().forEach((element) => element.remove()));
-      room.on(RoomEvent.Disconnected, () => setState("ended"));
+      room.on(RoomEvent.Disconnected, () => {
+        if (closingRef.current) return;
+        if (!connectedRef.current) {
+          setState("error");
+          onNotice("A sala foi desconectada antes de iniciar a conversa.");
+          return;
+        }
+        closingRef.current = true;
+        setState("ended");
+        if (sessionRef.current) void fetch(`/api/voiceos/sessions/${sessionRef.current.session_id}`, { method: "DELETE" });
+        onNotice("A conversa foi encerrada pelo agente.");
+        onClose();
+      });
       await room.connect(session.livekit_url, session.token, { autoSubscribe: true });
       await room.startAudio();
       await room.localParticipant.setMicrophoneEnabled(true, { echoCancellation: true, noiseSuppression: true, autoGainControl: true });
+      connectedRef.current = true;
       setState("connected");
       const meter = window.setInterval(() => {
         const remote = Math.max(0, ...Array.from(room.remoteParticipants.values()).map((participant) => participant.audioLevel));
@@ -55,6 +70,7 @@ export default function VoiceWidget({ agentId, onClose, onNotice }: { agentId: s
   }
 
   async function end() {
+    closingRef.current = true;
     const room = roomRef.current;
     await room?.localParticipant.setMicrophoneEnabled(false);
     await room?.disconnect();

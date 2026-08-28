@@ -282,7 +282,7 @@ async def _enforce_call_limit(auth: Principal, repo: Repository, channel: str) -
         call.get("status") in {"queued", "ringing", "in_progress"}
         for call in await repo.list_calls(auth.tenant_id)
     )
-    maximum = plan.get("max_concurrent_calls")
+    maximum = plan.get("max_concurrent_calls") if get_settings().app_env not in {"dev", "test"} else None
     if maximum is not None and active >= int(maximum):
         raise HTTPException(
             402,

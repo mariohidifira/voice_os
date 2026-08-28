@@ -5,6 +5,7 @@ from jinja2 import StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
 BASE_PROMPT = """Você é um agente de voz. Sua saída será convertida em fala. Siga estas regras sempre:
+- Responda exclusivamente em português do Brasil (pt-BR). Nunca alterne para inglês ou outro idioma, mesmo quando nomes de ferramentas, modelos ou comandos estiverem em inglês.
 - Responda curto: 1 a 3 frases por turno. Faça uma pergunta por vez.
 - Fale naturalmente, sem listas, markdown, emojis ou símbolos.
 - Se não entender, peça para repetir. Nunca finja ter entendido.

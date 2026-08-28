@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+from voiceos_voice.flow import FlowConfigError, validate_flow
 
 
 class AgentCreate(BaseModel):
@@ -60,6 +61,22 @@ class AgentDraftPatch(BaseModel):
     knowledge_base_id: UUID | None = None
     rag: dict[str, Any] | None = None
     variables: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def validate_execution_mode(self) -> "AgentDraftPatch":
+        behavior = self.behavior or {}
+        mode = str(behavior.get("execution_mode") or "llm").lower()
+        if mode not in {"llm", "hybrid", "deterministic"}:
+            raise ValueError("behavior.execution_mode must be llm, hybrid or deterministic")
+        if mode in {"hybrid", "deterministic"}:
+            process = behavior.get("process")
+            if not isinstance(process, dict) or not process.get("states"):
+                raise ValueError("behavior.process with states is required for non-LLM mode")
+            try:
+                validate_flow(process)
+            except FlowConfigError as exc:
+                raise ValueError(str(exc)) from exc
+        return self
 
 
 class AgentRollback(BaseModel):

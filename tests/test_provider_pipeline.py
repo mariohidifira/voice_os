@@ -6,7 +6,7 @@ import pytest
 from voiceos_voice import livekit_worker
 
 
-def test_provider_pipeline_uses_available_fallbacks(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_provider_pipeline_uses_configured_providers(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DEEPGRAM_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "openai-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "anthropic-test")
@@ -23,16 +23,10 @@ def test_provider_pipeline_uses_available_fallbacks(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(livekit_worker.elevenlabs, "TTS", lambda **_: "elevenlabs-tts")
     monkeypatch.setattr(livekit_worker.cartesia, "TTS", unavailable)
     monkeypatch.setattr(livekit_worker.silero.VAD, "load", lambda **_: "silero-vad")
-    monkeypatch.setattr(
-        livekit_worker.llm,
-        "FallbackAdapter",
-        lambda providers, **_: ("llm-fallback", providers),
-    )
-
     pipeline = livekit_worker.provider_pipeline({"language": "pt-BR"})
 
     assert pipeline["stt"] == "openai-stt"
-    assert pipeline["llm"] == ("llm-fallback", ["anthropic-llm", "openai-llm"])
+    assert pipeline["llm"] == "anthropic-llm"
     assert pipeline["tts"] == "elevenlabs-tts"
     assert pipeline["vad"] == "silero-vad"
 
@@ -45,7 +39,26 @@ def test_provider_pipeline_requires_stt_key(monkeypatch: pytest.MonkeyPatch) -> 
         livekit_worker.provider_pipeline({})
 
 
-def test_provider_pipeline_skips_broken_anthropic_and_passes_elevenlabs_key(
+def test_deterministic_pipeline_does_not_initialize_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DEEPGRAM_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-test")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "anthropic-test")
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "elevenlabs-test")
+    monkeypatch.setattr(livekit_worker.openai, "STT", lambda **_: "openai-stt")
+    monkeypatch.setattr(livekit_worker.elevenlabs, "TTS", lambda **_: "elevenlabs-tts")
+    monkeypatch.setattr(livekit_worker.silero.VAD, "load", lambda **_: "silero-vad")
+    monkeypatch.setattr(
+        livekit_worker.anthropic,
+        "LLM",
+        lambda **_: (_ for _ in ()).throw(AssertionError("LLM must not be initialized")),
+    )
+    pipeline = livekit_worker.provider_pipeline(
+        {"language": "pt-BR", "behavior": {"execution_mode": "deterministic"}}
+    )
+    assert "llm" not in pipeline
+
+
+def test_provider_pipeline_rejects_broken_configured_anthropic(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("DEEPGRAM_API_KEY", raising=False)
@@ -70,8 +83,5 @@ def test_provider_pipeline_skips_broken_anthropic_and_passes_elevenlabs_key(
     monkeypatch.setattr(livekit_worker.elevenlabs, "TTS", elevenlabs_tts)
     monkeypatch.setattr(livekit_worker.silero.VAD, "load", lambda **_: "silero-vad")
 
-    pipeline = livekit_worker.provider_pipeline({"language": "pt-BR"})
-
-    assert pipeline["llm"] == "openai-llm"
-    assert pipeline["tts"] == "elevenlabs-tts"
-    assert received["api_key"] == "elevenlabs-test"
+    with pytest.raises(RuntimeError, match="required for LLM"):
+        livekit_worker.provider_pipeline({"language": "pt-BR"})
