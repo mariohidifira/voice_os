@@ -12,6 +12,8 @@ node_modules/
 playwright-report/
 test-results/
 dist/
+backups/
+.docker-data/
 apps/web/public/voiceos.js
 *.pyc
 *.egg-info/

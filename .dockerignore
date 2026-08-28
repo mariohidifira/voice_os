@@ -4,8 +4,10 @@
 .coverage
 .mypy_cache
 .pytest_cache
+.pytest-tmp
 .ruff_cache
 .tools
+.docker-data
 **/__pycache__
 **/*.py[cod]
 **/node_modules

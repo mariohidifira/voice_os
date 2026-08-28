@@ -65,3 +65,4 @@ Versão 1.0 · Documento-mestre para execução por agente de código (Claude Co
 | `13-testes-aceite.md` | Estratégia de testes, suíte de conversas, testes de carga, critérios |
 | `14-fases.md` | Roadmap em 5 fases, entregáveis, critérios de aceite, ordem de execução |
 | `15-glossario.md` | Termos e siglas |
+| `docker-homologacao.md` | Backup, restauração e reprodução do ambiente Docker de homologação |
