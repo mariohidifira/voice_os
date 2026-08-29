@@ -78,9 +78,11 @@ CREDENTIALS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
 }
 
+DEFAULT_CREDENTIALS = {"AWS_REGION": "sa-east-1"}
+
 
 def load_credentials() -> tuple[dict[str, str], list[str]]:
-    values: dict[str, str] = {}
+    values: dict[str, str] = dict(DEFAULT_CREDENTIALS)
     missing: list[str] = []
     for environment_name, candidates in CREDENTIALS.items():
         value = next(

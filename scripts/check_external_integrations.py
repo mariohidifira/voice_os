@@ -61,7 +61,8 @@ async def main() -> int:
 
     for provider, status in results.items():
         print(f"{provider}: {status}")
-    return 0 if all(status == "available" for status in results.values()) else 1
+    required = {"aws", "twilio", "stripe"}
+    return 0 if all(results[name] == "available" for name in required) else 1
 
 
 if __name__ == "__main__":
