@@ -9,6 +9,7 @@ export default function VoiceWidget({ agentId, language, onClose, onNotice }: { 
   const [state, setState] = useState<"ready" | "connecting" | "connected" | "ended" | "error">("ready");
   const [muted, setMuted] = useState(false);
   const [level, setLevel] = useState(0);
+  const [errorDetail, setErrorDetail] = useState("");
   const roomRef = useRef<Room | null>(null);
   const sessionRef = useRef<Session | null>(null);
   const closingRef = useRef(false);
@@ -38,6 +39,7 @@ export default function VoiceWidget({ agentId, language, onClose, onNotice }: { 
         if (closingRef.current) return;
         if (!connectedRef.current) {
           setState("error");
+          setErrorDetail("A sala LiveKit foi desconectada antes de iniciar. Confirme LIVEKIT_URL, API key/secret e se o worker está registrado.");
           onNotice("A sala foi desconectada antes de iniciar a conversa.");
           return;
         }
@@ -59,7 +61,9 @@ export default function VoiceWidget({ agentId, language, onClose, onNotice }: { 
       room.once(RoomEvent.Disconnected, () => window.clearInterval(meter));
     } catch (error) {
       setState("error");
-      if (error instanceof Error) onNotice(`Falha na conexão: ${error.message}`);
+      const detail = error instanceof Error ? error.message : "erro desconhecido";
+      setErrorDetail(detail);
+      onNotice(`Falha na conexão: ${detail}`);
       onNotice(error instanceof Error ? error.message : "Não foi possível conectar ao teste de voz");
     }
   }
@@ -85,6 +89,7 @@ export default function VoiceWidget({ agentId, language, onClose, onNotice }: { 
       <div className={`orb ${state}`} style={{ "--level": Math.max(.05, level) } as React.CSSProperties}><span/></div>
       <p className="voiceState">{state === "ready" ? "Pronto para acessar seu microfone" : state === "connecting" ? "Conectando à sala segura…" : state === "connected" ? (muted ? "Microfone pausado" : "Ouvindo — pode falar") : state === "ended" ? "Chamada encerrada" : "Falha na conexão"}</p>
       <div ref={audioRef} className="remoteAudio"/>
+      {errorDetail && state === "error" && <p className="fieldHint">Detalhe: {errorDetail}</p>}
       <div className="voiceActions">{state === "ready" && <button onClick={() => void start()}>Iniciar conversa</button>}{state === "connected" && <><button className="secondary" onClick={() => void toggleMute()}>{muted ? "Ativar microfone" : "Silenciar"}</button><button className="danger" onClick={() => void end()}>Encerrar</button></>}{["ended", "error"].includes(state) && <button onClick={onClose}>Fechar</button>}</div>
       <small>O navegador solicitará permissão de microfone. Use fones para melhor cancelamento de eco.</small>
     </div>
