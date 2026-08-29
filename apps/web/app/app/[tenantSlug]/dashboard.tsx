@@ -714,7 +714,7 @@ export default function Dashboard({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [initialEntry]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
