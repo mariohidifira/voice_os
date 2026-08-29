@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
@@ -31,6 +32,7 @@ await build({
 
 const browserBundle = await readFile(browserOutfile);
 const gzipBytes = gzipSync(browserBundle, { level: 9 }).byteLength;
+const bundleSha256 = createHash("sha256").update(browserBundle).digest("hex");
 if (gzipBytes > maxGzipBytes) {
   throw new Error(
     `voiceos.js gzip size ${gzipBytes} bytes exceeds budget ${maxGzipBytes} bytes`,
@@ -48,10 +50,12 @@ await writeFile(
         bytes: browserBundle.byteLength,
         gzip_bytes: gzipBytes,
         gzip_budget_bytes: maxGzipBytes,
+        sha256: bundleSha256,
       },
       hosted_asset: {
         path: "apps/web/public/voiceos.js",
         bytes: browserBundle.byteLength,
+        sha256: bundleSha256,
       },
     },
     null,

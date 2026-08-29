@@ -1,8 +1,24 @@
 {
   "scope": "final_local_audit",
-  "status_date": "2026-08-25",
+  "status_date": "2026-08-29",
   "passed": true,
-  "project_completion_estimate_percent": 100,
+  "project_completion_estimate_percent": 95,
+  "local_completion_estimate_percent": 100,
+  "commercial_release_ready": false,
+  "commercial_external_gates": {
+    "real_voice_staging_50_calls": "missing",
+    "twilio_livekit_sip_pstn": "missing",
+    "stripe_test_lifecycle": "missing",
+    "aws_observability_incident_drill": "missing",
+    "external_widget_domain_tls": "missing"
+  },
+  "missing_commercial_gates": [
+    "aws_observability_incident_drill",
+    "external_widget_domain_tls",
+    "real_voice_staging_50_calls",
+    "stripe_test_lifecycle",
+    "twilio_livekit_sip_pstn"
+  ],
   "phase4_next_gap": null,
   "phase4_environment_blocker": null,
   "phase5_next_gap": null,
@@ -15,7 +31,7 @@
       "name": "pytest_suite",
       "ok": true,
       "returncode": 0,
-      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider --basetemp G:\\DEV\\VOICE_OS\\.pytest-tmp\\final-local-audit-c9f8e3e4f32e43e380e183dd6d1ebe8c",
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider --basetemp G:\\DEV\\VOICE_OS\\.pytest-tmp\\final-local-audit-b68621eec1d542eb849e806bda60bb19",
       "output": "[pytest output omitted on success]",
       "ok_local": true
     },
@@ -162,8 +178,8 @@
           },
           "phase5_evidence_bundle": {
             "path": "reports/phase5-evidence-bundle.zip",
-            "sha256": "aa28c51c19f4cacd02fe47d75115e93a135ef6d66fc6019e982e6856c0251fb8",
-            "bytes": 29787
+            "sha256": "18f599557dd66993d48e6cff78c83f915998bc12535d012eeb24140afb0d49a0",
+            "bytes": 29783
           },
           "final_handoff_bundle_manifest": {
             "path": "reports/final-handoff-bundle.manifest.json",

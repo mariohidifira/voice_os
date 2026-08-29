@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
@@ -237,11 +238,32 @@ def main() -> int:
     final_summary_path = REPO_ROOT / "reports" / "final-handoff-summary.json"
     phase4_remote_complete = phase4_remote.get("passed") is True
     phase5_external_complete = phase5_external.get("passed") is True
-    completion_estimate = (
+    commercial_gate_path = REPO_ROOT / "reports" / "commercial-gate-audit-2026-08-29.json"
+    commercial_gate = (
+        json.loads(commercial_gate_path.read_text(encoding="utf-8"))
+        if commercial_gate_path.is_file()
+        else {}
+    )
+    commercial_external_gates = commercial_gate.get("external_gates")
+    if not isinstance(commercial_external_gates, dict):
+        commercial_external_gates = {}
+    missing_commercial_gates = sorted(
+        str(name)
+        for name, status in commercial_external_gates.items()
+        if status != "passed"
+    )
+    local_completion_estimate = (
         100
         if phase4_remote_complete and phase5_external_complete
         else BASE_PROJECT_COMPLETION_ESTIMATE_PERCENT
         + (2 if phase5_hosted.get("passed") is True else 0)
+    )
+    # Historical phase reports do not prove the current commercial release
+    # gates. Never emit a misleading 100% commercial status just because those
+    # older artifacts say "complete".
+    commercial_release_ready = bool(commercial_external_gates) and not missing_commercial_gates
+    completion_estimate = local_completion_estimate if commercial_release_ready else min(
+        local_completion_estimate, 95
     )
     expected_external_gaps = []
     if not phase4_remote_complete:
@@ -255,9 +277,13 @@ def main() -> int:
 
     report = {
         "scope": "final_local_audit",
-        "status_date": "2026-08-25",
+        "status_date": date.today().isoformat(),
         "passed": all(bool(step["ok_local"]) for step in steps),
         "project_completion_estimate_percent": completion_estimate,
+        "local_completion_estimate_percent": local_completion_estimate,
+        "commercial_release_ready": commercial_release_ready,
+        "commercial_external_gates": commercial_external_gates,
+        "missing_commercial_gates": missing_commercial_gates,
         "phase4_next_gap": None if phase4_remote_complete else phase4_summary.get("next_gap"),
         "phase4_environment_blocker": None
         if phase4_remote_complete

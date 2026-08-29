@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -18,6 +19,28 @@ def step(name: str, ok: bool, detail: str) -> dict[str, object]:
 
 def sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def gzip_size(payload: bytes, bundle_path: Path) -> int:
+    """Use the same Node zlib implementation as the browser bundle build."""
+    try:
+        result = subprocess.run(
+            [
+                "node",
+                "-e",
+                "const fs=require('fs'),z=require('zlib');"
+                "process.stdout.write(String(z.gzipSync(fs.readFileSync(process.argv[1]),"
+                "{level:9}).byteLength));",
+                str(bundle_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return int(result.stdout.strip())
+    except (FileNotFoundError, subprocess.CalledProcessError, ValueError):
+        # Keep the verifier usable in a Python-only inspection environment.
+        return len(gzip.compress(payload, compresslevel=9, mtime=0))
 
 
 def environment_blocker(
@@ -128,7 +151,7 @@ def main() -> int:
             size_payload = {}
         browser_metadata = size_payload.get("browser_bundle", {})
         hosted_metadata = size_payload.get("hosted_asset", {})
-        gzip_bytes = len(gzip.compress(bundle_bytes, compresslevel=9, mtime=0))
+        gzip_bytes = gzip_size(bundle_bytes, browser_bundle)
         bundle_hash = sha256(bundle_bytes)
         steps.extend(
             [
