@@ -122,12 +122,12 @@ def test_tenant_general_settings_are_scoped_and_admin_mutable() -> None:
                 "recording_enabled": False,
                 "retention_days": 180,
                 "branding": {
-                    "product_name": "ClÃ­nica Voz",
+                    "product_name": "Clínica Voz",
                     "primary_color": "#123456",
                     "custom_domain": "voz.clinicavoz.example",
                 },
                 "widget": {
-                    "button_label": "Falar com a clÃ­nica",
+                    "button_label": "Falar com a clínica",
                     "theme": "dark",
                     "position": "bottom-left",
                     "livekit_module_url": "https://cdn.example.com/livekit.esm.js",
