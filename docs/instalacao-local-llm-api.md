@@ -166,6 +166,14 @@ Inicie a pilha completa carregando as credenciais apenas no ambiente do processo
 py scripts\start_local_with_keyring.py --build
 ```
 
+ValidaÃ§Ã£o somente de leitura das credenciais comerciais:
+
+```powershell
+py scripts\check_external_integrations.py
+```
+
+Esse comando consulta identidade na AWS, Twilio e Stripe e nÃ£o cria recursos, chamadas ou cobranÃ§as.
+
 O inicializador aceita os nomes canônicos `VOICEOS.<VARIAVEL>` e os aliases legados já usados localmente. Os valores nunca são impressos nem gravados pelo script. Como ocorre com qualquer segredo fornecido a um contêiner por variável de ambiente, um administrador local do Docker ainda pode inspecionar o ambiente do contêiner.
 
 ## 9. Instalação limpa, sem reutilizar os dados existentes
