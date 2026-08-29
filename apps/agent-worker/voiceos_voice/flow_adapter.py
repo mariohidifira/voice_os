@@ -34,10 +34,10 @@ class _FlowStream(llm.LLMStream):
         )
 
 
-class HybridFlowLLM(llm.LLM):
+class HybridFlowLLM(llm.LLM[Any]):
     """Use the local process for known intents and delegate unknown turns."""
 
-    def __init__(self, delegate: llm.LLM, process: dict[str, Any]) -> None:
+    def __init__(self, delegate: llm.LLM[Any], process: dict[str, Any]) -> None:
         super().__init__()
         self.delegate = delegate
         self.engine = FlowEngine(process)

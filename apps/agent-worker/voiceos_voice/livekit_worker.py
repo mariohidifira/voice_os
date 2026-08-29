@@ -100,7 +100,7 @@ async def transfer_phone_call(
             )
             if not sip_participant:
                 return {"error": "sip_participant_not_found", "message": "No SIP leg to transfer"}
-            transferred = await client.sip.transfer_sip_participant(
+            await client.sip.transfer_sip_participant(
                 livekit_api.TransferSIPParticipantRequest(
                     participant_identity=sip_participant.identity,
                     room_name=room.name,
@@ -112,7 +112,7 @@ async def transfer_phone_call(
                 "status": "transferred",
                 "mode": "cold",
                 "destination": destination,
-                "participant_identity": transferred.participant_identity,
+                "participant_identity": sip_participant.identity,
             }
         trunk_id = os.getenv("LIVEKIT_SIP_TRUNK_ID_OUTBOUND", "")
         from_number = str(metadata.get("from") or metadata.get("to") or "")
@@ -773,7 +773,7 @@ async def voiceos_agent(ctx: JobContext) -> None:
         # A session shutdown does not necessarily close the LiveKit room. End
         # the room as well so the browser receives Disconnected and closes the
         # test dialog instead of remaining in an apparent connected state.
-        ctx.room.disconnect()
+        await ctx.room.disconnect()
 
     session.on("close", lambda event: asyncio.create_task(close_session(event)))
     await session.start(room=ctx.room, agent=Agent(instructions=prompt))
