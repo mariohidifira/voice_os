@@ -17,6 +17,16 @@ release ready.
   database, Redis, S3 and LiveKit components healthy.
 - The repository is clean and `master` is synchronized with `origin/master`.
 
+### Latest local smoke (2026-08-28)
+
+- Credential Manager lookup: LiveKit URL/key/secret, OpenAI, Anthropic,
+  ElevenLabs, Google, Cartesia, Cerebras and OpenRouter available (values not
+  printed).
+- OpenAI `GET /v1/models`: HTTP 200.
+- ElevenLabs `GET /v1/voices`: HTTP 200.
+- LiveKit worker registered as `voiceos-agent` in the Brazil region.
+- API `/health`: database, Redis, S3 and LiveKit token checks all `true`.
+
 ## Release blockers requiring external evidence
 
 The product must not be labelled production-ready until each item below has a
