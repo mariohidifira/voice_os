@@ -133,10 +133,8 @@ const agentTabs: Array<[AgentTab, string]> = [
 
 const sectionGroups: Array<[string, Array<[Section, string]>]> = [
   ["Visão geral", [["overview", "Painel"]]],
-  ["Operação", [["agents", "Agentes"], ["calls", "Chamadas"], ["live", "Ao vivo"], ["simulator", "Simulador"], ["campaigns", "Campanhas"]]],
-  ["Configuração", [["knowledge", "Conhecimento"], ["tools", "Ferramentas"], ["numbers", "Números"], ["webhooks", "Webhooks"]]],
-  ["Governança", [["members", "Membros"], ["endUsers", "End-users"], ["exports", "Exports"]]],
-  ["Métricas e conta", [["billing", "Billing"], ["analytics", "Analytics"], ["settings", "Configurações"]]],
+  ["Operação", [["agents", "Agentes"], ["calls", "Chamadas"]]],
+  ["Configuração", [["knowledge", "Conhecimento"], ["settings", "Configurações"]]],
 ];
 const sections = sectionGroups.flatMap(([, items]) => items);
 
@@ -1828,6 +1826,15 @@ export default function Dashboard({
                     )}
                   </article>
                 </section>
+                <article className="card roadmapCard">
+                  <div className="eyebrow">Recursos avançados</div>
+                  <h2>O núcleo da operação está pronto</h2>
+                  <p className="muted">
+                    Ferramentas, números, campanhas, billing, governança, exports e integrações
+                    avançadas permanecem disponíveis na API e serão liberados no painel após a
+                    validação externa correspondente.
+                  </p>
+                </article>
               </>
             )}
             {section === "agents" && (

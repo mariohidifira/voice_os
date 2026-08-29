@@ -225,6 +225,14 @@ button.secondary {
   margin: 0 0 16px;
   font-size: 19px;
 }
+.roadmapCard {
+  margin-top: 14px;
+  border-color: #4a4072;
+  background: linear-gradient(135deg, #201d36, #161826);
+}
+.roadmapCard h2 {
+  margin: 8px 0 6px;
+}
 .value {
   display: block;
   font-size: 30px;
