@@ -11,11 +11,13 @@ release ready.
 - WebRTC, phone, WhatsApp, billing, public API, exports, LGPD workflows,
   analytics, widget and configurable deterministic/hybrid flows are implemented
   with local automated coverage.
-- Python regression suite: `159 passed` (latest local run).
+- Python regression suite: `169 passed` (latest local run).
+- Local backend coverage: `80%` with the repository's `--cov-fail-under=80` gate.
 - `ruff check .`: passed after commit `789aa95`.
 - Docker health was previously verified at `http://localhost:8005/health` with
   database, Redis, S3 and LiveKit components healthy.
-- The repository is clean and `master` is synchronized with `origin/master`.
+- The repository is clean and `master` is synchronized with `origin/master` at the
+  latest pushed commit.
 
 ### Latest local smoke (2026-08-28)
 
