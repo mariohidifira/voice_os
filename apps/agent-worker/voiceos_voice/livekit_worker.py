@@ -400,6 +400,9 @@ def dynamic_tools(
         tool_id = str(definition["id"])
         name = str(definition["name"])
         kind = str(definition.get("native_kind") or name)
+        configured_wait_prompt = str(
+            definition.get("speak_before") or "Só um momento, vou consultar isso."
+        ).strip()
 
         async def execute(
             raw_arguments: dict[str, Any],
@@ -407,6 +410,7 @@ def dynamic_tools(
             remote_tool_id: str = tool_id,
             tool_name: str = name,
             tool_kind: str = kind,
+            wait_prompt: str = configured_wait_prompt,
         ) -> dict[str, Any]:
             if tool_kind == "set_variable":
                 variables[str(raw_arguments["name"])] = raw_arguments.get("value")
@@ -461,6 +465,11 @@ def dynamic_tools(
                     )
                 session_ref["session"].shutdown(drain=True)
                 return transferred
+            # Keep the conversation natural while a remote tool/API is running.
+            # A tool may override this text with its configured `speak_before`.
+            live_session = session_ref.get("session")
+            if wait_prompt and live_session is not None:
+                await live_session.say(wait_prompt, allow_interruptions=True).wait_for_playout()
             return await api.execute_tool(
                 {
                     "tool_id": remote_tool_id,

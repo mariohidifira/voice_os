@@ -374,6 +374,40 @@ async def test_dynamic_tools_mutate_variables_and_proxy_remote_execution() -> No
 
 
 @pytest.mark.asyncio
+async def test_dynamic_remote_tool_speaks_before_waiting_for_api() -> None:
+    call_id, tool_id = uuid4(), uuid4()
+    events: list[str] = []
+
+    class Speech:
+        async def wait_for_playout(self) -> None:
+            events.append("playout")
+
+    class Session:
+        def say(self, text: str, **kwargs: Any) -> Speech:
+            events.append(text)
+            return Speech()
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        events.append("api")
+        return httpx.Response(200, json={"result": "ok"})
+
+    api = WorkerAPI("http://api", "internal", MemoryRuntimeCache(), httpx.MockTransport(handler))
+    bridge = LiveKitCallBridge(api, call_id, {})
+    tools = dynamic_tools(
+        api,
+        call_id,
+        [{"id": str(tool_id), "name": "lookup", "parameters_schema": {"type": "object"}, "speak_before": "Só um momento, vou verificar."}],
+        {},
+        {},
+        {"session": cast(AgentSession[Any], Session())},
+        bridge,
+    )
+    remote = cast(RawFunctionTool[..., Any], tools[0])
+    assert await remote(raw_arguments={"query": "42"}) == {"result": "ok"}
+    assert events == ["Só um momento, vou verificar.", "playout", "api"]
+
+
+@pytest.mark.asyncio
 async def test_session_guards_prompt_once_then_end_after_second_silence() -> None:
     class Speech:
         async def wait_for_playout(self) -> None:

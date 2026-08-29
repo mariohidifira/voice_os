@@ -131,24 +131,14 @@ const agentTabs: Array<[AgentTab, string]> = [
   ["advanced", "Avançado"],
 ];
 
-const sections: Array<[Section, string]> = [
-  ["overview", "Visão geral"],
-  ["agents", "Agentes"],
-  ["calls", "Chamadas"],
-  ["live", "Ao vivo"],
-  ["simulator", "Simulador"],
-  ["campaigns", "Campanhas"],
-  ["knowledge", "Conhecimento"],
-  ["tools", "Ferramentas"],
-  ["numbers", "Números"],
-  ["members", "Membros"],
-  ["billing", "Billing"],
-  ["analytics", "Analytics"],
-  ["endUsers", "End-users"],
-  ["webhooks", "Webhooks"],
-  ["exports", "Exports"],
-  ["settings", "Configurações"],
+const sectionGroups: Array<[string, Array<[Section, string]>]> = [
+  ["Visão geral", [["overview", "Painel"]]],
+  ["Operação", [["agents", "Agentes"], ["calls", "Chamadas"], ["live", "Ao vivo"], ["simulator", "Simulador"], ["campaigns", "Campanhas"]]],
+  ["Configuração", [["knowledge", "Conhecimento"], ["tools", "Ferramentas"], ["numbers", "Números"], ["webhooks", "Webhooks"]]],
+  ["Governança", [["members", "Membros"], ["endUsers", "End-users"], ["exports", "Exports"]]],
+  ["Métricas e conta", [["billing", "Billing"], ["analytics", "Analytics"], ["settings", "Configurações"]]],
 ];
+const sections = sectionGroups.flatMap(([, items]) => items);
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/voiceos/${path}`, {
@@ -1715,15 +1705,20 @@ export default function Dashboard({
           <br />
           <strong>{tenantSlug}</strong>
         </div>
-        <nav>
-          {sections.map(([id, label]) => (
-            <button
-              key={id}
-              className={section === id ? "active" : ""}
-              onClick={() => setSection(id)}
-            >
-              {label}
-            </button>
+        <nav aria-label="Navegação do workspace">
+          {sectionGroups.map(([group, items]) => (
+            <div className="navGroup" key={group}>
+              <small>{group}</small>
+              {items.map(([id, label]) => (
+                <button
+                  key={id}
+                  className={section === id ? "active" : ""}
+                  onClick={() => setSection(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
       </aside>
@@ -3058,8 +3053,9 @@ export default function Dashboard({
                     <Field label="Fala antes da execução">
                       <input
                         name="speak_before"
-                        placeholder="Vou consultar isso para você."
+                        placeholder="Só um momento, vou consultar isso."
                       />
+                      <small className="fieldHint">Mantém a conversa natural enquanto a API responde.</small>
                     </Field>
                     <label className="checkRow">
                       <input name="async" type="checkbox" /> Executar sem

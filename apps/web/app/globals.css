@@ -71,6 +71,24 @@ button {
   display: grid;
   gap: 4px;
 }
+.navGroup {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+.navGroup > small {
+  padding: 0 13px 3px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.fieldHint {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
 .side nav button {
   padding: 11px 13px;
   text-align: left;
