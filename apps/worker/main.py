@@ -41,6 +41,14 @@ async def retention_runner(client: httpx.AsyncClient) -> None:
     logging.info("retention_runner: %s", response.json())
 
 
+async def calls_runner(client: httpx.AsyncClient) -> None:
+    response = await client.post("/internal/calls/tick")
+    response.raise_for_status()
+    result = response.json()
+    if result.get("expired"):
+        logging.warning("calls_runner expired stale calls: %s", result)
+
+
 async def run() -> None:
     logging.basicConfig(level=logging.INFO)
     logging.info("VoiceOS worker ready: ingest, QA, billing, exports, WhatsApp and retention jobs")
@@ -64,6 +72,10 @@ async def run() -> None:
                 await export_runner(client)
             except Exception:
                 logging.exception("export_runner failed; next attempt in 30 seconds")
+            try:
+                await calls_runner(client)
+            except Exception:
+                logging.exception("calls_runner failed; next attempt in 30 seconds")
             if asyncio.get_running_loop().time() >= next_billing:
                 try:
                     await billing_meter(client)

@@ -83,6 +83,7 @@ class Repository(Protocol):
     async def update_call(
         self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]
     ) -> dict[str, Any] | None: ...
+    async def expire_stale_calls(self) -> int: ...
     async def create_internal_call(self, data: dict[str, Any]) -> dict[str, Any]: ...
     async def update_internal_call(
         self, call_id: UUID, data: dict[str, Any]
@@ -917,6 +918,25 @@ class PostgresRepository:
         self, tenant_id: UUID, call_id: UUID, data: dict[str, Any]
     ) -> dict[str, Any] | None:
         return await self._update_call(tenant_id, call_id, data, internal=False)
+
+    async def expire_stale_calls(self) -> int:
+        """Close calls that lost their signaling or worker heartbeat."""
+        async with self._internal_session() as db:
+            rows = await db.execute(
+                text(
+                    "SELECT id FROM calls WHERE status IN ('queued','ringing','in_progress') "
+                    "AND COALESCE(updated_at,started_at,created_at) < "
+                    "CASE status WHEN 'in_progress' THEN now()-interval '2 hours' "
+                    "ELSE now()-interval '5 minutes' END"
+                )
+            )
+            call_ids = [row[0] for row in rows]
+        for call_id in call_ids:
+            await self.update_internal_call(
+                call_id,
+                {"status": "failed", "end_reason": "runtime_timeout", "ended_at": datetime.now(UTC)},
+            )
+        return len(call_ids)
 
     async def _update_call(
         self, tenant_id: UUID, call_id: UUID, data: dict[str, Any], *, internal: bool
@@ -2573,6 +2593,26 @@ class MemoryRepository:
         call.update(data)
         call["updated_at"] = datetime.now(UTC)
         return call
+
+    async def expire_stale_calls(self) -> int:
+        now = datetime.now(UTC)
+        expired: list[UUID] = []
+        for call_id, call in self.memory.calls.items():
+            if call.get("status") not in {"queued", "ringing", "in_progress"}:
+                continue
+            reference = call.get("updated_at") or call.get("started_at") or call.get("created_at")
+            if not isinstance(reference, datetime):
+                continue
+            age = (now - reference).total_seconds()
+            limit = 2 * 60 * 60 if call.get("status") == "in_progress" else 5 * 60
+            if age >= limit:
+                expired.append(call_id)
+        for call_id in expired:
+            await self.update_internal_call(
+                call_id,
+                {"status": "failed", "end_reason": "runtime_timeout", "ended_at": now},
+            )
+        return len(expired)
 
     async def create_internal_call(self, data: dict[str, Any]) -> dict[str, Any]:
         return await self.create_call(

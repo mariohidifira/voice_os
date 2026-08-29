@@ -2519,6 +2519,11 @@ async def campaign_runner_tick(repo: Repo, rtc: Rtc, phone: Phone) -> dict[str, 
     }
 
 
+@internal.post("/calls/tick")
+async def calls_runner_tick(repo: Repo) -> dict[str, int]:
+    return {"expired": await repo.expire_stale_calls()}
+
+
 @internal.post("/billing/tick")
 async def billing_meter_tick(repo: Repo, stripe: Stripe) -> dict[str, int]:
     batches = await repo.billing_meter_batches()
