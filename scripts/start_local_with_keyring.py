@@ -139,7 +139,8 @@ def main() -> int:
 
     services = tuple(args.services) or DEFAULT_SERVICES
     if args.check:
-        return 0 if not missing else 1
+        required_missing = validate_voice_credentials(values) if "agent-worker" in services else []
+        return 0 if not required_missing else 1
 
     if "agent-worker" in services:
         voice_missing = validate_voice_credentials(values)
