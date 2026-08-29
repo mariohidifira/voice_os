@@ -59,6 +59,7 @@ export default function VoiceWidget({ agentId, language, onClose, onNotice }: { 
       room.once(RoomEvent.Disconnected, () => window.clearInterval(meter));
     } catch (error) {
       setState("error");
+      if (error instanceof Error) onNotice(`Falha na conexão: ${error.message}`);
       onNotice(error instanceof Error ? error.message : "Não foi possível conectar ao teste de voz");
     }
   }
