@@ -47,6 +47,27 @@ class Settings(BaseSettings):
     sentry_dsn: str | None = None
 
 
+def validate_runtime_settings(settings: Settings) -> None:
+    """Fail fast on placeholder or default secrets in non-development environments."""
+    if settings.app_env.lower() in {"dev", "test"}:
+        return
+    errors: list[str] = []
+    if not settings.livekit_url.startswith(("wss://", "ws://")) or ".invalid" in settings.livekit_url:
+        errors.append("LIVEKIT_URL must be a real ws(s):// endpoint")
+    if not settings.livekit_api_key or settings.livekit_api_key == "dev":
+        errors.append("LIVEKIT_API_KEY is required")
+    if not settings.livekit_api_secret or settings.livekit_api_secret == "dev":
+        errors.append("LIVEKIT_API_SECRET is required")
+    if len(settings.auth_secret.encode()) < 32 or settings.auth_secret == "dev-secret-change-me-at-least-32-bytes":
+        errors.append("AUTH_SECRET must be a unique value of at least 32 bytes")
+    if not settings.internal_api_token or settings.internal_api_token == "dev-internal-token":
+        errors.append("INTERNAL_API_TOKEN is required")
+    if ".invalid" in settings.app_base_url or ".invalid" in settings.api_base_url:
+        errors.append("APP_BASE_URL/API_BASE_URL cannot use a placeholder domain")
+    if errors:
+        raise RuntimeError("Invalid production configuration: " + "; ".join(errors))
+
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()

@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse, Response
 
-from .config import get_settings
+from .config import get_settings, validate_runtime_settings
 from .health import HealthChecker, get_health_checker
 from .observability import configure_observability, logger
 from .routes import admin, internal, v1, webhooks
@@ -21,7 +21,9 @@ app.include_router(v1)
 app.include_router(admin)
 app.include_router(internal)
 app.include_router(webhooks)
-configure_observability(app, get_settings())
+settings = get_settings()
+validate_runtime_settings(settings)
+configure_observability(app, settings)
 log = logger()
 
 
