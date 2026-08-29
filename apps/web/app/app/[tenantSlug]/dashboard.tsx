@@ -1525,7 +1525,7 @@ export default function Dashboard({
     try {
       await api(`campaigns/${campaignId}/${action}`, { method: "POST" });
       await refresh();
-      setNotice(`AÃ§Ã£o ${action} aplicada Ã  campanha.`);
+      setNotice(`Ação ${action} aplicada à campanha.`);
     } catch (error) {
       setNotice(String(error));
     }
@@ -1620,7 +1620,7 @@ export default function Dashboard({
         oscillator.stop(context.currentTime + 0.18);
       }
     };
-    source.onerror = () => setNotice("A transmissÃ£o ao vivo foi interrompida; reconecte para continuar.");
+    source.onerror = () => setNotice("A transmissão ao vivo foi interrompida; reconecte para continuar.");
     liveSource.current = source;
   }
 
@@ -1641,7 +1641,7 @@ export default function Dashboard({
         await room.localParticipant.setMicrophoneEnabled(true);
         operatorRoom.current = room;
       }
-      setNotice(phoneChannel ? "Ramal conectado Ã  sala da chamada." : "Microfone do operador conectado Ã  chamada.");
+      setNotice(phoneChannel ? "Ramal conectado à sala da chamada." : "Microfone do operador conectado à chamada.");
     } catch (error) {
       setNotice(String(error));
     }
@@ -2412,7 +2412,7 @@ export default function Dashboard({
                   <h2>Chamadas em andamento</h2>
                   {calls.filter((call) => ["queued", "ringing", "in_progress"].includes(call.status ?? "")).map((call) => (
                     <div className={`row ${watchedCallId === call.id ? "selected" : ""}`} key={call.id}>
-                      <span><strong>{call.channel} Â· {call.status}</strong><small>{call.id}</small></span>
+                      <span><strong>{call.channel} · {call.status}</strong><small>{call.id}</small></span>
                       <div className="actions">
                         <button type="button" className="secondary" onClick={() => watchLive(call.id)}>Acompanhar</button>
                         <button type="button" onClick={() => void takeoverCall(call)}>Assumir</button>
@@ -2446,7 +2446,7 @@ export default function Dashboard({
                       </div>
                     </div>
                   )}
-                  <h2>TranscriÃ§Ã£o e eventos</h2>
+                  <h2>Transcrição e eventos</h2>
                   {liveEvents.map((event, index) => (
                     <div className="row" key={index}>
                       <span><strong>{String(event.type ?? "evento")}</strong><small>{JSON.stringify(event.payload ?? event)}</small></span>
@@ -2460,7 +2460,7 @@ export default function Dashboard({
             {section === "simulator" && (
               <section className="split">
                 <article className="card">
-                  <h2>Nova simulaÃ§Ã£o</h2>
+                  <h2>Nova simulação</h2>
                   <form className="formGrid" onSubmit={createSimulation}>
                     <Field label="Agente">
                       <select name="agent_id" required defaultValue="">
@@ -2478,14 +2478,14 @@ export default function Dashboard({
                       <textarea
                         name="persona"
                         required
-                        defaultValue="Paciente com dÃºvida sobre horÃ¡rios, confirmaÃ§Ã£o e retorno."
+                        defaultValue="Paciente com dúvida sobre horários, confirmação e retorno."
                       />
                     </Field>
                     <Field label="Objetivo">
                       <textarea
                         name="objective"
                         required
-                        defaultValue="Validar se o agente responde com clareza, mantÃ©m contexto e conduz a conversa."
+                        defaultValue="Validar se o agente responde com clareza, mantém contexto e conduz a conversa."
                       />
                     </Field>
                     <Field label="Quantidade de conversas">
@@ -2502,7 +2502,7 @@ export default function Dashboard({
                   </form>
                 </article>
                 <article className="card editor">
-                  <div className="eyebrow">RelatÃ³rio da simulaÃ§Ã£o</div>
+                  <div className="eyebrow">Relatório da simulação</div>
                   <h2>Resultado</h2>
                   {latestSimulation ? (
                     <>
@@ -2513,22 +2513,22 @@ export default function Dashboard({
                             {String(
                               latestSimulation.report?.conversation_count ??
                                 latestSimulation.conversation_count ??
-                                "â€”",
+                                "—",
                             )}
                           </b>
                         </span>
                         <span>
-                          Score mÃ©dio{" "}
+                          Score médio{" "}
                           <b>
                             {String(
-                              latestSimulation.report?.average_score ?? "â€”",
+                              latestSimulation.report?.average_score ?? "—",
                             )}
                           </b>
                         </span>
                         <span>
-                          Taxa de aprovaÃ§Ã£o{" "}
+                          Taxa de aprovação{" "}
                           <b>
-                            {String(latestSimulation.report?.pass_rate ?? "â€”")}
+                            {String(latestSimulation.report?.pass_rate ?? "—")}
                           </b>
                         </span>
                       </div>
@@ -2544,7 +2544,7 @@ export default function Dashboard({
                     </>
                   ) : (
                     <Empty>
-                      Rode uma simulaÃ§Ã£o para gerar o relatÃ³rio desta tela.
+                      Rode uma simulação para gerar o relatório desta tela.
                     </Empty>
                   )}
                 </article>
@@ -2564,10 +2564,10 @@ export default function Dashboard({
                     </Field>
                     <Field label="Fuso"><input name="timezone" defaultValue="America/Sao_Paulo" required /></Field>
                     <div className="two">
-                      <Field label="InÃ­cio"><input name="start" type="time" defaultValue="08:00" required /></Field>
+                      <Field label="Início"><input name="start" type="time" defaultValue="08:00" required /></Field>
                       <Field label="Fim"><input name="end" type="time" defaultValue="20:00" required /></Field>
                     </div>
-                    <Field label="ConcorrÃªncia"><input name="max_concurrency" type="number" min="1" max="50" defaultValue="2" /></Field>
+                    <Field label="Concorrência"><input name="max_concurrency" type="number" min="1" max="50" defaultValue="2" /></Field>
                     <button>Criar campanha</button>
                   </form>
                 </aside>
@@ -3268,27 +3268,27 @@ export default function Dashboard({
                 <section className="stats">
                   <article className="card"><span className="muted">Chamadas</span><strong className="value">{Number(analytics.calls ?? 0)}</strong></article>
                   <article className="card"><span className="muted">Minutos</span><strong className="value">{Number(analytics.minutes ?? 0).toFixed(1)}</strong></article>
-                  <article className="card"><span className="muted">ResoluÃ§Ã£o</span><strong className="value">{(Number(analytics.resolution_rate ?? 0) * 100).toFixed(1)}%</strong></article>
+                  <article className="card"><span className="muted">Resolução</span><strong className="value">{(Number(analytics.resolution_rate ?? 0) * 100).toFixed(1)}%</strong></article>
                   <article className="card"><span className="muted">TTFB p95</span><strong className="value">{Number(analytics.latency_p95 ?? 0).toFixed(0)} ms</strong></article>
                 </section>
-                <article className="card"><h2>SÃ©rie diÃ¡ria</h2>{Array.isArray(analytics.series) && analytics.series.map((point, index) => { const row = point as Record<string, unknown>; return <div className="row" key={String(row.date ?? index)}><span><strong>{String(row.date)}</strong><small>{Number(row.minutes ?? 0).toFixed(1)} minutos</small></span><b>{Number(row.calls ?? 0)} chamadas</b></div>; })}</article>
+                <article className="card"><h2>Série diária</h2>{Array.isArray(analytics.series) && analytics.series.map((point, index) => { const row = point as Record<string, unknown>; return <div className="row" key={String(row.date ?? index)}><span><strong>{String(row.date)}</strong><small>{Number(row.minutes ?? 0).toFixed(1)} minutos</small></span><b>{Number(row.calls ?? 0)} chamadas</b></div>; })}</article>
               </>
             )}
             {section === "endUsers" && (
               <article className="card">
                 <h2>End-users</h2>
-                {endUsers.map((item) => <div className="row" key={item.id}><span><strong>{String(item.name ?? item.external_id ?? item.phone ?? item.email ?? item.id)}</strong><small>{String(item.email ?? item.phone ?? "Sem contato")} Â· {Number(item.calls_count ?? 0)} chamadas</small></span>{["owner", "admin"].includes(role) && <button className="danger" type="button" onClick={() => void eraseEndUser(item.id)}>Excluir LGPD</button>}</div>)}
+                {endUsers.map((item) => <div className="row" key={item.id}><span><strong>{String(item.name ?? item.external_id ?? item.phone ?? item.email ?? item.id)}</strong><small>{String(item.email ?? item.phone ?? "Sem contato")} · {Number(item.calls_count ?? 0)} chamadas</small></span>{["owner", "admin"].includes(role) && <button className="danger" type="button" onClick={() => void eraseEndUser(item.id)}>Excluir LGPD</button>}</div>)}
                 {!endUsers.length && <Empty>Nenhum end-user identificado.</Empty>}
               </article>
             )}
             {section === "webhooks" && (
               <section className="split">
                 <article className="card"><h2>Endpoints</h2>{outgoingWebhooks.map((item) => <div className="row" key={item.id}><span><strong>{String(item.url)}</strong><small>{Array.isArray(item.events) ? item.events.join(", ") : ""}</small></span><b>{item.enabled ? "Ativo" : "Pausado"}</b></div>)}{!outgoingWebhooks.length && <Empty>Nenhum webhook configurado.</Empty>}</article>
-                <article className="card"><h2>Novo webhook</h2><form className="formGrid" onSubmit={createOutgoingWebhook}><Field label="URL HTTPS"><input name="url" type="url" required placeholder="https://cliente.example/webhooks" /></Field><Field label="Eventos separados por vÃ­rgula"><input name="events" required defaultValue="call.ended,usage.threshold" /></Field><button>Criar e gerar secret</button></form></article>
+                <article className="card"><h2>Novo webhook</h2><form className="formGrid" onSubmit={createOutgoingWebhook}><Field label="URL HTTPS"><input name="url" type="url" required placeholder="https://cliente.example/webhooks" /></Field><Field label="Eventos separados por vírgula"><input name="events" required defaultValue="call.ended,usage.threshold" /></Field><button>Criar e gerar secret</button></form></article>
               </section>
             )}
             {section === "exports" && (
-              <article className="card"><h2>Exports LGPD</h2><p className="muted">Arquivos CSV criptografados em repouso, disponÃ­veis por link temporÃ¡rio.</p><div className="actions"><button type="button" onClick={() => void requestExport("calls")}>Exportar chamadas</button><button type="button" onClick={() => void requestExport("end_user")}>Exportar end-users</button>{latestExport && <button className="secondary" type="button" onClick={() => void refreshExport()}>Atualizar status</button>}</div>{latestExport && <div className="row"><span><strong>{String(latestExport.status)}</strong><small>{latestExport.id}</small></span>{typeof latestExport.download_url === "string" && <a href={latestExport.download_url}>Baixar CSV</a>}</div>}</article>
+              <article className="card"><h2>Exports LGPD</h2><p className="muted">Arquivos CSV criptografados em repouso, disponíveis por link temporário.</p><div className="actions"><button type="button" onClick={() => void requestExport("calls")}>Exportar chamadas</button><button type="button" onClick={() => void requestExport("end_user")}>Exportar end-users</button>{latestExport && <button className="secondary" type="button" onClick={() => void refreshExport()}>Atualizar status</button>}</div>{latestExport && <div className="row"><span><strong>{String(latestExport.status)}</strong><small>{latestExport.id}</small></span>{typeof latestExport.download_url === "string" && <a href={latestExport.download_url}>Baixar CSV</a>}</div>}</article>
             )}
             {section === "settings" && (
               <section className="split">
@@ -3341,7 +3341,7 @@ export default function Dashboard({
                             ?.anonymize_transcripts ?? false,
                         )}
                       />
-                      Anonimizar transcriÃ§Ãµes apÃ³s a retenÃ§Ã£o
+                      Anonimizar transcrições após a retenção
                     </label>
                     <button>Salvar configurações</button>
                   </form>
