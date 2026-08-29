@@ -1771,6 +1771,20 @@ export default function Dashboard({
           <>
             {section === "overview" && (
               <>
+                <section className="adminHero">
+                  <div>
+                    <div className="eyebrow">Centro de operação</div>
+                    <h2>Configure uma atendente e coloque-a para trabalhar.</h2>
+                    <p>
+                      O VoiceOS transforma um processo configurado em uma conversa de voz
+                      monitorada. Comece pelo agente, valide uma chamada e acompanhe o resultado.
+                    </p>
+                  </div>
+                  <div className="adminHeroActions">
+                    <button type="button" onClick={() => setSection("agents")}>Configurar agente</button>
+                    <button type="button" className="secondary" onClick={() => setSection("calls")}>Ver chamadas</button>
+                  </div>
+                </section>
                 <section className="stats">
                   {stats.map(([label, value]) => (
                     <article className="card" key={label}>

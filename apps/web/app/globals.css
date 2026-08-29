@@ -159,6 +159,36 @@ main {
   padding-bottom: 22px;
   border-bottom: 1px solid #292b3b;
 }
+.adminHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 28px;
+  margin-bottom: 18px;
+  padding: 30px 32px;
+  border: 1px solid #4a4072;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #24203d 0%, #171827 68%);
+  box-shadow: 0 24px 55px #08081252;
+}
+.adminHero h2 {
+  max-width: 680px;
+  margin: 8px 0 10px;
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.08;
+  letter-spacing: -.04em;
+  font-weight: 500;
+}
+.adminHero p {
+  max-width: 660px;
+  margin: 0;
+  color: var(--muted);
+}
+.adminHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .top h1 {
   font-size: 34px;
   letter-spacing: -0.04em;
@@ -555,6 +585,9 @@ button.danger {
   }
   .workspace,
   .split {
+    grid-template-columns: 1fr;
+  }
+  .adminHero {
     grid-template-columns: 1fr;
   }
   .stats {
