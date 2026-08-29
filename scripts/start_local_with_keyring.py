@@ -27,7 +27,10 @@ DEFAULT_SERVICES = ("db", "redis", "api", "mock", "web", "worker", "agent-worker
 CREDENTIALS: dict[str, tuple[tuple[str, str], ...]] = {
     "LIVEKIT_URL": (("VOICEOS.LIVEKIT_URL", "URL"),),
     "LIVEKIT_API_KEY": (("VOICEOS.LIVEKIT_API_KEY", "API_KEY"),),
-    "LIVEKIT_API_SECRET": (("VOICEOS.LIVEKIT_API_SECRET", "API_SECRET"),),
+    "LIVEKIT_API_SECRET": (
+        ("VOICEOS.LIVEKIT_API_SECRET", "API_SECRET"),
+        ("VOICEOS.LIVEKIT_API_SECRET", "API_KEY"),
+    ),
     "OPENAI_API_KEY": (
         ("VOICEOS.OPENAI_API_KEY", "API_KEY"),
         ("VOICEOS.OPENAI", "API_KEY"),
