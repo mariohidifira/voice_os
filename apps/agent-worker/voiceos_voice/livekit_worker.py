@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import UTC, datetime
@@ -53,6 +54,27 @@ DTMF_CODES = {
 }
 
 logger = logging.getLogger(__name__)
+
+_FAREWELL_RE = re.compile(
+    r"\b(?:tchau|adeus|até\s+logo|ate\s+logo|até\s+mais|ate\s+mais|"
+    r"nos\s+falamos|encerr(?:ando|ar)|deslig(?:ando|ar))\b|"
+    r"\bobrigad[oa].{0,60}\b(?:contato|ajuda|aten(?:d|ç)[aã]o)\b",
+    re.IGNORECASE,
+)
+
+
+def is_farewell(text: str) -> bool:
+    """Return true only for an explicit closing phrase, not a casual thanks."""
+    return bool(_FAREWELL_RE.search(str(text or "").strip()))
+
+
+def normalize_language(value: Any) -> str:
+    """Keep the locale stable for the entire session while accepting BCP-47 casing."""
+    raw = str(value or "pt-BR").strip().replace("_", "-")
+    if not raw:
+        return "pt-BR"
+    parts = raw.split("-")
+    return parts[0].lower() + (f"-{parts[1].upper()}" if len(parts) > 1 else "")
 
 
 async def send_dtmf(participant: Any, digits: str) -> None:
@@ -421,6 +443,9 @@ def dynamic_tools(
                     "value": raw_arguments.get("value"),
                 }
             if tool_kind == "end_call":
+                if session_ref.get("ending"):
+                    return {"status": "conversation_ending"}
+                session_ref["ending"] = True
                 bridge.end_reason = str(raw_arguments.get("reason") or "agent_hangup")
                 farewell = str(raw_arguments.get("farewell") or "Obrigado pelo contato. Até logo!")
 
@@ -505,7 +530,9 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
     stt_config = runtime.get("stt") or {}
     llm_config = runtime.get("llm") or {}
     tts_config = runtime.get("tts") or {}
-    language = str(runtime.get("language") or "pt-BR")
+    # Resolve locale once at startup; no provider is allowed to infer a new
+    # language on a later turn.
+    language = normalize_language(runtime.get("language"))
     behavior_config = runtime.get("behavior") or {}
     execution_mode = str(behavior_config.get("execution_mode") or "llm").lower()
     if behavior_config.get("external_llm_enabled") is False:
@@ -591,7 +618,8 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
             cartesia.TTS(
                 model=str(tts_config.get("fallback_model") or "sonic-3"),
                 voice=str(
-                    tts_config.get("fallback_voice_id")
+                    tts_config.get("voice_id")
+                    or tts_config.get("fallback_voice_id")
                     or "f786b574-daa5-4673-aa0c-cbe3e8534c02"
                 ),
                 language=language,
@@ -700,7 +728,9 @@ async def voiceos_agent(ctx: JobContext) -> None:
         except FlowConfigError as exc:
             raise ValueError(f"invalid deterministic process: {exc}") from exc
     amd_transcript: list[str] = []
-    session_ref: dict[str, AgentSession[Any]] = {}
+    # The dictionary is shared with tools and the farewell guard so shutdown
+    # remains idempotent when both paths observe the same closing utterance.
+    session_ref: dict[str, Any] = {"ending": False}
     tools = dynamic_tools(
         api,
         call_id,
@@ -720,6 +750,9 @@ async def voiceos_agent(ctx: JobContext) -> None:
     @function_tool(description="Encerra a conversa depois de uma despedida curta.")
     async def end_call(reason: str = "agent_hangup", farewell: str = "") -> str:
         """Say a final farewell and terminate the LiveKit room."""
+        if session_ref.get("ending"):
+            return "conversation_ending"
+        session_ref["ending"] = True
         bridge.end_reason = reason or "agent_hangup"
         final_text = farewell or "Obrigado pelo contato. Até logo!"
         speech = session_ref["session"].say(final_text, allow_interruptions=False)
@@ -756,9 +789,25 @@ async def voiceos_agent(ctx: JobContext) -> None:
             amd_transcript.append(event.transcript)
 
     session.on("user_input_transcribed", user_transcribed)
-    session.on(
-        "conversation_item_added", lambda event: bridge.spawn(bridge.conversation_item(event))
-    )
+    async def assistant_conversation_item(event: ConversationItemAddedEvent) -> None:
+        await bridge.conversation_item(event)
+        item = event.item
+        if str(getattr(item, "role", "")) != "assistant":
+            return
+        content = getattr(item, "text_content", None) or getattr(item, "content", None)
+        text = content if isinstance(content, str) else " ".join(str(part) for part in (content or []))
+        if not behavior.get("auto_hangup_on_farewell", True) or not is_farewell(text):
+            return
+        if session_ref.get("ending"):
+            return
+        session_ref["ending"] = True
+        bridge.end_reason = "agent_hangup"
+        # conversation_item_added can arrive just before the final audio
+        # packet; a short drain window prevents cutting off the farewell.
+        await asyncio.sleep(float(behavior.get("farewell_disconnect_delay_s", 0.45)))
+        session.shutdown(drain=True)
+
+    session.on("conversation_item_added", lambda event: bridge.spawn(assistant_conversation_item(event)))
     session.on("metrics_collected", lambda event: bridge.spawn(bridge.metric(event)))
     session.on("session_usage_updated", lambda event: bridge.spawn(bridge.usage(event)))
     session.on("user_state_changed", lambda event: bridge.spawn(guards.user_state(event)))
