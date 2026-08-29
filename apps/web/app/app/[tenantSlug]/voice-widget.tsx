@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 type Session = { session_id: string; call_id: string; livekit_url: string; token: string };
 
-export default function VoiceWidget({ agentId, onClose, onNotice }: { agentId: string; onClose: () => void; onNotice: (message: string) => void }) {
+export default function VoiceWidget({ agentId, language, onClose, onNotice }: { agentId: string; language?: string; onClose: () => void; onNotice: (message: string) => void }) {
   const [state, setState] = useState<"ready" | "connecting" | "connected" | "ended" | "error">("ready");
   const [muted, setMuted] = useState(false);
   const [level, setLevel] = useState(0);
@@ -23,7 +23,7 @@ export default function VoiceWidget({ agentId, onClose, onNotice }: { agentId: s
       const response = await fetch(`/api/voiceos/agents/${agentId}/test-session`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ agent_id: agentId, variables: {}, metadata: { source: "dashboard_widget" } }),
+        body: JSON.stringify({ agent_id: agentId, variables: {}, metadata: { source: "entry_point", language: language ?? "pt-BR" } }),
       });
       if (!response.ok) throw new Error((await response.json().catch(() => ({})))?.detail?.message ?? `HTTP ${response.status}`);
       const session = await response.json() as Session;

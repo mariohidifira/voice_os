@@ -551,9 +551,13 @@ function AgentAdvancedPanel({
 export default function Dashboard({
   tenantSlug,
   initialTestAgentId,
+  initialEntry,
+  language,
 }: {
   tenantSlug: string;
   initialTestAgentId?: string;
+  initialEntry?: string;
+  language?: string;
 }) {
   const [section, setSection] = useState<Section>("overview");
   const [agents, setAgents] = useState<Item[]>([]);
@@ -591,6 +595,7 @@ export default function Dashboard({
   const [widgetAgentId, setWidgetAgentId] = useState<string | null>(
     initialTestAgentId ?? null,
   );
+  const autoOpenedRef = useRef(Boolean(initialTestAgentId));
   const [selectedAgent, setSelectedAgent] = useState<Item | null>(null);
   const [agentVersions, setAgentVersions] = useState<Item[]>([]);
   const [agentTab, setAgentTab] = useState<AgentTab>("prompt");
@@ -687,6 +692,10 @@ export default function Dashboard({
       setAnalytics(analyticsResult);
       setOutgoingWebhooks(webhookResult.data);
       setAgents(a.data);
+      if (initialEntry === "agent" && !autoOpenedRef.current && a.data[0]?.id) {
+        autoOpenedRef.current = true;
+        setWidgetAgentId(a.data[0].id);
+      }
       setAgentTemplates(templates.data);
       setCalls(c.data);
       setKnowledge(k.data);
@@ -828,7 +837,11 @@ export default function Dashboard({
       },
       behavior: {
         ...existingBehavior,
-        execution_mode: String(form.get("execution_mode") || "llm"),
+        execution_mode:
+          form.get("external_llm_enabled") === "on"
+            ? String(form.get("execution_mode") || "llm")
+            : "deterministic",
+        external_llm_enabled: form.get("external_llm_enabled") === "on",
         max_call_duration_s: Number(form.get("max_duration")),
         silence_timeout_s: Number(form.get("silence_timeout")),
         ...(process ? { process } : {}),
@@ -1744,6 +1757,7 @@ export default function Dashboard({
         {widgetAgentId && (
           <VoiceWidget
             agentId={widgetAgentId}
+            language={language}
             onNotice={setNotice}
             onClose={() => {
               setWidgetAgentId(null);
@@ -2159,6 +2173,10 @@ export default function Dashboard({
                               <option value="deterministic">Determinístico (sem LLM)</option>
                             </select>
                           </Field>
+                          <label className="llmToggle">
+                            <input type="checkbox" name="external_llm_enabled" defaultChecked={(draft.behavior as Record<string, unknown> | undefined)?.external_llm_enabled !== false} />
+                            <span><strong>Permitir LLM externa</strong><small>Ligado: usa o provedor configurado (Claude/OpenAI/etc.). Desligado: executa o processo local/determinístico.</small></span>
+                          </label>
                           <Field label="Processo (JSON: estados, intenções e transições)">
                             <textarea
                               name="process_json"

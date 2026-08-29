@@ -506,7 +506,10 @@ def provider_pipeline(runtime: dict[str, Any]) -> dict[str, Any]:
     llm_config = runtime.get("llm") or {}
     tts_config = runtime.get("tts") or {}
     language = str(runtime.get("language") or "pt-BR")
-    execution_mode = str((runtime.get("behavior") or {}).get("execution_mode") or "llm").lower()
+    behavior_config = runtime.get("behavior") or {}
+    execution_mode = str(behavior_config.get("execution_mode") or "llm").lower()
+    if behavior_config.get("external_llm_enabled") is False:
+        execution_mode = "deterministic"
 
     stt_providers: list[Any] = []
     stt_provider = str(stt_config.get("provider") or "deepgram").lower()
@@ -687,6 +690,8 @@ async def voiceos_agent(ctx: JobContext) -> None:
     turn = runtime.get("turn") or {}
     behavior = runtime.get("behavior") or {}
     execution_mode = str(behavior.get("execution_mode") or "llm").lower()
+    if behavior.get("external_llm_enabled") is False:
+        execution_mode = "deterministic"
     flow_engine: FlowEngine | None = None
     flow_config = dict(behavior.get("process") or {})
     if execution_mode == "deterministic":
