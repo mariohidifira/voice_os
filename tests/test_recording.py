@@ -6,7 +6,7 @@ from livekit import api
 from voiceos_api.config import Settings
 from voiceos_api.repository import MemoryRepository
 from voiceos_api.routes import _egress_recording
-from voiceos_api.storage import RecordingStorage
+from voiceos_api.storage import ExportStorage, RecordingStorage, RetentionStorage
 from voiceos_api.store import MemoryStore
 from voiceos_voice.recording import start_egress
 
@@ -105,3 +105,29 @@ async def test_recording_storage_generates_short_lived_tenant_object_url() -> No
         await storage.playback_url("recordings/tenant/call.ogg")
         == "https://signed.example/recording"
     )
+
+
+@pytest.mark.asyncio
+async def test_export_and_retention_storage_operations() -> None:
+    class S3:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict[str, Any]]] = []
+
+        def put_object(self, **kwargs: Any) -> None:
+            self.calls.append(("put", kwargs))
+
+        def generate_presigned_url(self, operation: str, **kwargs: Any) -> str:
+            self.calls.append((operation, kwargs))
+            return "https://signed.example/export"
+
+        def delete_objects(self, **kwargs: Any) -> None:
+            self.calls.append(("delete", kwargs))
+
+    s3 = S3()
+    settings = Settings(s3_bucket_exports="exports-test", s3_bucket_documents="documents-test")
+    exports = ExportStorage(settings, s3)
+    await exports.upload("exports/report.csv", b"id,name", "text/csv")
+    assert await exports.download_url("exports/report.csv") == "https://signed.example/export"
+    retention = RetentionStorage(settings, s3)
+    await retention.delete(["recordings/a.ogg"], ["documents/a.txt"])
+    assert [call[0] for call in s3.calls] == ["put", "get_object", "delete", "delete"]

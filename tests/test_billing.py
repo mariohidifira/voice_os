@@ -6,9 +6,15 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import jwt
+import pytest
 from fastapi.testclient import TestClient
-from voiceos_api.billing import stripe_signature_valid
-from voiceos_api.config import get_settings
+from voiceos_api.billing import (
+    DevStripeGateway,
+    StripeHTTPGateway,
+    get_stripe_gateway,
+    stripe_signature_valid,
+)
+from voiceos_api.config import Settings, get_settings
 from voiceos_api.main import app
 from voiceos_api.repository import MemoryRepository, get_repository
 from voiceos_api.store import store
@@ -116,13 +122,78 @@ def test_stripe_webhook_updates_subscription_invoice_and_tenant() -> None:
 
 def test_stripe_signature_verification() -> None:
     payload = b'{"id":"evt_test"}'
-    timestamp = str(int(time.time()))
+    timestamp = int(time.time())
     secret = "whsec_test"
+    timestamp_text = str(timestamp)
     digest = hmac.new(
-        secret.encode(), timestamp.encode() + b"." + payload, hashlib.sha256
+        secret.encode(), timestamp_text.encode() + b"." + payload, hashlib.sha256
     ).hexdigest()
-    assert stripe_signature_valid(payload, f"t={timestamp},v1={digest}", secret)
-    assert not stripe_signature_valid(payload, f"t={timestamp},v1=invalid", secret)
+    assert stripe_signature_valid(payload, f"t={timestamp_text},v1={digest}", secret)
+    assert not stripe_signature_valid(payload, f"t={timestamp_text},v1=invalid", secret)
+    assert not stripe_signature_valid(payload, f"t={timestamp - 301},v1={digest}", secret)
+
+
+def test_dev_stripe_gateway_contract() -> None:
+    import asyncio
+
+    async def exercise() -> None:
+        gateway = DevStripeGateway("http://localhost:3000")
+        plan = {"code": "pro"}
+        checkout = await gateway.checkout(None, plan, "tenant-12345678")
+        assert checkout["session_id"] == "cs_test_tenant-1_pro"
+        assert "plan=pro" in checkout["url"]
+        assert (await gateway.portal("cus_test"))["url"].endswith("customer=cus_test")
+        assert (await gateway.report_usage("si_test", 4, "usage-12345678")) == "ur_test_si_test_4_12345678"
+        assert await gateway.set_quantity("si_test", 2) is None
+
+    asyncio.run(exercise())
+
+
+def test_dev_gateway_selected_without_stripe_secret() -> None:
+    assert isinstance(get_stripe_gateway(), DevStripeGateway)
+
+
+@pytest.mark.asyncio
+async def test_stripe_http_gateway_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    from voiceos_api import billing
+
+    class Response:
+        def __init__(self, payload: dict[str, str]) -> None:
+            self.payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, str]:
+            return self.payload
+
+    class Client:
+        def __init__(self, **_: object) -> None:
+            self.paths: list[str] = []
+
+        async def __aenter__(self) -> "Client":
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        async def post(self, path: str, **_: object) -> Response:
+            self.paths.append(path)
+            if path.endswith("checkout/sessions"):
+                return Response({"url": "https://checkout.test", "id": "cs_live"})
+            if path.endswith("billing_portal/sessions"):
+                return Response({"url": "https://portal.test"})
+            if path.endswith("usage_records"):
+                return Response({"id": "ur_live"})
+            return Response({"id": "updated"})
+
+    monkeypatch.setattr(billing.httpx, "AsyncClient", Client)
+    gateway = StripeHTTPGateway(Settings(stripe_secret_key="sk_test"))
+    checkout = await gateway.checkout("cus_1", {"code": "pro", "stripe_price_id": "price_1"}, "tenant-1")
+    assert checkout == {"url": "https://checkout.test", "session_id": "cs_live"}
+    assert await gateway.portal("cus_1") == {"url": "https://portal.test"}
+    assert await gateway.report_usage("si_1", 3, "idem-1") == "ur_live"
+    assert await gateway.set_quantity("si_1", 4) is None
 
 
 def test_hourly_meter_reports_only_overage_and_marks_records() -> None:
