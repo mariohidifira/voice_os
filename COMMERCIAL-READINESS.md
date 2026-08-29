@@ -22,6 +22,9 @@ release ready.
 
 - The API and `agent-worker` both fail fast on placeholder production settings;
   development/test environments retain their documented local defaults.
+- Frontend validation on 2026-08-29: `npm run typecheck` and `npm run build`
+  passed; the browser widget bundle is 10,097 bytes (3,520 gzip bytes), below
+  the 60 KiB budget.
 
 ### Latest local smoke (2026-08-28)
 
