@@ -615,3 +615,15 @@ button.danger {
     display: none;
   }
 }
+
+/* Reference design: Nocturne multimodal UI */
+.entryShell { background: radial-gradient(circle at 75% -10%, #29224a 0, transparent 34%), #12141f; color: #e9e9ed; }
+.entryReferenceBar { max-width: 1360px; width: 100%; margin: 0 auto 48px; color: #9397ab; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+.entryReferenceBar > span:not(.entryPulse) { color: #e9e9ed; font-weight: 700; }
+.entryReferenceBar em { color: #595d6c; font-style: normal; letter-spacing: .04em; }
+.entryHero h1 span { color: #9184d9; }
+.entryLanguage select { border-color: #423a6a; background: #1a1c2a; }
+.entryButton { border-color: #292b31; background: #161826; }
+.entryButton:hover { border-color: #9184d9; background: #1c1f33; }
+.entryButton small { color: #9397ab; }
+.entryIcon, .entryButton b { color: #9184d9; border-color: #9184d9; }
