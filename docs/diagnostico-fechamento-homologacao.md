@@ -53,7 +53,9 @@ código/configuração:
   existe o endpoint operacional `/internal/calls/tick`.
 - Validação de configuração: fora de `dev/test`, a API recusa URLs LiveKit de
   placeholder, chaves padrão, segredos fracos e URLs de aplicação inválidas no
-  startup (`validate_runtime_settings`).
+  startup (`validate_runtime_settings`). O launcher do `agent-worker` aplica a
+  mesma proteção para LiveKit e `INTERNAL_API_TOKEN` antes de registrar o
+  worker.
 
 ## Verificação atual (2026-08-29)
 
