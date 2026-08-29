@@ -844,6 +844,8 @@ export default function Dashboard({
         external_llm_enabled: form.get("external_llm_enabled") === "on",
         max_call_duration_s: Number(form.get("max_duration")),
         silence_timeout_s: Number(form.get("silence_timeout")),
+        auto_hangup_on_farewell: form.get("auto_hangup_on_farewell") === "on",
+        farewell_disconnect_delay_s: Number(form.get("farewell_disconnect_delay_s")),
         ...(process ? { process } : {}),
       },
       knowledge_base_id: form.get("knowledge_base_id") || null,
@@ -2155,6 +2157,35 @@ export default function Dashboard({
                               <audio controls autoPlay src={voicePreviewUrl} />
                             )}
                           </div>
+                          <label className="llmToggle">
+                            <input
+                              type="checkbox"
+                              name="auto_hangup_on_farewell"
+                              defaultChecked={
+                                (draft.behavior as Record<string, unknown> | undefined)
+                                  ?.auto_hangup_on_farewell !== false
+                              }
+                            />
+                            <span>
+                              <strong>Encerrar após despedida</strong>
+                              <small>
+                                Desliga a sessão automaticamente quando o agente disser “até logo”, “tchau” ou outra despedida explícita.
+                              </small>
+                            </span>
+                          </label>
+                          <Field label="Aguardar áudio final (s)">
+                            <input
+                              name="farewell_disconnect_delay_s"
+                              type="number"
+                              min="0.1"
+                              max="3"
+                              step="0.05"
+                              defaultValue={String(
+                                (draft.behavior as Record<string, unknown> | undefined)
+                                  ?.farewell_disconnect_delay_s ?? 0.45,
+                              )}
+                            />
+                          </Field>
                         </fieldset>
                         <fieldset
                           className="tabPanel"
