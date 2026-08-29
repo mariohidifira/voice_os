@@ -1,6 +1,7 @@
 """Idempotent PostgreSQL development seed."""
 
 import asyncio
+import os
 from uuid import UUID
 
 from sqlalchemy import text
@@ -39,6 +40,19 @@ async def seed() -> None:
             ),
             {"tenant": TENANT, "user": USER},
         )
+        seed_plan = os.getenv("VOICEOS_SEED_PLAN")
+        if seed_plan:
+            await db.execute(
+                text("DELETE FROM subscriptions WHERE tenant_id=:tenant"),
+                {"tenant": TENANT},
+            )
+            await db.execute(
+                text(
+                    "INSERT INTO subscriptions(id,tenant_id,plan_id,status) "
+                    "SELECT gen_random_uuid(),:tenant,id,'active' FROM plans WHERE code=:code"
+                ),
+                {"tenant": TENANT, "code": seed_plan},
+            )
         await db.execute(
             text(
                 "INSERT INTO agents(id,tenant_id,name,status,current_version_id,draft_version_id) VALUES(:id,:tenant,'Recepcionista','active',:version,:version) ON CONFLICT(id) DO NOTHING"
