@@ -1,0 +1,30 @@
+{
+  "scope": "commercial_gate_audit",
+  "status_date": "2026-08-29",
+  "authority": "COMMERCIAL-READINESS.md",
+  "status": "mvp_homologation_ready_production_pending",
+  "automated_gates": {
+    "ci_run": "33223663554",
+    "ci_conclusion": "success",
+    "lint_typecheck_tests_build": "passed",
+    "dashboard_e2e": "passed",
+    "docker_compose_build": "passed",
+    "local_regression_tests": 169,
+    "local_backend_coverage_gate": "passed"
+  },
+  "external_gates": {
+    "real_voice_staging_50_calls": "missing",
+    "twilio_livekit_sip_pstn": "missing",
+    "stripe_test_lifecycle": "missing",
+    "aws_observability_incident_drill": "missing",
+    "external_widget_domain_tls": "missing"
+  },
+  "required_inputs_not_available_in_current_environment": [
+    "Twilio/SIP credentials and phone number",
+    "Stripe test account and webhook signing secret",
+    "AWS staging account and deployment credentials",
+    "Grafana Cloud and Sentry projects",
+    "Owned production domain"
+  ],
+  "interpretation": "Historical phase and handoff reports may prove local artifact generation or a prior hosted asset check, but they do not prove the five current commercial release gates. They must not be used alone to label the product production-ready."
+}

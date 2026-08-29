@@ -31,6 +31,12 @@ release ready.
 
 ## Release blockers requiring external evidence
 
+The current reconciliation audit is recorded in
+`reports/commercial-gate-audit-2026-08-29.json`. Some older phase/handoff
+reports contain historical artifact checks and may say `complete=true`; they
+do not replace the five production gates below and are not, by themselves,
+evidence that the commercial release is ready.
+
 The product must not be labelled production-ready until each item below has a
 dated report attached under `reports/`:
 
