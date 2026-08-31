@@ -31,7 +31,7 @@
       "name": "pytest_suite",
       "ok": true,
       "returncode": 0,
-      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider --basetemp G:\\DEV\\VOICE_OS\\.pytest-tmp\\final-local-audit-b68621eec1d542eb849e806bda60bb19",
+      "command": "C:\\Users\\mario\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m pytest -q -p no:cacheprovider --basetemp G:\\DEV\\VOICE_OS\\.pytest-tmp\\final-local-audit-448b4ff71e574aa380fbc827e4746e6a",
       "output": "[pytest output omitted on success]",
       "ok_local": true
     },

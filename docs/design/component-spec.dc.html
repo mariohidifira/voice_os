@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<![CDATA[<helmet data-dc-atomics>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>body{margin:0;background:#12141f}</style>
+</helmet>
+
+<div style="background:#12141f;font-family:Inter,system-ui,sans-serif;color:#e9e9ed;padding:56px 64px 120px;display:flex;flex-direction:column;gap:48px;max-width:1360px;margin:0 auto">
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:#9184d9;box-shadow:0 0 10px #9184d9"></span><span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9397ab">VoiceOS · Especificação de componentes</span></div>
+    <h1 style="font-size:32px;font-weight:500;margin:0;letter-spacing:-.015em">Component spec — Gerenciamento &amp; Configuração</h1>
+    <p style="font-size:14px;color:#75798c;margin:0;max-width:680px">Anatomia, medidas e estados dos componentes usados nas telas de configuração/administração. Todos os valores vêm dos tokens do catálogo visual.</p>
+  </div>
+
+  <!-- NAV ITEM -->
+  <section style="border:1px solid #292b31;border-radius:12px;overflow:hidden">
+    <div style="padding:16px 24px;border-bottom:1px solid #292b31;display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-size:16px;font-weight:600">Item de navegação (sidebar)</h2><span style="font:11px ui-monospace,monospace;color:#595d6c">.nav-item</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 340px">
+      <div style="padding:32px;display:flex;align-items:center;justify-content:center;background:#161826">
+        <div style="display:flex;flex-direction:column;gap:4px;width:200px">
+          <div style="padding:9px 10px;border-radius:8px;font-size:13px;color:#e9e9ed;background:#232532">Modalidades</div>
+          <div style="padding:9px 10px;border-radius:8px;font-size:13px;color:#9397ab">Integrações</div>
+        </div>
+      </div>
+      <div style="border-left:1px solid #292b31;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ navSpecs }}" as="sp" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px;border-bottom:1px solid #232532;padding-bottom:8px"><span style="color:#75798c">{{ sp.k }}</span><span style="color:#cfd3e5;text-align:right">{{ sp.v }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOGGLE ROW -->
+  <section style="border:1px solid #292b31;border-radius:12px;overflow:hidden">
+    <div style="padding:16px 24px;border-bottom:1px solid #292b31;display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-size:16px;font-weight:600">Linha de configuração (toggle)</h2><span style="font:11px ui-monospace,monospace;color:#595d6c">.settings-row</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 340px">
+      <div style="padding:32px;display:flex;align-items:center;justify-content:center;background:#161826">
+        <div style="display:flex;align-items:center;gap:14px;width:280px">
+          <div style="flex:1"><div style="font-size:13px;font-weight:500">Ler a tela ativa</div><div style="font-size:11px;color:#75798c;margin-top:2px">Usa o conteúdo visível na resposta</div></div>
+          <div style="width:38px;height:22px;border-radius:11px;background:#9184d9;position:relative;flex:none"><span style="position:absolute;top:2px;left:18px;width:18px;height:18px;border-radius:50%;background:#e9e9ed"></span></div>
+        </div>
+      </div>
+      <div style="border-left:1px solid #292b31;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ toggleSpecs }}" as="sp" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px;border-bottom:1px solid #232532;padding-bottom:8px"><span style="color:#75798c">{{ sp.k }}</span><span style="color:#cfd3e5;text-align:right">{{ sp.v }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUTTONS -->
+  <section style="border:1px solid #292b31;border-radius:12px;overflow:hidden">
+    <div style="padding:16px 24px;border-bottom:1px solid #292b31;display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-size:16px;font-weight:600">Botão — primário / secundário / destrutivo</h2><span style="font:11px ui-monospace,monospace;color:#595d6c">.btn</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 340px">
+      <div style="padding:32px;display:flex;align-items:center;justify-content:center;background:#161826;gap:10px">
+        <button style="border:1px solid #9184d9;color:#9184d9;background:transparent;border-radius:8px;padding:10px 18px;font:500 13px Inter">Salvar</button>
+        <button style="border:1px solid #292b31;color:#b2b6ca;background:transparent;border-radius:8px;padding:10px 18px;font:500 13px Inter">Cancelar</button>
+        <button style="border:1px solid #ff9a9a;color:#ff9a9a;background:transparent;border-radius:8px;padding:10px 18px;font:500 13px Inter">Apagar</button>
+      </div>
+      <div style="border-left:1px solid #292b31;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ btnSpecs }}" as="sp" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px;border-bottom:1px solid #232532;padding-bottom:8px"><span style="color:#75798c">{{ sp.k }}</span><span style="color:#cfd3e5;text-align:right">{{ sp.v }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- INPUT -->
+  <section style="border:1px solid #292b31;border-radius:12px;overflow:hidden">
+    <div style="padding:16px 24px;border-bottom:1px solid #292b31;display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-size:16px;font-weight:600">Campo de busca / input</h2><span style="font:11px ui-monospace,monospace;color:#595d6c">.input</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 340px">
+      <div style="padding:32px;display:flex;align-items:center;justify-content:center;background:#161826">
+        <input placeholder="Buscar…" style="width:220px;background:#1a1c2a;border:1px solid #292b31;border-radius:8px;padding:10px 12px;color:#e9e9ed;font:13px Inter"/>
+      </div>
+      <div style="border-left:1px solid #292b31;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ inputSpecs }}" as="sp" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px;border-bottom:1px solid #232532;padding-bottom:8px"><span style="color:#75798c">{{ sp.k }}</span><span style="color:#cfd3e5;text-align:right">{{ sp.v }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAT CARD -->
+  <section style="border:1px solid #292b31;border-radius:12px;overflow:hidden">
+    <div style="padding:16px 24px;border-bottom:1px solid #292b31;display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-size:16px;font-weight:600">Cartão de estatística</h2><span style="font:11px ui-monospace,monospace;color:#595d6c">.card.stat</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 340px">
+      <div style="padding:32px;display:flex;align-items:center;justify-content:center;background:#161826">
+        <div style="border:1px solid #292b31;border-radius:10px;padding:16px 18px;width:170px;background:#161826">
+          <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#75798c">Sessões hoje</div>
+          <div style="font-size:26px;font-weight:500;margin-top:8px">482</div>
+        </div>
+      </div>
+      <div style="border-left:1px solid #292b31;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ cardSpecs }}" as="sp" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px;border-bottom:1px solid #232532;padding-bottom:8px"><span style="color:#75798c">{{ sp.k }}</span><span style="color:#cfd3e5;text-align:right">{{ sp.v }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABLE ROW -->
+  <section style="border:1px solid #292b31;border-radius:12px;overflow:hidden">
+    <div style="padding:16px 24px;border-bottom:1px solid #292b31;display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-size:16px;font-weight:600">Linha de tabela (tenant / sessão)</h2><span style="font:11px ui-monospace,monospace;color:#595d6c">.table tr</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 340px">
+      <div style="padding:32px;display:flex;align-items:center;justify-content:center;background:#161826">
+        <div style="width:280px;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;padding:10px 4px;font-size:11px;color:#75798c;text-transform:uppercase;letter-spacing:.06em"><span>Nome</span><span>Status</span></div>
+          <div style="display:flex;justify-content:space-between;padding:12px 4px;border-top:1px solid #232532;font-size:13px"><span>Clínica Aurora</span><span style="color:#a7a1db">Ativo</span></div>
+        </div>
+      </div>
+      <div style="border-left:1px solid #292b31;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ rowSpecs }}" as="sp" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px;border-bottom:1px solid #232532;padding-bottom:8px"><span style="color:#75798c">{{ sp.k }}</span><span style="color:#cfd3e5;text-align:right">{{ sp.v }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+</div>]]>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{}}">
+<![CDATA[class Component extends DCLogic {
+  renderVals() {
+    return {
+      navSpecs: [ {k:'Altura',v:'38px'}, {k:'Raio',v:'8px (md)'}, {k:'Padding',v:'9px 10px'}, {k:'Ativo',v:'bg superfície #232532, texto #e9e9ed'}, {k:'Repouso',v:'texto neutro-600 #75798c'}, {k:'Hover',v:'bg texto 7% mix'} ],
+      toggleSpecs: [ {k:'Altura mínima',v:'56px (com descrição)'}, {k:'Switch',v:'38×22px, thumb 18px'}, {k:'On',v:'trilho acento #9184d9'}, {k:'Off',v:'trilho neutro-800 #3f424d'}, {k:'Label',v:'13px/500, cor texto'}, {k:'Descrição',v:'11px, neutro-600'} ],
+      btnSpecs: [ {k:'Preenchimento',v:'nunca sólido — contorno 1px'}, {k:'Altura',v:'40px'}, {k:'Raio',v:'8px (md)'}, {k:'Hover',v:'acento a 12% de mix no fundo'}, {k:'Active',v:'acento a 22% de mix'}, {k:'Disabled',v:'opacidade 45%'} ],
+      inputSpecs: [ {k:'Altura mínima',v:'36px'}, {k:'Borda',v:'1px, divisor 16% mix'}, {k:'Foco',v:'borda acento, sem outline extra'}, {k:'Placeholder',v:'neutro-600 #75798c'}, {k:'Fonte',v:'14px Inter regular'} ],
+      cardSpecs: [ {k:'Fundo',v:'superfície #161826'}, {k:'Borda',v:'1px neutro-900 #292b31'}, {k:'Raio',v:'10px'}, {k:'Rótulo',v:'10px maiúsculas, neutro-600'}, {k:'Valor',v:'26px/500'} ],
+      rowSpecs: [ {k:'Padding célula',v:'12px'}, {k:'Regra',v:'gradiente com fade 48px nas pontas'}, {k:'Header',v:'11px maiúsculas, neutro-600'}, {k:'Hover linha',v:'texto 4% mix'} ],
+    };
+  }
+}]]>
+</script>
+</body>
+</html>

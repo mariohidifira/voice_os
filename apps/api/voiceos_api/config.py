@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: str | None = None
     otel_exporter_otlp_headers: str | None = None
     sentry_dsn: str | None = None
+    # MCP stays opt-in globally. A tenant tool also needs explicit approval before it
+    # can be exposed to an agent or invoked.
+    mcp_enabled: bool = False
+    mcp_allowed_hosts: str = ""
+    mcp_allow_private_network: bool = False
 
 
 def validate_runtime_settings(settings: Settings) -> None:

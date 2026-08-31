@@ -53,7 +53,9 @@ async def test_production_session_creates_room_and_closes_client(monkeypatch: py
     monkeypatch.setattr(livekit_sessions.livekit_api, "LiveKitAPI", make_client)
     settings = Settings(livekit_url="wss://voiceos.livekit.cloud", livekit_api_key="dev-key", livekit_api_secret="dev-secret")
     result = await LiveKitSessions(settings).provision(
-        call_id=uuid4(), agent_id=uuid4(), version="current", variables={}, end_user=None
+        call_id=uuid4(), agent_id=uuid4(), version="current", variables={}, end_user=None,
+        language="pt-BR",
     )
     assert result["room_name"].startswith("voiceos_")
     assert clients[0].closed is True
+    assert json.loads(clients[0].room.request.metadata)["language"] == "pt-BR"

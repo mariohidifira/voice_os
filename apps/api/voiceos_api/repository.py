@@ -1208,7 +1208,7 @@ class PostgresRepository:
         async with self.tenant_session(tenant_id) as db:
             await db.execute(
                 text(
-                    "INSERT INTO tools(id,tenant_id,name,description,type,native_kind,parameters_schema,webhook,speak_before,is_async) VALUES(:id,:tenant,:name,:description,:type,:native_kind,CAST(:schema AS jsonb),CAST(:webhook AS jsonb),:speak_before,:is_async)"
+                    "INSERT INTO tools(id,tenant_id,name,description,type,native_kind,parameters_schema,webhook,mcp,speak_before,is_async) VALUES(:id,:tenant,:name,:description,:type,:native_kind,CAST(:schema AS jsonb),CAST(:webhook AS jsonb),CAST(:mcp AS jsonb),:speak_before,:is_async)"
                 ),
                 {
                     "id": tool_id,
@@ -1219,6 +1219,7 @@ class PostgresRepository:
                     "native_kind": data.get("native_kind"),
                     "schema": json.dumps(data["parameters_schema"]),
                     "webhook": json.dumps(data.get("webhook")),
+                    "mcp": json.dumps(data.get("mcp")),
                     "speak_before": data.get("speak_before"),
                     "is_async": data.get("async", False),
                 },
@@ -1239,7 +1240,7 @@ class PostgresRepository:
     async def update_tool(
         self, tenant_id: UUID, tool_id: UUID, data: dict[str, Any]
     ) -> dict[str, Any] | None:
-        json_fields = {"parameters_schema", "webhook"}
+        json_fields = {"parameters_schema", "webhook", "mcp"}
         column_names = {"async": "is_async"}
         assignments, params = [], {"id": tool_id}
         for field, value in data.items():
@@ -1346,7 +1347,14 @@ class PostgresRepository:
                 ),
                 {"version": version_id},
             )
-            return {**dict(mapping), "tools": [dict(tool) for tool in tools.mappings()]}
+            visible_tools = []
+            for tool in tools.mappings():
+                item = dict(tool)
+                mcp = item.get("mcp") or {}
+                if item.get("type") == "mcp" and not (mcp.get("enabled") and mcp.get("approved")):
+                    continue
+                visible_tools.append(item)
+            return {**dict(mapping), "tools": visible_tools}
 
     async def list_knowledge_bases(self, tenant_id: UUID) -> list[dict[str, Any]]:
         async with self.tenant_session(tenant_id) as db:
@@ -1974,7 +1982,7 @@ class PostgresRepository:
         async with self.tenant_session(tenant_id) as db:
             result = await db.execute(
                 text("INSERT INTO webhook_deliveries(id,tenant_id,webhook_id,event,payload,status,next_retry_at) SELECT gen_random_uuid(),tenant_id,id,:event,CAST(:payload AS jsonb),'pending',now() FROM webhooks_out WHERE enabled AND (:event=ANY(events) OR '*'=ANY(events)) RETURNING id"),
-                {"event": event, "payload": json.dumps(payload)},
+                {"event": event, "payload": json.dumps(payload, default=str)},
             )
             return len(result.scalars().all())
 
@@ -2819,6 +2827,11 @@ class MemoryRepository:
             self.memory.tools[tool_id]
             for tool_id in self.memory.agent_tools.get(version_id, set())
             if tool_id in self.memory.tools
+        ]
+        tools = [
+            tool for tool in tools
+            if tool.get("type") != "mcp"
+            or ((tool.get("mcp") or {}).get("enabled") and (tool.get("mcp") or {}).get("approved"))
         ]
         return {
             **agent,

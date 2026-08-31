@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   buildSimulationCreatePayload,
   buildWhatsappConnectPayload,
@@ -557,6 +558,7 @@ export default function Dashboard({
   initialEntry?: string;
   language?: string;
 }) {
+  const router = useRouter();
   const [section, setSection] = useState<Section>("overview");
   const [agents, setAgents] = useState<Item[]>([]);
   const [agentTemplates, setAgentTemplates] = useState<AgentTemplate[]>([]);
@@ -593,6 +595,8 @@ export default function Dashboard({
   const [widgetAgentId, setWidgetAgentId] = useState<string | null>(
     initialTestAgentId ?? null,
   );
+  const [externalLlmEnabled, setExternalLlmEnabled] = useState(true);
+  const [overviewTopic, setOverviewTopic] = useState("atendimento");
   const autoOpenedRef = useRef(Boolean(initialTestAgentId));
   const [selectedAgent, setSelectedAgent] = useState<Item | null>(null);
   const [agentVersions, setAgentVersions] = useState<Item[]>([]);
@@ -871,6 +875,21 @@ export default function Dashboard({
     } catch (error) {
       setNotice(String(error));
     }
+  }
+  async function toggleExternalLlm() {
+    const agent = agents[0];
+    if (!agent) return;
+    const enabled = !externalLlmEnabled;
+    try {
+      setNotice("Atualizando consultas externas…");
+      const detail = await api<{ draft?: Record<string, unknown> }>(`agents/${agent.id}`);
+      const draft = (detail.draft ?? {}) as Record<string, unknown>;
+      const behavior = (draft.behavior ?? {}) as Record<string, unknown>;
+      await api(`agents/${agent.id}/draft`, { method: "PATCH", body: JSON.stringify({ behavior: { ...behavior, external_llm_enabled: enabled, execution_mode: enabled ? "llm" : "deterministic" } }) });
+      await api(`agents/${agent.id}/publish`, { method: "POST" });
+      setExternalLlmEnabled(enabled);
+      setNotice(enabled ? "Consultas externas liberadas." : "Consultas externas desativadas.");
+    } catch (error) { setNotice(String(error)); }
   }
   async function publishAgent() {
     if (!selectedAgent) return;
@@ -1707,6 +1726,52 @@ export default function Dashboard({
     [todayCalls.length, minutes, completed, active],
   );
 
+  if (initialEntry === "agent") {
+    return (
+      <main className="agentPage">
+        <div className="agentPageBrand">Voice<span>OS</span></div>
+        {loading || !widgetAgentId ? (
+          <div className="agentLoading">
+            <div className="entryOrbButton sessionEntryOrb connecting" aria-hidden="true"><span className="entryOrbCore" /><span className="entryOrbWave entryOrbWaveOne" /><span className="entryOrbWave entryOrbWaveTwo" /></div>
+            <p>Preparando seu agente…</p>
+          </div>
+        ) : (
+          <VoiceWidget
+            agentId={widgetAgentId}
+            language="pt-BR"
+            autoStart
+            fullPage
+            onNotice={setNotice}
+            onClose={() => {
+              autoOpenedRef.current = false;
+              setWidgetAgentId(null);
+              router.replace(`/app/${tenantSlug}`);
+            }}
+          />
+        )}
+      </main>
+    );
+  }
+
+  if (section === "overview") {
+    const topics: Record<string, { title: string; text: string }> = {
+      atendimento: { title: "Atendimento por voz", text: "Atende no navegador ou telefone, entende português brasileiro, permite interrupção natural e mantém a conversa objetiva." },
+      contexto: { title: "Contexto e conhecimento", text: "Consulta documentos e memória do cliente, usa variáveis da conversa e pode buscar dados do negócio por ferramentas seguras." },
+      operacao: { title: "Operação acompanhável", text: "Registra transcrição, áudio quando habilitado, ferramentas usadas, latência, custos e resultados da conversa." },
+      conexoes: { title: "Canais e integrações", text: "Pode entrar pelo widget web, WebRTC, telefonia SIP/Twilio e WhatsApp. Também conecta webhooks, calendário, SMS e e-mail quando configurados." },
+    };
+    const topic = topics[overviewTopic];
+    return <main className="page3Standalone">
+      <header className="page3Header"><div className="page3Brand">Voice<span>OS</span></div><span>Administração</span><button type="button" onClick={() => router.push(`/app/${tenantSlug}?entry=agent&lang=pt-BR`)}>Chamar novamente</button></header>
+      <section className="page3Intro"><div><span className="eyebrow">Conheça o VoiceOS</span><h1>Um agente de voz que atende, consulta e age.</h1><p>Explore os blocos para entender o que está disponível na sua operação, sem abrir outra página.</p></div><div className="page3Status"><i />Sistema pronto para atendimento</div></section>
+      <section className="page3Topics" aria-label="Funcionalidades"><button className={overviewTopic === "atendimento" ? "active" : ""} onClick={() => setOverviewTopic("atendimento")}>Voz e atendimento</button><button className={overviewTopic === "contexto" ? "active" : ""} onClick={() => setOverviewTopic("contexto")}>Conhecimento</button><button className={overviewTopic === "operacao" ? "active" : ""} onClick={() => setOverviewTopic("operacao")}>Operação</button><button className={overviewTopic === "conexoes" ? "active" : ""} onClick={() => setOverviewTopic("conexoes")}>Conexões</button></section>
+      <section className="page3Detail"><span>{topic.title}</span><p>{topic.text}</p></section>
+      <section className="page3Grid"><article><b>O que facilita</b><p>Atendimento consistente, qualificação de leads, agendamentos, consulta de status e encaminhamento humano.</p></article><article><b>O que diferencia</b><p>Interrupção em tempo real, voz de atendimento, contexto por cliente e registro completo de cada conversa.</p></article><article><b>Como foi feito</b><p>LiveKit para voz em tempo real, ElevenLabs para síntese, STT, LLM, API própria e banco multi-tenant.</p></article><article><b>Para funcionar</b><p>Agente publicado, microfone no navegador e credenciais dos provedores configuradas. Para web, não é preciso instalar aplicativo.</p></article></section>
+      <section className="page3Llm"><div><span className="eyebrow">Único controle operacional</span><h2>Permitir consultas abertas por LLM</h2><p>Ligado: responde também a perguntas livres, além de ferramentas e dados internos. Desligado: limita a conversa aos fluxos determinísticos configurados.</p></div><button type="button" className={externalLlmEnabled ? "llmSwitch on" : "llmSwitch"} onClick={() => void toggleExternalLlm()} aria-pressed={externalLlmEnabled}><span aria-hidden="true" /><b>{externalLlmEnabled ? "Ligado" : "Desligado"}</b></button></section>
+      {notice && <div className="notice page3Notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")}>×</button></div>}
+    </main>;
+  }
+
   return (
     <div className="shell">
       <aside className="side">
@@ -1769,23 +1834,30 @@ export default function Dashboard({
           <div className="loading">Carregando operação…</div>
         ) : (
           <>
-            {section === "overview" && (
+            {false && (
               <>
                 <section className="adminHero">
                   <div>
-                    <div className="eyebrow">Centro de operação</div>
-                    <h2>Configure uma atendente e coloque-a para trabalhar.</h2>
+                    <div className="eyebrow">VoiceOS em operação</div>
+                    <h2>Uma visão simples de tudo que sua operação pode fazer.</h2>
                     <p>
-                      O VoiceOS transforma um processo configurado em uma conversa de voz
-                      monitorada. Comece pelo agente, valide uma chamada e acompanhe o resultado.
+                      Explore os recursos por assunto ou inicie outra conversa com o agente.
                     </p>
                   </div>
                   <div className="adminHeroActions">
-                    <button type="button" onClick={() => setSection("agents")}>Configurar agente</button>
-                    <button type="button" className="secondary" onClick={() => setSection("calls")}>Ver chamadas</button>
+                    <button type="button" onClick={() => router.push(`/app/${tenantSlug}?entry=agent&lang=pt-BR`)}>Chamar novamente</button>
+                    <button type="button" className="secondary" onClick={() => setSection("calls")}>Ver última conversa</button>
                   </div>
                 </section>
-                <section className="stats">
+                <section className="page3Guide" aria-label="Guia do VoiceOS">
+                  <article><span>O que faz</span><b>Atende por voz</b><small>Escuta, conversa em português, interrompe a fala quando necessário e registra a transcrição dos dois lados.</small></article>
+                  <article><span>Conecta onde</span><b>Web e telefone</b><small>Funciona no navegador, pode usar números telefônicos e integrações já configuradas na operação.</small></article>
+                  <article><span>Facilita</span><b>Atendimento repetível</b><small>Organiza histórico, contexto, ferramentas e encaminhamentos sem depender de uma tela cheia de controles.</small></article>
+                  <article><span>Diferencial</span><b>Contexto de verdade</b><small>Usa documentos, memória, variáveis da chamada e regras do negócio para responder com continuidade.</small></article>
+                  <article><span>Tecnologia</span><b>Voz em tempo real</b><small>LiveKit para a chamada, ElevenLabs para voz, STT, LLM e serviços próprios de API e dados.</small></article>
+                  <article><span>Para funcionar</span><b>Agente e credenciais</b><small>Um agente publicado, microfone no navegador e provedores de voz/LLM configurados. Nada além disso para testar.</small></article>
+                </section>
+                <section className="stats page3Legacy">
                   {stats.map(([label, value]) => (
                     <article className="card" key={label}>
                       <span className="muted">{label}</span>
@@ -1793,62 +1865,25 @@ export default function Dashboard({
                     </article>
                   ))}
                 </section>
-                <section className="split">
-                  <article className="card">
-                    <h2>Agentes</h2>
-                    {agents.slice(0, 5).map((agent) => (
-                      <button
-                        className="row"
-                        key={agent.id}
-                        onClick={() => void openAgent(agent.id)}
-                      >
-                        <span>
-                          <strong>{agent.name}</strong>
-                          <small>{agent.status}</small>
-                        </span>
-                        <b>→</b>
-                      </button>
-                    ))}
-                    {!agents.length && (
-                      <Empty>Crie seu primeiro agente para iniciar.</Empty>
-                    )}
-                  </article>
-                  <article className="card">
-                    <h2>Chamadas recentes</h2>
-                    {calls.slice(0, 6).map((call) => (
-                      <button
-                        className="row"
-                        key={call.id}
-                        onClick={() => void openCall(call.id)}
-                      >
-                        <span>
-                          <strong>
-                            {call.channel ?? "web"} · {call.status}
-                          </strong>
-                          <small>
-                            {call.summary ??
-                              new Date(
-                                call.started_at ?? Date.now(),
-                              ).toLocaleString("pt-BR")}
-                          </small>
-                        </span>
-                        <b>→</b>
-                      </button>
-                    ))}
-                    {!calls.length && (
-                      <Empty>Nenhuma chamada registrada.</Empty>
-                    )}
-                  </article>
+                <section className="capabilityGrid page3Legacy" aria-label="Funcionalidades do VoiceOS">
+                  {[
+                    ["agents", "Agentes", "Defina personalidade, voz e comportamento.", "◉"],
+                    ["calls", "Conversas", "Revise histórico, transcrição e resultados.", "◌"],
+                    ["knowledge", "Memória", "Conecte documentos e contexto do negócio.", "◇"],
+                    ["settings", "Configurações", "Organize workspace, acessos e integrações.", "⌁"],
+                  ].map(([target, title, description, icon]) => (
+                    <button className="capabilityCard" key={target} onClick={() => setSection(target as Section)}>
+                      <span className="capabilityIcon">{icon}</span>
+                      <span><strong>{title}</strong><small>{description}</small></span>
+                      <b>→</b>
+                    </button>
+                  ))}
                 </section>
-                <article className="card roadmapCard">
-                  <div className="eyebrow">Recursos avançados</div>
-                  <h2>O núcleo da operação está pronto</h2>
-                  <p className="muted">
-                    Ferramentas, números, campanhas, billing, governança, exports e integrações
-                    avançadas permanecem disponíveis na API e serão liberados no painel após a
-                    validação externa correspondente.
-                  </p>
-                </article>
+                <section className="externalLlmCard">
+                  <div><span className="eyebrow">Consulta ampliada</span><h3>Permitir consultas além do sistema</h3><p>Quando ligado, o agente pode usar a LLM configurada para responder perguntas abertas, não apenas fluxos e dados internos.</p></div>
+                  <button type="button" className={externalLlmEnabled ? "llmSwitch on" : "llmSwitch"} onClick={() => void toggleExternalLlm()} aria-pressed={externalLlmEnabled}><span aria-hidden="true" /><b>{externalLlmEnabled ? "Ligado" : "Desligado"}</b></button>
+                </section>
+                <section className="infoPills" aria-label="Diferenciais"><button type="button" onClick={() => setSection("calls")}><b>Conversas</b><span>Histórico e transcrição</span></button><button type="button" onClick={() => setSection("knowledge")}><b>Contexto</b><span>Memória e documentos</span></button><button type="button" onClick={() => setSection("agents")}><b>Atendimento</b><span>Voz, tom e comportamento</span></button></section>
               </>
             )}
             {section === "agents" && (

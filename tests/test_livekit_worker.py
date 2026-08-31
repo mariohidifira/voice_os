@@ -10,16 +10,32 @@ from livekit.agents import (
     UserStateChangedEvent,
 )
 from livekit.agents.llm import ChatMessage, RawFunctionTool
+from livekit.agents.metrics.usage import TTSModelUsage
 from voiceos_voice.api_client import MemoryRuntimeCache, WorkerAPI
 from voiceos_voice.livekit_worker import (
     LiveKitCallBridge,
     SessionGuards,
+    _jsonable,
     dial_outbound,
     dynamic_tools,
     room_metadata,
     send_dtmf,
     transfer_phone_call,
 )
+
+
+def test_jsonable_recursively_serializes_nested_sdk_models() -> None:
+    usage = TTSModelUsage(
+        provider="elevenlabs",
+        model="eleven_multilingual_v2",
+        characters_count=24,
+        audio_duration=1.2,
+    )
+
+    payload = _jsonable({"items": [usage]})
+
+    assert payload["items"][0]["type"] == "tts_usage"
+    assert payload["items"][0]["characters_count"] == 24
 
 
 @pytest.mark.asyncio
@@ -264,7 +280,8 @@ async def test_transfer_native_tool_summarizes_and_closes() -> None:
 
     assert result["status"] == "transferred"
     assert events == ["transfer.requested", "transfer.completed"]
-    assert session.spoken == ["Resumo."]
+    assert session.spoken[-1] == "Resumo."
+    assert len(session.spoken) == 2
     assert session.closed is True
     assert bridge.end_reason == "transferred"
 

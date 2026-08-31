@@ -2,6 +2,7 @@ import json
 
 import httpx
 import pytest
+from voiceos_api.config import Settings
 from voiceos_api.tool_execution import ToolExecutor
 
 
@@ -93,3 +94,39 @@ async def test_webhook_connection_error_is_recoverable() -> None:
         "message": "Webhook connection failed",
         "details": "ConnectError",
     }
+
+
+@pytest.mark.asyncio
+async def test_mcp_discovery_and_call_require_approval() -> None:
+    seen: list[dict] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        seen.append(payload)
+        if payload["method"] == "tools/list":
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": "voiceos", "result": {"tools": [{"name": "lookup_order", "description": "Lookup", "inputSchema": {"type": "object"}}]}})
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": "voiceos", "result": {"content": [{"type": "text", "text": "Order found"}]}})
+
+    executor = ToolExecutor(
+        httpx.MockTransport(handler), Settings(app_env="test", mcp_enabled=True)
+    )
+    config = {"endpoint": "https://mcp.example.test", "transport": "streamable_http"}
+    discovered = await executor.discover_mcp(config)
+    assert discovered["tools"][0]["name"] == "lookup_order"
+    tool = {
+        "type": "mcp",
+        "parameters_schema": {"type": "object"},
+        "mcp": {**config, "operation": "lookup_order", "enabled": True, "approved": True},
+    }
+    result = await executor.execute(tool, {"id": "42"}, {})
+    assert result["result"] == {"content": ["Order found"], "is_error": False}
+    assert seen[-1]["method"] == "tools/call"
+
+
+@pytest.mark.asyncio
+async def test_mcp_is_blocked_until_approved() -> None:
+    executor = ToolExecutor(settings=Settings(app_env="test", mcp_enabled=True))
+    result = await executor.execute(
+        {"type": "mcp", "parameters_schema": {"type": "object"}, "mcp": {"enabled": True}}, {}, {}
+    )
+    assert result["error"] == "mcp_not_approved"

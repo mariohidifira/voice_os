@@ -1,25 +1,47 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+
 import { useRouter } from "next/navigation";
 
-const languages = [["pt-BR", "Português (Brasil)"], ["en-US", "English (US)"], ["es-ES", "Español"]] as const;
-
-function RingTone({ active }: { active: boolean }) {
-  const contextRef = useRef<AudioContext | null>(null); const timerRef = useRef<number | null>(null);
-  useEffect(() => () => { if (timerRef.current) window.clearInterval(timerRef.current); void contextRef.current?.close(); }, []);
-  useEffect(() => { if (!active) return; const Ctx = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext; if (!Ctx) return; const ctx = new Ctx(); contextRef.current = ctx; const ring = () => { const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.frequency.value = 740; gain.gain.setValueAtTime(.0001, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(.045, ctx.currentTime + .03); gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + .52); osc.connect(gain).connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + .55); }; ring(); timerRef.current = window.setInterval(ring, 1800); return () => { if (timerRef.current) window.clearInterval(timerRef.current); void ctx.close(); contextRef.current = null; }; }, [active]);
-  return null;
-}
-
 export default function Home() {
-  const router = useRouter(); const [language, setLanguage] = useState("pt-BR"); const [calling, setCalling] = useState(false);
-  useEffect(() => { const saved = window.localStorage.getItem("voiceos-language"); if (saved) setLanguage(saved); }, []);
-  function chooseLanguage(value: string) { setLanguage(value); window.localStorage.setItem("voiceos-language", value); }
-  function accept() { router.push(`/app/demo?entry=agent&lang=${encodeURIComponent(language)}`); }
-  const languageLabel = languages.find(([value]) => value === language)?.[1] ?? "Português (Brasil)";
-  return <main className="entryShell"><RingTone active={calling} />
-    <div className="entryReferenceBar"><span className="entryPulse" /> <span>VOICEOS</span><em> / Interface multimodal · demonstração local</em></div>
-    <div className="entryGrid"><section className="entryHero"><div className="eyebrow">Onboarding · experiência de chamada</div><h1>Uma presença inteligente<br /><span>em cada chamada.</span></h1><p className="entryLead">Escolha o idioma da experiência e entre no VoiceOS. O agente mantém uma voz, um idioma e um tom consistentes durante toda a sessão.</p><label className="entryLanguage">Idioma da experiência<select value={language} onChange={(event) => chooseLanguage(event.target.value)}>{languages.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label></section>
-      <section className="entryActions" aria-label="Escolha uma experiência">{!calling ? <><button className="entryButton" onClick={() => router.push("/app/demo")}><span className="entryIcon">◌</span><span><strong>Dashboard administrativo</strong><small>Agentes, voz, contexto, ferramentas e registros.</small></span><b>→</b></button><button className="entryButton entryAgent" onClick={() => setCalling(true)}><span className="entryIcon">◉</span><span><strong>Falar com o agente</strong><small>Inicie uma demonstração guiada por voz.</small></span><b>→</b></button></> : <div className="incomingCall" role="dialog" aria-modal="true" aria-label="Chamada recebida"><div className="callOrb"><span /></div><div className="eyebrow">VoiceOS · linha segura</div><h2>Ligando para o agente</h2><p>Atendente Ava · {languageLabel}</p><div className="callButtons"><button className="accept" onClick={accept}>Accept</button><button className="decline" onClick={() => setCalling(false)}>Decline</button></div><small>A atendente fará a saudação, confirmará o pedido e encerrará a chamada com cordialidade.</small></div>}</section></div>
-    <footer className="entryFooter">LOCAL DEMO <span>·</span> WebRTC / LiveKit <span>·</span> {language}</footer></main>;
+  const router = useRouter();
+  const callAgent = () => {
+    const context = new AudioContext();
+    void context.resume();
+    const ring = (when: number) => {
+      [440, 480].forEach((frequency) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.0001, context.currentTime + when);
+        gain.gain.exponentialRampToValueAtTime(0.045, context.currentTime + when + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + when + 0.72);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start(context.currentTime + when);
+        oscillator.stop(context.currentTime + when + 0.75);
+      });
+    };
+    ring(1.4); ring(2.45);
+    window.setTimeout(() => router.push("/app/demo?entry=agent&lang=pt-BR"), 2500);
+  };
+
+  return (
+    <main className="entryShell">
+      <section className="entrySimple" aria-labelledby="entry-title">
+        <div className="entryProduct">Voice<span>OS</span></div>
+        <div className="eyebrow">Atendimento inteligente</div>
+        <h1 id="entry-title">Uma presença inteligente<span> em cada conversa.</span></h1>
+        <p>Converse naturalmente com um agente que escuta, entende e age usando o contexto e as ferramentas da sua operação.</p>
+        <div className="entryOrbButton" aria-label="Agente de voz">
+          <span className="entryOrbCore" />
+          <span className="entryOrbWave entryOrbWaveOne" />
+          <span className="entryOrbWave entryOrbWaveTwo" />
+        </div>
+        <button type="button" className="entryCallButton" onClick={callAgent}>
+          Chamar agente
+        </button>
+        <small>Experiência em português do Brasil</small>
+      </section>
+      <footer className="entryFooter">VOZ <span>·</span> CONTEXTO <span>·</span> AÇÃO</footer>
+    </main>
+  );
 }

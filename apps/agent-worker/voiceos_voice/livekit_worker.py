@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field, is_dataclass
@@ -40,7 +41,7 @@ from .phone_runtime import (
     HeuristicAMDClassifier,
     business_hours_open,
 )
-from .prompting import build_system_prompt
+from .prompting import build_system_prompt, render_agent_text
 from .recording import start_room_recording
 
 DTMF_CODES = {
@@ -54,6 +55,13 @@ DTMF_CODES = {
 }
 
 logger = logging.getLogger(__name__)
+
+ACK_PROMPTS = (
+    "Entendi. Vou verificar isso agora.",
+    "Certo, ja vou cuidar disso.",
+    "Perfeito. Um instante enquanto consulto.",
+    "Entendi o pedido. So um momento.",
+)
 
 _FAREWELL_RE = re.compile(
     r"\b(?:tchau|adeus|até\s+logo|ate\s+logo|até\s+mais|ate\s+mais|"
@@ -234,9 +242,13 @@ async def dial_outbound(
 
 def _jsonable(value: Any) -> Any:
     if is_dataclass(value) and not isinstance(value, type):
-        return asdict(value)
+        return _jsonable(asdict(value))
     if hasattr(value, "model_dump"):
-        return value.model_dump(mode="json")
+        return _jsonable(value.model_dump(mode="json"))
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_jsonable(item) for item in value]
     if hasattr(value, "__dict__"):
         return {
             key: _jsonable(item) for key, item in vars(value).items() if not key.startswith("_")
@@ -393,7 +405,10 @@ class SessionGuards:
         self.silence_count += 1
         await self.bridge.persist_event("silence.detected", {"count": self.silence_count})
         if self.silence_count == 1:
-            await self.session.say(self.silence_prompt, allow_interruptions=True).wait_for_playout()
+            await self.session.say(
+                "Posso tirar dúvidas, consultar informações, registrar pedidos e encaminhar você para a próxima ação. Como prefere começar?",
+                allow_interruptions=True,
+            ).wait_for_playout()
         else:
             self.bridge.end_reason = "silence"
             await self.session.say(
@@ -422,9 +437,7 @@ def dynamic_tools(
         tool_id = str(definition["id"])
         name = str(definition["name"])
         kind = str(definition.get("native_kind") or name)
-        configured_wait_prompt = str(
-            definition.get("speak_before") or "Só um momento, vou consultar isso."
-        ).strip()
+        configured_wait_prompt = str(definition.get("speak_before") or "").strip()
 
         async def execute(
             raw_arguments: dict[str, Any],
@@ -434,6 +447,13 @@ def dynamic_tools(
             tool_kind: str = kind,
             wait_prompt: str = configured_wait_prompt,
         ) -> dict[str, Any]:
+            # Confirm commands before executing them. Ending is the exception:
+            # its farewell is the only final utterance, avoiding a double goodbye.
+            live_session = session_ref.get("session")
+            if live_session is not None and tool_kind != "end_call":
+                await live_session.say(
+                    wait_prompt or random.choice(ACK_PROMPTS), allow_interruptions=True
+                ).wait_for_playout()
             if tool_kind == "set_variable":
                 variables[str(raw_arguments["name"])] = raw_arguments.get("value")
                 await bridge.persist_event("variable.set", {"name": raw_arguments["name"]})
@@ -490,11 +510,6 @@ def dynamic_tools(
                     )
                 session_ref["session"].shutdown(drain=True)
                 return transferred
-            # Keep the conversation natural while a remote tool/API is running.
-            # A tool may override this text with its configured `speak_before`.
-            live_session = session_ref.get("session")
-            if wait_prompt and live_session is not None:
-                await live_session.say(wait_prompt, allow_interruptions=True).wait_for_playout()
             return await api.execute_tool(
                 {
                     "tool_id": remote_tool_id,
@@ -674,6 +689,10 @@ async def voiceos_agent(ctx: JobContext) -> None:
     runtime = await api.runtime(
         UUID(str(metadata["agent_id"])), str(metadata.get("version") or "current")
     )
+    # The web experience selects its locale once. Apply that explicit value
+    # before constructing STT/TTS so providers cannot infer or switch language.
+    if metadata.get("language"):
+        runtime = {**runtime, "language": normalize_language(metadata["language"])}
     variables = {**runtime.get("variables", {}), **dict(metadata.get("variables") or {})}
     if metadata.get("call_id"):
         call_id = UUID(str(metadata["call_id"]))
@@ -768,10 +787,10 @@ async def voiceos_agent(ctx: JobContext) -> None:
         # Keep the demo responsive: cloud STT/LLM/TTS already add network
         # latency, so waiting up to three seconds after speech makes the
         # interaction feel stuck on modest local machines.
-        min_endpointing_delay=float(turn.get("min_endpointing_delay", 0.35)),
-        max_endpointing_delay=float(turn.get("max_endpointing_delay", 1.5)),
+        min_endpointing_delay=min(float(turn.get("min_endpointing_delay", 0.22)), 0.22),
+        max_endpointing_delay=min(float(turn.get("max_endpointing_delay", 0.7)), 0.7),
         allow_interruptions=True,
-        min_interruption_duration=float(turn.get("min_interruption_duration", 0.5)),
+        min_interruption_duration=float(turn.get("min_interruption_duration", 0.15)),
         min_interruption_words=int(turn.get("min_interruption_words", 1)),
         user_away_timeout=float(behavior.get("silence_timeout_s", 8)),
     )
@@ -842,7 +861,15 @@ async def voiceos_agent(ctx: JobContext) -> None:
     await session.start(room=ctx.room, agent=Agent(instructions=prompt))
     guards.start()
     await ctx.connect()
-    greeting = str(runtime.get("greeting") or "Olá! Como posso ajudar?")
+    greeting = render_agent_text(
+        str(runtime.get("greeting") or "Olá! Como posso ajudar?"),
+        {"id": runtime["tenant_id"], "name": runtime.get("tenant_name") or "sua empresa"},
+        runtime,
+        channel=str(metadata.get("channel") or "web"),
+        variables=variables,
+        end_user=metadata.get("end_user"),
+        now=datetime.now(UTC),
+    )
     if flow_engine is not None:
         greeting = flow_engine.greeting().response or greeting
     tenant_settings = dict(runtime.get("tenant_settings") or {})

@@ -26,3 +26,5 @@ apps/web/public/voiceos.js
 graphify-out/.graphify_python
 graphify-out/cache/
 graphify-out/20??-??-??/
+reports/voiceos-source-*.zip
+reports/voiceos-source-*.manifest.json

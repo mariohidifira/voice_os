@@ -59,6 +59,7 @@ from .schemas import (
     KnowledgeBaseCreate,
     KnowledgeBasePatch,
     KnowledgeQuery,
+    McpDiscoverRequest,
     MemberCreate,
     MemberPatch,
     OutboundCallCreate,
@@ -515,7 +516,7 @@ async def livekit_webhook(request: Request, repo: Repo) -> dict[str, bool]:
 async def _resolve_tool_secret(
     repo: Repository, cipher: SecretCipher, tenant_id: UUID, tool: dict[str, Any]
 ) -> str | None:
-    auth = (tool.get("webhook") or {}).get("auth") or {}
+    auth = ((tool.get("mcp") if tool.get("type") == "mcp" else tool.get("webhook")) or {}).get("auth") or {}
     secret_id = auth.get("secret_id")
     if not secret_id:
         return None
@@ -1779,6 +1780,7 @@ async def create_test_session(
         version="draft",
         variables=body.variables,
         end_user=body.end_user,
+        language=str(body.metadata.get("language") or "pt-BR"),
     )
     await repo.update_call(auth.tenant_id, call_id, {"livekit_room": session["room_name"]})
     return {
@@ -2030,6 +2032,24 @@ async def send_whatsapp_handoff_message(
 async def create_tool(body: ToolCreate, auth: Auth, repo: Repo) -> dict[str, Any]:
     _require_admin(auth)
     return await repo.create_tool(auth.tenant_id, body.model_dump(by_alias=True))
+
+
+@v1.post("/tools/mcp/discover")
+async def discover_mcp_tools(
+    body: McpDiscoverRequest, auth: Auth, repo: Repo, executor: Executor, cipher: Cipher
+) -> dict[str, Any]:
+    """Discover a server's tools without persisting or exposing them to an agent."""
+    _require_admin(auth)
+    config = body.model_dump()
+    secret = None
+    secret_id = (config.get("auth") or {}).get("secret_id")
+    if secret_id:
+        try:
+            record = await repo.get_secret(auth.tenant_id, UUID(str(secret_id)))
+        except ValueError:
+            record = None
+        secret = await cipher.decrypt(record["ciphertext"], record["kms_key_id"]) if record else None
+    return await executor.discover_mcp(config, secret)
 
 
 @v1.get("/tools")

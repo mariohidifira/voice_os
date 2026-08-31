@@ -220,6 +220,7 @@ class ToolCreate(BaseModel):
     native_kind: str | None = None
     parameters_schema: dict[str, Any]
     webhook: dict[str, Any] | None = None
+    mcp: dict[str, Any] | None = None
     speak_before: str | None = None
     async_: bool = Field(default=False, alias="async")
 
@@ -230,6 +231,21 @@ class ToolCreate(BaseModel):
             raise ValueError("name must be snake_case and <= 40 characters")
         return value
 
+    @field_validator("type")
+    @classmethod
+    def supported_type(cls, value: str) -> str:
+        if value not in {"native", "webhook", "mcp"}:
+            raise ValueError("type must be native, webhook, or mcp")
+        return value
+
+    @model_validator(mode="after")
+    def integration_shape(self) -> "ToolCreate":
+        if self.type == "mcp" and not self.mcp:
+            raise ValueError("mcp configuration is required for MCP tools")
+        if self.type == "webhook" and not self.webhook:
+            raise ValueError("webhook configuration is required for webhook tools")
+        return self
+
 
 class ToolPatch(BaseModel):
     name: str | None = None
@@ -237,6 +253,7 @@ class ToolPatch(BaseModel):
     native_kind: str | None = None
     parameters_schema: dict[str, Any] | None = None
     webhook: dict[str, Any] | None = None
+    mcp: dict[str, Any] | None = None
     speak_before: str | None = None
     async_: bool | None = Field(default=None, alias="async")
 
@@ -245,6 +262,13 @@ class ToolTestRequest(BaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
     session_variables: dict[str, Any] = Field(default_factory=dict)
     end_user: dict[str, Any] = Field(default_factory=dict)
+
+
+class McpDiscoverRequest(BaseModel):
+    endpoint: str = Field(min_length=8, max_length=2048)
+    transport: str = Field(default="streamable_http", pattern="^(streamable_http|sse)$")
+    auth: dict[str, Any] | None = None
+    timeout_ms: int = Field(default=8000, ge=1000, le=30000)
 
 
 class InternalToolExecute(ToolTestRequest):

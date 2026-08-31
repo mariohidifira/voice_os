@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 from voiceos_voice.contracts import LLMResponse, ToolCall, VoiceEvent
-from voiceos_voice.prompting import build_system_prompt
+from voiceos_voice.prompting import build_system_prompt, render_agent_text
 from voiceos_voice.providers import MockLLM, MockRAG, MockTTS
 from voiceos_voice.resilience import CircuitBreaker, CircuitState, resilient_call
 from voiceos_voice.session import VoiceSession
@@ -28,6 +28,20 @@ def test_prompt_renders_context_and_rules() -> None:
     assert "consultar_pedido" in result
     assert "Cliente identificado: Mario" in result
     assert "Nunca invente dados" in result
+
+
+def test_greeting_renders_agent_and_tenant_names() -> None:
+    result = render_agent_text(
+        "Olá! Aqui é {{ agent.name }}, de {{ tenant.name }}.",
+        {"name": "VoiceOS"},
+        {"name": "Ana"},
+        channel="web",
+        variables={},
+        end_user=None,
+        now=datetime(2026, 8, 30, tzinfo=UTC),
+    )
+
+    assert result == "Olá! Aqui é Ana, de VoiceOS."
 
 
 def test_prompt_rejects_tenant_prompt_over_limit() -> None:
