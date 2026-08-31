@@ -19,13 +19,13 @@
     },
     {
       "path": "scripts/verify_phase4_remote_artifact.py",
-      "bytes": 4256,
-      "sha256": "406e9730029ba6fc89ddcbff842b846c9ef940295ff1ac3514ea8f08e80724bf"
+      "bytes": 4255,
+      "sha256": "93bb67b01e31325b85d305ed0be62c6b947769a74cee0867cfdbb63015e731f5"
     },
     {
       "path": "scripts/check_phase5_external_delivery.py",
-      "bytes": 8373,
-      "sha256": "f8b7090d95ee01832f9ba5b02925dbd3a143f105632eadbb34a1614a8cd395d0"
+      "bytes": 8372,
+      "sha256": "6d8d9090c13f349fe5c818c46e97c1ae0680d7f55442d6c03772e37c32b80713"
     },
     {
       "path": "scripts/check_external_closeout_complete.py",
@@ -49,8 +49,8 @@
     },
     {
       "path": "reports/final-local-audit.json",
-      "bytes": 7971,
-      "sha256": "b5a7f5d5be74212861fd95469c47da753d9d3960146f5057e9b4b67522f69ba8"
+      "bytes": 8533,
+      "sha256": "8ec8b2e5b546516ce298c95993921ba114e4b47411e5c7cfe33ca88b65bd5b71"
     },
     {
       "path": "reports/final-refresh-status.json",
@@ -139,6 +139,6 @@
   "phase4_environment_blocker": null,
   "phase5_next_gap": null,
   "phase5_environment_blocker": null,
-  "bundle_bytes": 73432,
-  "bundle_sha256": "705dce4ebd786307c87497f5e6a42b8e68dcdb9b02449059c6c4c8e0e1ff1f30"
+  "bundle_bytes": 73598,
+  "bundle_sha256": "a3c1b3767e4294e895171f9c8619414829fcbc5e5c23564efd95f1db2113cb51"
 }
